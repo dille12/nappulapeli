@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Image Upload & Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #5d5dff, #4b4be6);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            margin-bottom: 40px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            position: absolute;
+            left: -9999px;
+            opacity: 0;
+        }
+        
+        .file-input-button {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .filename-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .filename-input:focus {
+            outline: none;
+            border-color: #5d5dff;
+        }
+        
+        .editor-section {
+            display: none;
+            margin-bottom: 30px;
+        }
+        
+        .editor-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .control-button.primary {
+            background: linear-gradient(135deg, #5d5dff, #4b4be6);
+            color: white;
+        }
+        
+        .control-button.secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            max-width: 100%;
+        }
+        
+        .canvas-container canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+        
+        .crop-overlay {
+            position: absolute;
+            border: 2px dashed #5d5dff;
+            background: rgba(93, 93, 255, 0.1);
+            cursor: move;
+            display: none;
+        }
+        
+        .crop-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #5d5dff;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: nw-resize;
+        }
+        
+        .crop-handle.nw { top: -5px; left: -5px; }
+        .crop-handle.ne { top: -5px; right: -5px; cursor: ne-resize; }
+        .crop-handle.sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+        .crop-handle.se { bottom: -5px; right: -5px; cursor: se-resize; }
+        
+        .upload-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .upload-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(40, 167, 69, 0.3);
+        }
+        
+        .upload-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .messages {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        
+        .messages.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .messages.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #5d5dff, #4b4be6);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .editor-controls {
+                flex-direction: column;
+            }
+            
+            .control-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Game Image Upload</h1>
+            <p>Upload, edit, and prepare your game images</p>
+        </div>
+        
+        <div class="main-content">
+            {% with messages = get_flashed_messages() %}
+              {% if messages %}
+                <div class="messages {% if 'success' in messages[0].lower() %}success{% else %}error{% endif %}">
+                  {% for message in messages %}
+                    {{ message }}
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
+            
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="imageInput" class="file-input" accept="image/*" required>
+                    <label for="imageInput" class="file-input-button">
+                        📁 Click to select an image or drag & drop
+                    </label>
+                </div>
+                
+                <input type="text" id="filenameInput" class="filename-input" placeholder="Enter a name for your image" required>
+            </div>
+            
+            <div class="editor-section" id="editorSection">
+                <div class="editor-controls">
+                    <button class="control-button primary" id="mirrorBtn">🔄 Mirror Horizontal</button>
+                    <button class="control-button secondary" id="cropBtn">✂️ Crop</button>
+                    <button class="control-button secondary" id="resetBtn">↻ Reset</button>
+                </div>
+                
+                <div class="canvas-container" id="canvasContainer">
+                    <canvas id="canvas"></canvas>
+                    <div class="crop-overlay" id="cropOverlay">
+                        <div class="crop-handle nw"></div>
+                        <div class="crop-handle ne"></div>
+                        <div class="crop-handle sw"></div>
+                        <div class="crop-handle se"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload">
+                <input type="hidden" name="filename" id="hiddenFilename">
+                <input type="hidden" name="imageData" id="hiddenImageData">
+                <button type="submit" class="upload-button" id="uploadButton" disabled>
+                    🚀 Upload Image
+                </button>
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let canvas, ctx, originalImageData, currentImageData;
+        let isDragging = false, isResizing = false, isCropping = false;
+        let cropStart = { x: 0, y: 0 };
+        let cropEnd = { x: 0, y: 0 };
+        let dragOffset = { x: 0, y: 0 };
+        let currentHandle = null;
+
+        const imageInput = document.getElementById('imageInput');
+        const filenameInput = document.getElementById('filenameInput');
+        const editorSection = document.getElementById('editorSection');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const cropOverlay = document.getElementById('cropOverlay');
+        const uploadButton = document.getElementById('uploadButton');
+        const uploadForm = document.getElementById('uploadForm');
+        const hiddenFilename = document.getElementById('hiddenFilename');
+        const hiddenImageData = document.getElementById('hiddenImageData');
+
+        canvas = document.getElementById('canvas');
+        ctx = canvas.getContext('2d');
+
+        // File input handling
+        imageInput.addEventListener('change', handleImageSelect);
+        filenameInput.addEventListener('input', updateUploadButton);
+
+        // Editor controls
+        document.getElementById('mirrorBtn').addEventListener('click', mirrorImage);
+        document.getElementById('cropBtn').addEventListener('click', toggleCrop);
+        document.getElementById('resetBtn').addEventListener('click', resetImage);
+
+        // Form submission
+        uploadForm.addEventListener('submit', handleSubmit);
+
+        // Drag and drop
+        const fileInputButton = document.querySelector('.file-input-button');
+        fileInputButton.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileInputButton.style.background = 'linear-gradient(135deg, #5d5dff, #4b4be6)';
+        });
+        fileInputButton.addEventListener('dragleave', () => {
+            fileInputButton.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        });
+        fileInputButton.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileInputButton.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                imageInput.files = files;
+                handleImageSelect();
+            }
+        });
+
+        function handleImageSelect() {
+            const file = imageInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    loadImageToCanvas(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function loadImageToCanvas(imageSrc) {
+            const img = new Image();
+            img.onload = function() {
+                // Calculate canvas size to fit image while maintaining aspect ratio
+                const maxWidth = 600;
+                const maxHeight = 400;
+                let { width, height } = img;
+                
+                if (width > maxWidth || height > maxHeight) {
+                    const ratio = Math.min(maxWidth / width, maxHeight / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Store original image data
+                originalImageData = ctx.getImageData(0, 0, width, height);
+                currentImageData = ctx.getImageData(0, 0, width, height);
+                
+                editorSection.style.display = 'block';
+                updateUploadButton();
+            };
+            img.src = imageSrc;
+        }
+
+        function mirrorImage() {
+            ctx.save();
+            ctx.scale(-1, 1);
+            ctx.drawImage(canvas, -canvas.width, 0);
+            ctx.restore();
+            currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function flipImage() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.scale(1, -1);
+            ctx.putImageData(imageData, 0, -canvas.height);
+            ctx.restore();
+            currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function toggleCrop() {
+            isCropping = !isCropping;
+            const cropBtn = document.getElementById('cropBtn');
+            
+            if (isCropping) {
+                cropBtn.textContent = '✅ Apply Crop';
+                cropBtn.className = 'control-button primary';
+                setupCropOverlay();
+            } else {
+                applyCrop();
+                cropBtn.textContent = '✂️ Crop';
+                cropBtn.className = 'control-button secondary';
+                cropOverlay.style.display = 'none';
+            }
+        }
+
+        function setupCropOverlay() {
+            const rect = canvas.getBoundingClientRect();
+            const containerRect = canvasContainer.getBoundingClientRect();
+            
+            cropOverlay.style.display = 'block';
+            cropOverlay.style.left = '20px';
+            cropOverlay.style.top = '20px';
+            cropOverlay.style.width = Math.max(100, canvas.width - 40) + 'px';
+            cropOverlay.style.height = Math.max(100, canvas.height - 40) + 'px';
+
+            // Add event listeners for cropping
+            cropOverlay.addEventListener('mousedown', startCropDrag);
+            document.addEventListener('mousemove', cropDrag);
+            document.addEventListener('mouseup', endCropDrag);
+            
+            // Add event listeners for resize handles
+            const handles = cropOverlay.querySelectorAll('.crop-handle');
+            handles.forEach(handle => {
+                handle.addEventListener('mousedown', startCropResize);
+            });
+        }
+
+        function startCropDrag(e) {
+            if (e.target.classList.contains('crop-handle')) return;
+            isDragging = true;
+            const rect = cropOverlay.getBoundingClientRect();
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+        }
+
+        function startCropResize(e) {
+            e.stopPropagation();
+            isResizing = true;
+            currentHandle = e.target;
+        }
+
+        function cropDrag(e) {
+            if (!isCropping) return;
+            
+            if (isDragging) {
+                const containerRect = canvasContainer.getBoundingClientRect();
+                let newX = e.clientX - containerRect.left - dragOffset.x;
+                let newY = e.clientY - containerRect.top - dragOffset.y;
+                
+                // Constrain to canvas bounds
+                newX = Math.max(0, Math.min(newX, canvas.width - cropOverlay.offsetWidth));
+                newY = Math.max(0, Math.min(newY, canvas.height - cropOverlay.offsetHeight));
+                
+                cropOverlay.style.left = newX + 'px';
+                cropOverlay.style.top = newY + 'px';
+            }
+            
+            if (isResizing && currentHandle) {
+                const containerRect = canvasContainer.getBoundingClientRect();
+                const overlayRect = cropOverlay.getBoundingClientRect();
+                
+                const mouseX = e.clientX - containerRect.left;
+                const mouseY = e.clientY - containerRect.top;
+                
+                let newX = parseInt(cropOverlay.style.left);
+                let newY = parseInt(cropOverlay.style.top);
+                let newWidth = parseInt(cropOverlay.style.width);
+                let newHeight = parseInt(cropOverlay.style.height);
+                
+                if (currentHandle.classList.contains('nw')) {
+                    newWidth = newX + newWidth - mouseX;
+                    newHeight = newY + newHeight - mouseY;
+                    newX = mouseX;
+                    newY = mouseY;
+                } else if (currentHandle.classList.contains('ne')) {
+                    newWidth = mouseX - newX;
+                    newHeight = newY + newHeight - mouseY;
+                    newY = mouseY;
+                } else if (currentHandle.classList.contains('sw')) {
+                    newWidth = newX + newWidth - mouseX;
+                    newHeight = mouseY - newY;
+                    newX = mouseX;
+                } else if (currentHandle.classList.contains('se')) {
+                    newWidth = mouseX - newX;
+                    newHeight = mouseY - newY;
+                }
+                
+                // Constrain to minimum size and canvas bounds
+                newWidth = Math.max(50, Math.min(newWidth, canvas.width - newX));
+                newHeight = Math.max(50, Math.min(newHeight, canvas.height - newY));
+                newX = Math.max(0, Math.min(newX, canvas.width - newWidth));
+                newY = Math.max(0, Math.min(newY, canvas.height - newHeight));
+                
+                cropOverlay.style.left = newX + 'px';
+                cropOverlay.style.top = newY + 'px';
+                cropOverlay.style.width = newWidth + 'px';
+                cropOverlay.style.height = newHeight + 'px';
+            }
+        }
+
+        function endCropDrag() {
+            isDragging = false;
+            isResizing = false;
+            currentHandle = null;
+        }
+
+        function applyCrop() {
+            const cropX = parseInt(cropOverlay.style.left);
+            const cropY = parseInt(cropOverlay.style.top);
+            const cropWidth = parseInt(cropOverlay.style.width);
+            const cropHeight = parseInt(cropOverlay.style.height);
+            
+            const imageData = ctx.getImageData(cropX, cropY, cropWidth, cropHeight);
+            
+            canvas.width = cropWidth;
+            canvas.height = cropHeight;
+            ctx.putImageData(imageData, 0, 0);
+            
+            currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        function resetImage() {
+            if (originalImageData) {
+                canvas.width = originalImageData.width;
+                canvas.height = originalImageData.height;
+                ctx.putImageData(originalImageData, 0, 0);
+                currentImageData = originalImageData;
+                cropOverlay.style.display = 'none';
+                isCropping = false;
+                document.getElementById('cropBtn').textContent = '✂️ Crop';
+                document.getElementById('cropBtn').className = 'control-button secondary';
+            }
+        }
+
+        function updateUploadButton() {
+            const hasImage = canvas.width > 0;
+            const hasFilename = filenameInput.value.trim() !== '';
+            uploadButton.disabled = !(hasImage && hasFilename);
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            
+            const filename = filenameInput.value.trim();
+            if (!filename) {
+                alert('Please enter a filename');
+                return;
+            }
+            
+            // Convert canvas to blob
+            canvas.toBlob((blob) => {
+                const formData = new FormData();
+                formData.append('file', blob, 'image.png');
+                formData.append('filename', filename);
+                
+                // Show progress
+                const progressBar = document.getElementById('progressBar');
+                const progressFill = document.getElementById('progressFill');
+                progressBar.style.display = 'block';
+                uploadButton.disabled = true;
+                uploadButton.textContent = '⏳ Uploading...';
+                
+                // Simulate upload progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15;
+                    if (progress > 90) progress = 90;
+                    progressFill.style.width = progress + '%';
+                }, 100);
+                
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(html => {
+                    clearInterval(progressInterval);
+                    progressFill.style.width = '100%';
+                    
+                    setTimeout(() => {
+                        document.body.innerHTML = html;
+                    }, 500);
+                })
+                .catch(error => {
+                    clearInterval(progressInterval);
+                    progressBar.style.display = 'none';
+                    uploadButton.disabled = false;
+                    uploadButton.textContent = '🚀 Upload Image';
+                    alert('Upload failed: ' + error.message);
+                });
+            }, 'image/png');
+        }
+    </script>
+</body>
+</html>
