@@ -43,7 +43,10 @@ class Bullet:
         self.pastPos = []
         self.app.ENTITIES.append(self)
         self.lifetime = 2
-        self.b = self.app.bulletSprite.copy()
+        if type == "normal":
+            self.b = self.app.bulletSprite.copy()
+        else:
+            self.b = self.app.energySprite.copy()
         self.b = pygame.transform.rotate(self.b, -math.degrees(self.angle))
         self.rocket = rocket
         self.type = type
@@ -107,7 +110,7 @@ class Bullet:
                 if self.rocket:
                     Explosion(self.app, self.pos, firer = self.owner)
                 else:
-                    x.takeDamage(damage, fromActor = self.owner, typeD = self.type)
+                    x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
 
                 for x in self.app.hitSounds:
                     x.stop()

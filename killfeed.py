@@ -8,13 +8,16 @@ class KillFeed:
         self.gun = gun
         self.killer.gainKill(killed)
 
-        self.color = [100, 50, 50] if killer.team else [50, 50, 100]
+        self.color = killer.teamColor.copy()
+        for i, x in enumerate(self.color):
+            self.color[i] = int(100*x/255)
+
 
         self.app.killfeed.append(self)
         self.lifetime = 2
         
-        t1 = self.app.font.render(self.killer.name, True, [255,0,0] if self.killer.team else [0,0,255])
-        t2 = self.app.font.render(self.killed.name, True, [255,0,0] if self.killed.team else [0,0,255])
+        t1 = self.app.font.render(self.killer.name, True, killer.teamColor)
+        t2 = self.app.font.render(self.killed.name, True, killed.teamColor)
         self.surface = pygame.Surface((t1.get_width() + t2.get_width() + gun.imageKillFeed.get_width() + 30, 30))
         self.surface.fill(self.color)
         self.surface.blit(t1, [5,5])

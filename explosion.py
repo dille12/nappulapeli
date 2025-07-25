@@ -16,6 +16,8 @@ class Explosion:
 
                 dam = dist * 125 * firer.itemEffects["weaponDamage"]
                 x.takeDamage(dam, fromActor = self.firer, typeD = "explosion")
+        
+        self.im = self.app.explosion[0]
 
 
     def tick(self):
@@ -28,4 +30,5 @@ class Explosion:
             self.app.visualEntities.remove(self)
 
     def render(self):
+        
         self.app.DRAWTO.blit(self.im, self.pos - v2(self.im.get_size())/2 - self.app.cameraPosDelta)

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import time
 from pathfinding import Pathfinder, MovementType
 from mapGen import ArenaGenerator, CellType
-
+import math
 
 class ArenaWithPathfinding:
     """Extended arena generator with integrated pathfinding capabilities."""
@@ -81,54 +81,66 @@ class ArenaWithPathfinding:
         return results
     
     def find_optimal_spawn_points(self, 
-                                 num_spawns: int, 
-                                 min_distance: int = 10,
-                                 movement_type: MovementType = MovementType.GROUND) -> List[Tuple[int, int]]:
-        """Find optimal spawn points that are well-distributed and reachable."""
+                                num_spawns: int, 
+                                min_distance: int = 10,
+                                movement_type: MovementType = MovementType.GROUND) -> List[Tuple[int, int]]:
+        """Find optimal spawn points using fast euclidean distance with connectivity validation."""
         if not self.pathfinder:
             return []
         
-        # Get all potential spawn points from the arena
         candidates = self.arena_gen.get_spawn_points()
         if len(candidates) < num_spawns:
             return candidates
         
-        selected = []
-        
-        # Always include entrance if it exists and is valid
+        # Pre-filter candidates for connectivity (do this once)
+        connected_candidates = []
         entrance = self.arena_gen.get_entrance_position()
-        if entrance and entrance in candidates:
-            selected.append(entrance)
-            candidates.remove(entrance)
         
-        # Greedily select spawn points with maximum minimum distance
-        while len(selected) < num_spawns and candidates:
+        if entrance and entrance in candidates:
+            connected_candidates.append(entrance)
+            reference_point = entrance
+        else:
+            reference_point = candidates[0] if candidates else None
+            connected_candidates.append(reference_point)
+        
+        # Batch connectivity check - only check if each candidate can reach the reference point
+        for candidate in candidates:
+            if candidate != reference_point:
+                path = self.pathfinder.find_path(candidate, reference_point, movement_type)
+                if path:  # If it can reach reference, assume it's in the connected component
+                    connected_candidates.append(candidate)
+        
+        if len(connected_candidates) < num_spawns:
+            return connected_candidates
+        
+        # Use euclidean distance for fast selection (much faster than pathfinding)
+        selected = [connected_candidates[0]]  # Start with entrance or first candidate
+        remaining = connected_candidates[1:]
+        
+        while len(selected) < num_spawns and remaining:
             best_candidate = None
             best_min_distance = -1
             
-            for candidate in candidates:
-                # Calculate minimum distance to all selected points
-                min_dist_to_selected = float('inf')
+            for candidate in remaining:
+                # Calculate minimum euclidean distance to selected points
+                min_euclidean_dist = min(
+                    math.sqrt((candidate[0] - sel[0])**2 + (candidate[1] - sel[1])**2)
+                    for sel in selected
+                )
                 
-                for selected_point in selected:
-                    path = self.pathfinder.find_path(candidate, selected_point, movement_type)
-                    if path:
-                        min_dist_to_selected = min(min_dist_to_selected, len(path))
-                    else:
-                        min_dist_to_selected = 0  # Not connected, poor choice
-                        break
-                
-                if min_dist_to_selected >= min_distance and min_dist_to_selected > best_min_distance:
-                    best_min_distance = min_dist_to_selected
+                if min_euclidean_dist > best_min_distance:
+                    best_min_distance = min_euclidean_dist
                     best_candidate = candidate
             
-            if best_candidate:
+            if best_candidate and best_min_distance >= min_distance:
                 selected.append(best_candidate)
-                candidates.remove(best_candidate)
+                remaining.remove(best_candidate)
             else:
-                # Relax distance constraint
-                min_distance = max(1, min_distance - 2)
-                if min_distance < 1:
+                # If no candidate meets distance requirement, pick the best available
+                if best_candidate:
+                    selected.append(best_candidate)
+                    remaining.remove(best_candidate)
+                else:
                     break
         
         return selected

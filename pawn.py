@@ -7,10 +7,11 @@ import random
 import os
 import math
 import numpy as np
-from imageProcessing import gaussian_blur, trim_surface, remove_background
+from imageProcessing import gaussian_blur, trim_surface, remove_background, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood
 from blood import BloodParticle
 from killfeed import KillFeed
 from explosion import Explosion
+from bloodSplatter import BloodSplatter
 def combinedText(*args, font):
     if len(args) % 2 != 0:
         raise ValueError("Arguments must be in (string, color) pairs")
@@ -77,10 +78,37 @@ class Pawn:
         #self.pos = v2([1000, 500])
         self.deltaPos = self.pos.copy()
 
-        self.imagePawn = pygame.transform.scale_by(image, 100 / image.get_size()[1])
-        self.imagePawnR = pygame.transform.flip(self.imagePawn.copy(), True, False)
+        self.imagePawn = pygame.transform.scale_by(image, 100 / image.get_size()[1]).convert_alpha()
+        self.imagePawnR = pygame.transform.flip(self.imagePawn.copy(), True, False).convert_alpha()
+
+        self.hurtPawn = colorize_to_blood(self.imagePawn.copy()).convert_alpha()
+        self.hurtPawnR = pygame.transform.flip(self.hurtPawn.copy(), True, False).convert_alpha()
+
+        self.hurtIm = [[], []]
+        for x in range(10):
+            h1 = self.hurtPawn.copy()
+            h2 = self.hurtPawnR.copy()
+            h1.set_alpha(int(255*x/10))
+            h2.set_alpha(int(255*x/10))
+            print("ALPHA:", int(255*x/10))
+            self.hurtIm[0].append(h1)
+            self.hurtIm[1].append(h2)
+
+        self.hurtI = 0
+
+        self.corpses = []
+        for x in range(3):
+            corpse = generate_corpse_sprite(self.imagePawn.copy())
+            corpse.set_alpha(155)
+            corpse = pygame.transform.rotate(corpse, random.randint(0,360))
+            self.corpses.append(corpse)
+
+        self.levelUpImage = pygame.transform.scale_by(image, 400 / image.get_size()[1])
+        self.levelUpImage.set_alpha(100)
+
         self.facingRight = True
         self.team = 0
+        self.teamColor = self.app.getTeamColor(self.team) 
 
 
         self.breatheI = random.uniform(0, 1)
@@ -114,8 +142,14 @@ class Pawn:
         self.xpI = 15
 
         self.weapon = None
+        
+        self.app.skullW.give(self)
+        self.skullWeapon = self.weapon
 
-        weapon = random.choice([self.app.AK, self.app.e1])
+        self.cameraLockI = 0
+
+
+        weapon = random.choice([self.app.AK, self.app.e1, self.app.e2, self.app.e3, self.app.pistol])
 
         weapon.give(self)  # Give the AK-47 to this pawn
         self.app.pawnHelpList.append(self)
@@ -123,6 +157,7 @@ class Pawn:
         self.kills = 0
         self.killsThisLife = 0
         self.level = 1
+        self.deaths = 0
 
         self.itemEffects = {
             "speedMod": 1.0, # Done
@@ -139,6 +174,7 @@ class Pawn:
             "weaponAmmoCap" : 1.0,
             "weaponRange":1.0,
             "accuracy":1.0,
+            "multiShot" : 1,
 
             "instaHeal" : False,
             "saveChance" : 0.0,
@@ -174,6 +210,8 @@ class Pawn:
     def getWeaponHandling(self):
         return self.itemEffects["weaponHandling"]
     def getRange(self):
+        if self.carryingSkull():
+            return self.skullWeapon.range * self.itemEffects["weaponRange"]
         return self.weapon.range * self.itemEffects["weaponRange"]
     
     def revengeHunt(self):
@@ -224,13 +262,12 @@ class Pawn:
         if self.target and dist >= self.pos.distance_to(self.target.pos):
             return
 
-
         if not self.sees(x):
             return
         
         self.target = x
         self.loseTargetI = 2
-        if not self.itemEffects["berserker"]:
+        if not self.itemEffects["berserker"] and not self.carryingSkull():
             self.walkTo = v2(self.getOwnCell()) * 70
             self.route = None
 
@@ -242,6 +279,7 @@ class Pawn:
             self.target = None
             self.loseTargetI = 2
 
+        
         if not self.target:
             self.searchEnemies()
         if not self.target:
@@ -260,12 +298,26 @@ class Pawn:
             self.loseTargetI -= self.app.deltaTime
             self.searchEnemies()
             return
-
-        
         
         self.facingRight = self.target.pos[0] <= self.pos[0]
-        self.weapon.fireFunction(self.weapon)
+        if dist < 250:
+            if self.carryingSkull():
+                self.skullWeapon.tryToMelee()
+            else:
+                self.weapon.tryToMelee()
+        elif self.carryingSkull(): # Cannot shoot with the skull!
+            pass
+        else:
+            
+            self.weapon.fireFunction(self.weapon)
         self.loseTargetI = 2
+
+    def dropSkull(self):
+        if self.app.objectiveCarriedBy != self:
+            return
+        self.app.objectiveCarriedBy = None
+        self.app.skull.cell = self.getOwnCell()
+        print("Skull dropped!")
 
     def die(self):
 
@@ -276,27 +328,45 @@ class Pawn:
         for x in self.app.deathSounds:
             x.stop()
 
-        for x in range(random.randint(3,6)):
-            self.app.particle_list.append(BloodParticle(self.pos.copy(), 1, app = self.app))
-        
+        for x in range(random.randint(4,8)):
+            self.app.particle_list.append(BloodParticle(self.pos.copy(), 1.2, app = self.app))
+
+        #if self.app.cameraLock == self and self.target:
+        #    self.app.cameraLock = self.target
+        #    print("Camera quick switch")
+
+        if self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
+            self.respawnI = 15
+        else:
+            self.respawnI = 5
+
+        if self.app.objectiveCarriedBy == self:
+            self.dropSkull()
 
         self.killed = True
         if self.itemEffects["martyrdom"]:
             Explosion(self.app, self.pos.copy(), self)
 
         random.choice(self.app.deathSounds).play()
+
+        c = random.choice(self.corpses)
+        self.app.MAP.blit(c, self.pos - v2(c.get_size())/2)
+
         self.pos = v2(self.app.spawn_points[self.team]) * 70 + [35, 35]
         self.deltaPos = self.pos.copy()
         self.health = self.healthCap
-        self.respawnI = 3
+
+        self.hurtI = 0
+        
+        
         
         self.route = None
         self.walkTo = None
         self.killsThisLife = 0
+        self.deaths += 1
 
-        
 
-    def takeDamage(self, damage, fromActor = None, thornDamage = False, typeD = "normal"):
+    def takeDamage(self, damage, fromActor = None, thornDamage = False, typeD = "normal", bloodAngle = None):
 
         if self.killed:
             return
@@ -315,14 +385,20 @@ class Pawn:
             damage *= self.defenceExplosion()
 
         self.health -= damage
-        self.outOfCombat = 1
+        self.outOfCombat = 3
+        self.hurtI = 0.25
+
+        if bloodAngle:
+            for x in range(random.randint(5,20)):
+                BloodSplatter(self.app, self.pos.copy(), bloodAngle)
+
         if self.itemEffects["thorns"] > 0 and not thornDamage and fromActor:
             fromActor.takeDamage(damage * self.itemEffects["thorns"], thornDamage = True, fromActor = self)
         if self.health <= 0:
             if fromActor.team != self.team:
                 self.lastKiller = fromActor
             self.die()
-            KillFeed(fromActor, self, fromActor.weapon)
+            KillFeed(fromActor, self, fromActor.weapon if not self.carryingSkull() else fromActor.skullWeapon)
 
     def gainXP(self, amount):
         self.xp += amount * self.itemEffects["xpMult"]
@@ -342,8 +418,13 @@ class Pawn:
     def tick(self):
 
         if self.respawnI > 0:
-            self.respawnI -= self.app.deltaTime
+
+            if self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team:
+                self.respawnI -= self.app.deltaTime*0.25
+            else:
+                self.respawnI -= self.app.deltaTime
             self.killsThisLife = 0
+            self.dropSkull()
             return
         self.killed = False
 
@@ -369,8 +450,20 @@ class Pawn:
         self.walk()
         self.shoot()
 
+        if self.getOwnCell() == self.app.skull.cell and not self.app.objectiveCarriedBy:
+            self.app.objectiveCarriedBy = self
+            #self.app.cameraLock = self
+
         
         self.breatheIm = self.imagePawn.copy() if self.facingRight else self.imagePawnR.copy()
+
+        if self.hurtI > 0:
+            I = int(9*self.hurtI/0.25)
+
+            hurtIm = self.hurtIm[0 if self.facingRight else 1][I]
+
+            self.breatheIm.blit(hurtIm, (0,0))
+
         self.breatheI += self.app.deltaTime % 2
         self.breatheIm = pygame.transform.scale_by(self.breatheIm, [1 + 0.05 * math.sin(self.breatheI * 2 * math.pi), 1 + 0.05 * math.cos(self.breatheI * 2 * math.pi)])
         self.breatheY = 2.5*math.sin(self.breatheI * 2 * math.pi)
@@ -403,20 +496,52 @@ class Pawn:
         #pygame.draw.arc(self.app.screen, (255, 255, 255), arcRect, 0, math.pi)
 
         #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
-        if self.weapon:
+
+        if self.carryingSkull():
+            self.skullWeapon.tick()
+            self.tryToTransferSkull()
+
+
+        elif self.weapon:
             self.weapon.tick()           
 
 
         # Draw name
 
-        self.namePlate = combinedText(self.name, [255,0,0] if self.team else [0,0,255], " +" + str(int(self.health)).zfill(3), heat_color(1 - self.health/self.healthCap), f" LVL {self.level}",[255,255,255], font=self.app.font)
+        self.namePlate = combinedText(self.name, self.teamColor, " +" + str(int(self.health)).zfill(3), heat_color(1 - self.health/self.healthCap), f" LVL {self.level}",[255,255,255], font=self.app.font)
 
         #t = self.app.font.render(f"{self.name}", True, (255, 255, 255))
         #self.app.screen.blit(t, (self.pos.x - t.get_width() / 2, self.pos.y - t.get_height() - 70) - self.app.cameraPosDelta)
 
         cx, cy = self.getOwnCell()
-        pygame.draw.rect(self.app.MINIMAPTEMP, [255,0,0] if self.team else [0,0,255], [cx*3, cy*3, 3,3])
 
+        self.hurtI -= self.app.deltaTime
+        self.hurtI = max(0, self.hurtI)
+        self.cameraLockI += self.app.deltaTime
+        self.cameraLockI = self.cameraLockI%0.5
+
+        pygame.draw.rect(self.app.MINIMAPTEMP, self.teamColor, [cx*3, cy*3, 3,3])
+
+    def carryingSkull(self):
+        return self.app.objectiveCarriedBy == self
+
+    def tryToTransferSkull(self):
+        p = random.choice(self.app.pawnHelpList)
+        if p.team != self.team:
+            return
+        if p.killed:
+            return
+        cx, cy = self.getOwnCell()
+        c2x, c2y = p.getOwnCell()
+        if abs(cx - c2x) > 2 and abs(cy - c2y) > 2:
+            return
+        
+        if self.level <= p.level:
+            return
+        
+        self.app.objectiveCarriedBy = p
+        print("Transferred skull to", p.name)
+        
 
     def render(self):
 
@@ -426,19 +551,36 @@ class Pawn:
         self.arcRect = pygame.Rect(self.pos.x - self.app.cameraPosDelta[0], self.pos.y + 50 - self.app.cameraPosDelta[1], 0, 0)
         self.arcRect.inflate_ip(120, 60)
 
-        pygame.draw.arc(self.app.DRAWTO, (255, 255, 255), self.arcRect, 0, math.pi)
+        if self.app.cameraLock == self:
+            I = self.cameraLockI/0.5
+
+            arcRectI = self.arcRect.copy()
+            arcRectI.inflate_ip(120*I, 60*I)
+
+        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, math.pi)
+
+        if self.app.cameraLock == self:
+            pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi)
 
         self.app.DRAWTO.blit(self.breatheIm, self.deltaPos - v2(self.breatheIm.get_size()) / 2 + [0, self.breatheY]  - self.app.cameraPosDelta)
 
-        if self.weapon:
-            self.weapon.render()    
+        
 
-        pygame.draw.arc(self.app.DRAWTO, (255, 255, 255), self.arcRect, math.pi, math.pi * 2)
+        if self.app.objectiveCarriedBy == self:
+            self.skullWeapon.render()
+        elif self.weapon:
+            self.weapon.render()      
+
+        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, math.pi, math.pi * 2)
+
 
         self.app.DRAWTO.blit(self.namePlate, (self.pos.x - self.namePlate.get_width() / 2, self.pos.y - self.namePlate.get_height() - 70) - self.app.cameraPosDelta)
 
         if self.revengeHunt():
             t2 = self.app.font.render(f"HUNTING FOR {self.lastKiller.name}!!!", True, [255,255,255])
+            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
+        elif self.weapon.isReloading():
+            t2 = self.app.fontSmaller.render(f"RELOADING", True, [255,255,255])
             self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
 
 
@@ -451,23 +593,65 @@ class Pawn:
             c = self.app.randomWeighted(0.2, 0.2)
             if c == 0:
                 if not self.target:
-
-                    if not self.weapon.isReloading() and self.weapon.magazine < self.weapon.magazineSize:
+                    if not self.weapon.isReloading() and self.weapon.magazine < int(self.weapon.magazineSize * self.itemEffects["weaponAmmoCap"]) and not self.carryingSkull():
                         self.weapon.reload()
 
 
             if c == 1:
                 if self.walkTo is None:
+                    self.pickWalkingTarget()
+    
+    def distanceToPawn(self, pawn):
+        return self.pos.distance_to(pawn.pos)
+    
+    def skullCarriedByOwnTeam(self):
+        return self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team
 
-                    if not self.target:
-                    #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
-                        if self.itemEffects["revenge"] and self.lastKiller:
-                            self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
-                        else:
-                            self.getRouteTo(endPosGrid=self.app.spawn_points[1-self.team])
+    def pickWalkingTarget(self):
+        if not self.target:
+        #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
+            if self.revengeHunt():
+                self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
+            else:
+                if self.app.skull:
+                    if not self.app.objectiveCarriedBy:
+                        self.getRouteTo(endPosGrid=self.app.skull.cell) # RUN TOWARDS DROPPED SKULL
                     else:
-                        CELLS = self.getVisibility()
-                        self.getRouteTo(endPosGrid=random.choice(CELLS))
+                        if self.carryingSkull(): # CARRYING SKULL
+                            if not self.route: # Else go to spawn
+                                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team])
+                                print("Running with skull to spawn")
+                            #if len(self.route) > 6:
+                            #    self.route = self.route[0:5] # WALKS TOWARDS OWN SPAWN
+                        else:
+                            c = self.app.randomWeighted(0.5, 0.2)
+                            if c == 1 and self.skullCarriedByOwnTeam():
+                                self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
+                                print("Attacking!")
+                            else:
+                                
+                                cells = self.app.objectiveCarriedBy.getVisibility() # ELSE WALK TOWARDS SKULL CARRIER VICINITY
+                                self.getRouteTo(endPosGrid=random.choice(cells))
+                else:
+                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
+        else:
+
+            if self.carryingSkull(): # Go melee target
+                self.getRouteTo(endPosGrid=self.target.getOwnCell())
+                print("Running with skull towards target")
+
+            elif self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
+                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team])
+                if len(self.route) > 18:
+                    self.route = self.route[0:15]
+
+            else:
+                CELLS = self.getVisibility()
+
+                if self.app.skull.cell in CELLS and not self.app.objectiveCarriedBy:
+                    self.getRouteTo(endPosGrid=self.app.skull.cell)
+                else:
+                    self.getRouteTo(endPosGrid=random.choice(CELLS))
 
 
     def getRouteTo(self, endPos = None, endPosGrid = None):

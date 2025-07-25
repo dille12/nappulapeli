@@ -59,8 +59,8 @@ class ArenaGenerator:
         # Default color scheme
         if colors is None:
             colors = {
-                CellType.WALL.value: (40, 40, 40),           # Dark gray
-                CellType.FLOOR.value: (200, 200, 200),       # Light gray
+                CellType.WALL.value: (0,0,0),           # Dark gray
+                CellType.FLOOR.value: (55,55,55),       # Light gray
                 CellType.DOOR.value: (139, 69, 19),          # Brown
                 CellType.STAIRS_UP.value: (70, 130, 180),    # Steel blue
                 CellType.STAIRS_DOWN.value: (25, 25, 112),   # Midnight blue
@@ -301,7 +301,7 @@ class ArenaGenerator:
             self._carve_corridor(room1, room2, width)
     
     def _generate_room_connections(self) -> List[Tuple[Room, Room]]:
-        """Generate connections between rooms using MST algorithm."""
+        """Generate connections between rooms using MST algorithm with minimum 2 connections per room."""
         if len(self.rooms) <= 1:
             return []
         
@@ -325,12 +325,48 @@ class ArenaGenerator:
                 connections.append(best_pair)
                 connected.add(best_pair[1])
         
-        # Add some extra connections for interesting layouts
+        # Count connections per room
+        connection_count = {room: 0 for room in self.rooms}
+        for room1, room2 in connections:
+            connection_count[room1] += 1
+            connection_count[room2] += 1
+        
+        # Ensure each room has at least 2 connections
+        rooms_needing_connections = [room for room, count in connection_count.items() if count < 2]
+        
+        for room in rooms_needing_connections:
+            # Find potential connections (rooms not already connected to this room)
+            already_connected = set()
+            for r1, r2 in connections:
+                if r1 == room:
+                    already_connected.add(r2)
+                elif r2 == room:
+                    already_connected.add(r1)
+            
+            # Get available rooms to connect to, sorted by distance
+            available_rooms = [r for r in self.rooms if r != room and r not in already_connected]
+            if available_rooms:
+                # Sort by distance and connect to closest available room
+                available_rooms.sort(key=lambda r: self._room_distance(room, r))
+                
+                # Add connections until this room has at least 2
+                connections_needed = 2 - connection_count[room]
+                for i in range(min(connections_needed, len(available_rooms))):
+                    new_connection = (room, available_rooms[i])
+                    # Check if this connection already exists in reverse
+                    if (available_rooms[i], room) not in connections:
+                        connections.append(new_connection)
+                        connection_count[room] += 1
+                        connection_count[available_rooms[i]] += 1
+        
+        # Add some extra connections for interesting layouts (optional)
         extra_connections = min(2, len(self.rooms) // 3)
         for _ in range(extra_connections):
             room1 = random.choice(self.rooms)
             room2 = random.choice(self.rooms)
-            if room1 != room2 and (room1, room2) not in connections and (room2, room1) not in connections:
+            if (room1 != room2 and 
+                (room1, room2) not in connections and 
+                (room2, room1) not in connections):
                 connections.append((room1, room2))
         
         return connections

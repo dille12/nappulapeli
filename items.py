@@ -35,7 +35,8 @@ def getItems():
         Item("Ammo Compactifier", weaponAmmoCap=["mult", 3.0], weaponReload=["mult", 0.7]),
         Item("Overhead Satellite", weaponRange=["add", 0.2], defenceNormal=["mult", 1.2]),
         Item("Kickstarter Backer", xpMult=["mult", 3.0], weaponHandling=["mult", 0.5], speedMod=["mult", 0.6]),
-        Item("Glass Cannon", weaponDamage=["mult", 2], healthCapMult=["mult", 0.5])
+        Item("Glass Cannon", weaponDamage=["mult", 2], healthCapMult=["mult", 0.5]),
+        Item("Double Barrel", multiShot=["add", 1]),
     ]
 
 

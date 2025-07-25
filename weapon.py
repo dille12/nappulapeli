@@ -25,6 +25,28 @@ def reload_rotation(t):
         return 65 + ease_in_out((t - 0.35) / 0.15) * (90 - 65)
     else:
         return 90 * (1 - ease_in_out((t - 0.5) / 0.5))
+    
+
+def melee_animation(t):
+    if t < 0.15:
+        k = ease_in_out(t / 0.15)
+        x = -15 * k            # deeper wind-up
+        y = 7 * k
+        angle = -30 * k        # more backward rotation
+
+    elif t < 0.5:
+        k = ease_in_out((t - 0.15) / 0.35)
+        x = -15 + 75 * k       # total +60 x from base
+        y = 7 - 12 * k
+        angle = -30 + 160 * k  # total +130° swing
+
+    else:
+        k = ease_in_out((t - 0.5) / 0.5)
+        x = 60 * (1 - k)
+        y = -5 * (1 - k)
+        angle = 130 * (1 - k)
+
+    return x, y, angle
 
 
 class Weapon:
@@ -45,14 +67,19 @@ class Weapon:
         if not precomputedImage:
             print("Recomputing image for weapon:", name)
             self.image = pygame.image.load(image_path).convert_alpha()
-            self.image = trim_surface(self.image)
+            if image_path == "texture/ak47.png":
+                self.image = trim_surface(self.image)
             self.image = pygame.transform.scale_by(self.image, 150 / self.image.get_width())  # Scale the image to a suitable size
         else:
             self.image = precomputedImage
 
+        if image_path == "texture/skull.png":
+            self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
+
         self.imageR = pygame.transform.flip(self.image.copy(), True, False)
 
         self.imageKillFeed = pygame.transform.scale_by(self.image, 20 / self.image.get_height())
+        self.imageKillFeed = trim_surface(self.imageKillFeed)
 
         self.damage = damage
         self.range = range
@@ -60,6 +87,7 @@ class Weapon:
         self.magazine = self.magazineSize
         self.reloadTime = reloadTime
         self.currReload = 0
+        self.meleeI = 0
         self.firerate = fireRate # PER SECOND
         self.secondsPerRound = 1/self.firerate
         self.fireTick = 0
@@ -103,6 +131,7 @@ class Weapon:
     
     def getSwiwel(self):
         dr = math.radians(self.ROTATION)
+
         return v2(math.cos(-dr) * 30, -abs(math.sin(-dr) * 5))
 
     def give(self, pawn: "Pawn"):
@@ -120,7 +149,12 @@ class Weapon:
     def reload(self):
         self.currReload = self.reloadTime * self.owner.itemEffects["weaponReload"]
         self.magazine = int(self.magazineSize * self.owner.itemEffects["weaponAmmoCap"])
+        self.app.reloadSound.stop()
         self.app.reloadSound.play()
+
+
+    def getMaxCapacity(self):
+        return int(self.magazineSize * self.owner.itemEffects["weaponAmmoCap"])
 
 
     def RocketLauncher(self):
@@ -140,8 +174,9 @@ class Weapon:
 
         self.fireTick = secondsPerRound
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), rocket=True, type=self.typeD) #-math.radians(self.FINALROTATION)
-        self.recoil += 0.25
+        for x in range(self.owner.itemEffects["multiShot"]):
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), rocket=True, type=self.typeD) #-math.radians(self.FINALROTATION)
+            self.recoil += 0.25
 
 
     def getSpread(self):
@@ -149,8 +184,47 @@ class Weapon:
 
     def getDamage(self):
         return self.damage * self.owner.itemEffects["weaponDamage"]
+    
+    def skull(self):
+        self.magazine = self.getMaxCapacity()
+        return
+    
+    def Energyshoot(self):
+        if self.isReloading(): return
+                    
+        if self.magazine == 0:
+            self.reload()
+            return
+        
+        if self.fireTick > 0:
+            self.fireTick -= self.app.deltaTime
+            return
+
+        if not self.pointingAtTarget(): return
+
+        self.app.playSound(self.app.energySound)
+        self.magazine -= 1
+        self.fireTick = self.secondsPerRound
+        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        for x in range(self.owner.itemEffects["multiShot"]):
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
+            self.recoil += 0.25
+
+    def tryToMelee(self):
+        if self.meleeing(): return
+
+        self.meleeI = 0.5
+        self.owner.target.takeDamage(50, fromActor = self.owner)
+        self.app.meleeSound.stop()
+        self.app.meleeSound.play()
+
 
     def AKshoot(self):
+        
+
+        if self.meleeing(): return
+        
+
         if self.isReloading(): return
                     
         if self.magazine == 0:
@@ -170,8 +244,9 @@ class Weapon:
         self.magazine -= 1
         self.fireTick = self.secondsPerRound
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
-        self.recoil += 0.25
+        for x in range(self.owner.itemEffects["multiShot"]):
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
+            self.recoil += 0.25
 
     def pointingAtTarget(self):
         if self.owner.target:
@@ -180,12 +255,20 @@ class Weapon:
                 return False
 
         return True
+    
+    def meleeing(self):
+        return self.meleeI > 0
 
 
     def tick(self):
 
-        if self.isReloading():
+        if self.meleeing():
+            self.meleeI -= self.app.deltaTime
+
+        elif self.isReloading():
             self.currReload -= self.app.deltaTime
+
+
 
         # image is rotated 45 degrees to resemble lowering a weapon
 
@@ -200,14 +283,26 @@ class Weapon:
         else:
             r = 135 if self.owner.facingRight else 45
 
-        if self.isReloading():
+        #m = v2(pygame.mouse.get_pos()) + self.app.cameraPosDelta
+        #
+        #r = math.degrees(self.app.getAngleFrom(self.owner.pos, m))
+        #if "mouse0" in self.app.keypress:
+        #    self.meleeI = 0.5
+
+        xA, yA, rA = 0,0,0
+        if self.meleeing():
+            xA, yA, rA = melee_animation((0.5-self.meleeI)/0.5)
+
+            #r += rA #if self.owner.facingRight else -rA
+
+        elif self.isReloading():
             r2 = reload_rotation((self.reloadTime - self.currReload)/self.reloadTime) * 1.4
 
             r += r2 if self.owner.facingRight else -r2
 
-        #m = v2(pygame.mouse.get_pos())
+            
+
         
-        #r = math.degrees(self.app.getAngleFrom(self.owner.pos, m))
         
 
         rotation = -r + rotationMod
@@ -233,13 +328,13 @@ class Weapon:
         self.ROTATION = self.app.rangeDegree(self.ROTATION)
 
         if 90 <= self.ROTATION <= 270:
-            self.FINALROTATION = self.ROTATION - self.recoil * 30
+            self.FINALROTATION = self.ROTATION - self.recoil * 30 - rA
             self.rotatedImage = pygame.transform.rotate(self.imageR, self.FINALROTATION + 180)
-            r = True
+            right = True
         else:
-            self.FINALROTATION = self.ROTATION + self.recoil * 30
+            self.FINALROTATION = self.ROTATION + self.recoil * 30 + rA
             self.rotatedImage = pygame.transform.rotate(self.image, self.FINALROTATION)
-            r = False
+            right = False
 
         
 
@@ -253,12 +348,19 @@ class Weapon:
 
         # Combined recoil offset
         recoilOffset = recoilBackwardOffset + recoilUpwardOffset
+
+        if right:
+            meleeOffset = v2(-xA, yA)
+        else:
+            meleeOffset = v2(xA, yA)
         
         swiwelOffset = self.getSwiwel()
 
-        self.BLITPOS = self.owner.deltaPos - v2(self.rotatedImage.get_size()) / 2 + [0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5] + [0, 40] + recoilOffset + swiwelOffset
+        self.BLITPOS = self.owner.deltaPos - v2(self.rotatedImage.get_size()) / 2 + [0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5] + [0, 40] + recoilOffset + swiwelOffset + meleeOffset
         
     def render(self):
+        if not hasattr(self, "rotatedImage"):
+            return
         self.app.DRAWTO.blit(self.rotatedImage, self.BLITPOS - self.app.cameraPosDelta)
 
 
