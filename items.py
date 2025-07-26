@@ -29,7 +29,7 @@ def getItems():
         Item("Motion Scanner", weaponRange=["add", 0.25]),
         Item("Rusty Suppressor", accuracy=["mult", 3], weaponDamage=["mult", 1.25]),
         Item("Nanofoam Padding", knockbackMult=["mult", 0.5], speedMod=["mult", 0.9]),
-        Item("Hemostim", healthRegenMult=["mult", 2.0], instaHeal=["set", True]),
+        Item("Hemostim", healthRegenMult=["add", 0.25], instaHeal=["set", True]),
         Item("Glitched Mirror", duplicator=["set", True], weaponFireRate=["mult", 1.5], healthCapMult=["mult", 0.5]),
         Item("Bloodthirst Processor", healOnKill=["add", 40], berserker=["set", True]),
         Item("Ammo Compactifier", weaponAmmoCap=["mult", 3.0], weaponReload=["mult", 0.7]),

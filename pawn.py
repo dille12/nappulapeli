@@ -12,6 +12,7 @@ from blood import BloodParticle
 from killfeed import KillFeed
 from explosion import Explosion
 from bloodSplatter import BloodSplatter
+from pixelSort import pixel_sort_surface
 def combinedText(*args, font):
     if len(args) % 2 != 0:
         raise ValueError("Arguments must be in (string, color) pairs")
@@ -67,9 +68,11 @@ class Pawn:
             image = pygame.image.load(self.removeBGPath).convert_alpha()
         else:
             image = pygame.image.load(self.removeBGPath).convert_alpha()
+            
 
 
         image = trim_surface(image)
+
         #self.blurredImage = gaussian_blur(self.image, sigma=5)
         if random.randint(0, 1) == 0:
             self.pos = v2(random.randint(0, 1920), random.choice([-200, self.app.res[1] + 200]))
@@ -104,7 +107,14 @@ class Pawn:
             self.corpses.append(corpse)
 
         self.levelUpImage = pygame.transform.scale_by(image, 400 / image.get_size()[1])
-        self.levelUpImage.set_alpha(100)
+
+        self.levelUpIms = []
+        for x in range(4):
+            l = self.levelUpImage.copy()
+            b = random.randint(25,75)
+            l = pixel_sort_surface(l, b, b+random.randint(50,100))
+            l.set_alpha(random.randint(175,200))
+            self.levelUpIms.append(l)
 
         self.facingRight = True
         self.team = 0

@@ -67,10 +67,16 @@ class Game:
     def __init__(self):
         self.res = v2(1920, 1080)
         self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
-        self.darken = pygame.Surface(self.res).convert_alpha()
+        self.darken = []
+        d = pygame.Surface(self.res).convert_alpha()
+        for x in range(20):
+            d2 = d.copy()
+            d2.fill((0,0,0))
+            d2.set_alpha((x+1)*5)
+            self.darken.append(d2)
+
         self.mask = pygame.Surface(self.res, pygame.SRCALPHA).convert_alpha()
-        self.darken.fill((0,0,0))
-        self.darken.set_alpha(100)
+        
         pygame.font.init()
         self.ENTITIES = []
         self.pawnHelpList = []
@@ -109,7 +115,7 @@ class Game:
         self.map = ArenaGenerator(80, 60)
 
         # TEAM COUNT
-        self.teams = 6
+        self.teams = 4
 
         self.map.generate_arena(room_count=int(self.teams*1.5)+4, min_room_size=8, max_room_size=20, corridor_width=3)
         self.killfeed = []
@@ -267,6 +273,7 @@ class Game:
             pawn.team = len(self.pawnHelpList)%self.teams
             pawn.teamColor = self.getTeamColor(pawn.team)
             pawn.pos = v2(self.spawn_points[pawn.team]) * 70 + [35, 35]
+            #pawn.xp += 40
             self.ENTITIES.append(pawn)
             
         else:
@@ -322,6 +329,9 @@ class Game:
     def rangeDegree(self, angle):
         return angle % 360
     
+    def levelUpTimeFreeze(self):
+        return max(abs(self.levelUpI-2.5)-1.5,0)
+    
     def levelUpScreen(self):
 
         
@@ -333,13 +343,23 @@ class Game:
 
         self.levelUpI -= self.deltaTimeR
         
+        I = self.levelUpTimeFreeze()
 
-        self.screen.blit(self.darken, (0,0))
+        d = self.darken[round((1-I)*19)]
 
-        self.screen.blit(self.pendingLevelUp.levelUpImage, self.res/2 - [0, 300] - v2(self.pendingLevelUp.levelUpImage.get_size())/2)
+        self.screen.blit(d, (0,0))
+        lowering = I**2
 
-        t = combinedText(self.pendingLevelUp.name, self.pendingLevelUp.teamColor, f" LEVELED UP (LVL {self.pendingLevelUp.level+1})", [255,255,255], font=self.fontLarge)
-        self.screen.blit(t, self.res/2 - [0, 300] - v2(t.get_size())/2)
+        IM = random.choice(self.pendingLevelUp.levelUpIms)
+
+
+
+        self.screen.blit(IM, self.res/2 - [random.randint(-2, 2), 300+random.randint(-2, 2)] - v2(IM.get_size())/2 - [0, 800*lowering])
+
+        text_t = min(max((5-self.levelUpI) - 0.8, 0)/0.7, 1.0)
+        text = combinedText(self.pendingLevelUp.name, self.pendingLevelUp.teamColor, f" LEVELED UP (LVL {self.pendingLevelUp.level+1})", [255]*3, font=self.fontLarge)
+        text.set_alpha(int(255 * (1-I)))
+        self.screen.blit(text, self.res/2 - [0, 300] - v2(text.get_size())/2)
 
         r1 = pygame.Rect(self.res[0]/2 - 400, 800, 800, 30)
         pygame.draw.rect(self.screen, [255,255,255], r1, width=1)
@@ -354,9 +374,14 @@ class Game:
             xpos = (x-1)*450 + self.res[0]/2
             item = self.pendingLevelUp.nextItems[x]
 
-            t = self.fontLevel.render(item.name, True, [255,255,255])
-            rPos = v2(xpos, 600) - v2(t.get_size())/2
-            rect = pygame.Rect(rPos, t.get_size())
+            pulse = 1 + 0.05 * math.sin(pygame.time.get_ticks()/200 + x)
+            floatY = 10 * math.sin(pygame.time.get_ticks()/400 + x)
+            t_surf = self.fontLevel.render(item.name, True, [255]*3)
+            t_surf = pygame.transform.rotozoom(t_surf, 0, pulse)
+            pos = v2(xpos, 600 + floatY) - v2(t_surf.get_size())/2
+            self.screen.blit(t_surf, pos)
+
+            rect = pygame.Rect(pos, t_surf.get_size())
             
             if self.levelUpBlink > 0.75 and self.levelUpIndex == x:
                 rect2 = rect.copy()
@@ -364,7 +389,7 @@ class Game:
                 rect2.inflate_ip(30*i, 30*i)
                 pygame.draw.rect(self.screen, [255,0,0], rect2, width=int(i*4))
 
-            self.screen.blit(t, rPos)
+            self.screen.blit(t_surf, pos)
             if rect.collidepoint(self.mouse_pos):
                 c = [255,0,0]
                 w = 2
@@ -431,7 +456,7 @@ class Game:
                 self.cameraLinger = 1
             else:
                 self.cameraPos = self.cameraLock.pos - self.res/2
-                if self.cameraLock.target:
+                if self.cameraLock.target and not self.pendingLevelUp:
                     CREATEDUAL = True
                     self.cameraLockTarget = self.cameraLock.target.pos.copy() * 0.1 + self.cameraLockTarget * 0.9
                     self.cameraLockOrigin = self.cameraLock.pos.copy()
@@ -440,8 +465,12 @@ class Game:
             self.cameraLinger -= self.deltaTime
         
         if self.pendingLevelUp:
-            #    self.cameraPos = self.pendingLevelUp.pos - self.res/2
-            self.deltaTime *= 0.01
+            #self.cameraLockOrigin = self.pendingLevelUp.pos.copy() - self.res/2
+
+            I = self.levelUpTimeFreeze()
+
+            self.deltaTime *= 1 - 0.99*(1-I)
+            self.cameraLock = self.pendingLevelUp
 
 
         #if self.skull:
@@ -450,10 +479,10 @@ class Game:
 
         if CREATEDUAL:
 
-            self.splitI += self.deltaTime
+            self.splitI += self.deltaTimeR
             self.splitI = min(1, self.splitI)
         else:
-            self.splitI -= self.deltaTime
+            self.splitI -= self.deltaTimeR
             self.splitI = max(0, self.splitI)
 
         if self.splitI > 0:
@@ -461,6 +490,7 @@ class Game:
             shiftI = (1-self.splitI)**2
 
             maxX = 1000 * shiftI
+
 
             if self.cameraLock and not self.cameraLock.killed:
                 self.cameraLockOrigin = self.cameraLock.pos.copy()
@@ -570,17 +600,17 @@ class Game:
         y = 200
 
         for i, x in sorted(enumerate(self.skullTimes), key=lambda pair: pair[1], reverse=True):
-            t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.font)
+            t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
             self.screen.blit(t, [10, y])
-            y += 30
+            y += 15
 
-        y += 80
+        y += 15
 
         for x in sorted(self.pawnHelpList.copy(), key = lambda p: p.kills, reverse=True):
 
-            t = combinedText(f"{x.name}: ", x.teamColor, f"{x.kills}/{x.deaths}", [255,255,255], font=self.font)
+            t = combinedText(f"{x.name}: ", x.teamColor, f"{x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
             self.screen.blit(t, [10,y])
-            y += 30
+            y += 15
 
 
         ox, oy = 3*self.cameraPosDelta/(70)
@@ -630,7 +660,7 @@ class Game:
 
         
     def resetLevelUpScreen(self):
-        self.levelUpI = 3
+        self.levelUpI = 5
         self.levelUpBlink = 1
         self.levelUpIndex = random.randint(0,2)
 
