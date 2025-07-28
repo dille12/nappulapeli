@@ -1,20 +1,21 @@
 
 from pygame.math import Vector2 as v2
 class Explosion:
-    def __init__(self, app, pos, firer = None):
+    def __init__(self, app, pos, firer = None, damage = 125):
         self.lifetime = 0.5
         self.app = app
         self.pos = v2(pos)
         self.app.playSound(self.app.explosionSound)
         self.app.visualEntities.append(self)
         self.firer = firer
+        self.damage = damage
         for x in self.app.pawnHelpList:
             if x.killed:
                 continue
             dist = 1 - (self.pos.distance_to(x.pos)/500)
             if dist > 0:
 
-                dam = dist * 125 * firer.itemEffects["weaponDamage"]
+                dam = dist * self.damage * firer.itemEffects["weaponDamage"]
                 x.takeDamage(dam, fromActor = self.firer, typeD = "explosion")
         
         self.im = self.app.explosion[0]

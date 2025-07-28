@@ -159,51 +159,105 @@ def smooth_landmarks(landmarks, sigma=0.5):
             smoothed[i] = (landmarks[i-1] + landmarks[i] * 2 + landmarks[i+1]) / 4
     return smoothed
 
-# Load image
-img = cv2.imread("players/fuffa.jpg")
-if img is None:
-    raise FileNotFoundError("Could not load image. Please check the path.")
+def getFaceLandMarks(rgb):
+    print("Beginning NN detection...")
+    # Initialize face-alignment with 2D landmarks
+    fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cpu')
+    landmarks = fa.get_landmarks(rgb)
 
-rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    if landmarks is None:
+        raise RuntimeError("No face detected.")
 
-print("Beginning NN detection...")
-# Initialize face-alignment with 2D landmarks
-fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cpu')
-landmarks = fa.get_landmarks(rgb)
+    landmarks = landmarks[0]  # Assume first face
 
-if landmarks is None:
-    raise RuntimeError("No face detected.")
-
-landmarks = landmarks[0]  # Assume first face
-
-print(f"Detected {len(landmarks)} facial landmarks")
-
-# Apply transformations with more conservative settings
-print("Enlarging eyes...")
-landmarks_big_eyes = enlarge_eyes_advanced(landmarks, scale_factor=2)
-
-print("Creating smile...")
-landmarks_smile = create_smile(landmarks_big_eyes, intensity=20)
+    print(f"Detected {len(landmarks)} facial landmarks")
+    return landmarks
 
 
-# Skip smoothing for now to avoid over-processing
-landmarks_final = landmarks_smile
 
-print("Applying facial warp...")
-# Apply the warp
-result = apply_triangular_warp(img, landmarks, landmarks_final)
+def processFaceMorph(img, landmarks, eyeScale = 2, smileIntensity=20):
+    # Apply transformations with more conservative settings
+    landmarks_big_eyes = enlarge_eyes_advanced(landmarks, scale_factor=eyeScale)
 
-# Post-processing: slight blur to smooth any artifacts
-result = cv2.bilateralFilter(result, 5, 50, 50)
+    landmarks_smile = create_smile(landmarks_big_eyes, intensity=smileIntensity)
 
-# Save result
-output_path = "output_face_warped_enhanced.png"
-cv2.imwrite(output_path, result)
-print(f"Enhanced result saved to: {output_path}")
 
-# Optional: Show comparison
-if False:  # Set to True if you want to display images
-    comparison = np.hstack([img, result])
-    cv2.imshow('Original vs Enhanced', comparison)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Skip smoothing for now to avoid over-processing
+    landmarks_final = landmarks_smile
+
+    # Apply the warp
+    result = apply_triangular_warp(img, landmarks, landmarks_final)
+
+    # Post-processing: slight blur to smooth any artifacts
+    result = cv2.bilateralFilter(result, 5, 50, 50)
+    return result
+
+def draw_landmarks(img, landmarks, color=(0, 255, 0), radius=2, connect=True):
+    img_vis = img.copy()
+    landmarks = landmarks.astype(int)
+
+    # Draw points
+    for (x, y) in landmarks:
+        cv2.circle(img_vis, (x, y), radius, color, -1)
+
+    if not connect:
+        return img_vis
+
+    # Connect landmark groups (68-point landmarks standard)
+    # Jawline
+    for i in range(1, 17):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    # Left eyebrow
+    for i in range(18, 22):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    # Right eyebrow
+    for i in range(23, 27):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    # Nose bridge
+    for i in range(28, 31):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    # Lower nose
+    for i in range(32, 36):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    cv2.line(img_vis, tuple(landmarks[35]), tuple(landmarks[31]), color, 1)
+    # Left eye
+    for i in range(37, 42):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    cv2.line(img_vis, tuple(landmarks[41]), tuple(landmarks[36]), color, 1)
+    # Right eye
+    for i in range(43, 48):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    cv2.line(img_vis, tuple(landmarks[47]), tuple(landmarks[42]), color, 1)
+    # Outer lip
+    for i in range(49, 60):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    cv2.line(img_vis, tuple(landmarks[59]), tuple(landmarks[48]), color, 1)
+    # Inner lip
+    for i in range(61, 68):
+        cv2.line(img_vis, tuple(landmarks[i-1]), tuple(landmarks[i]), color, 1)
+    cv2.line(img_vis, tuple(landmarks[67]), tuple(landmarks[60]), color, 1)
+
+    return img_vis
+
+
+if __name__ == "__main__":
+
+    # Load image
+    img = cv2.imread("players/Christian.jpg")
+    if img is None:
+        raise FileNotFoundError("Could not load image. Please check the path.")
+
+    rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    # Initialize face-alignment with 2D landmarks
+    fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cpu')
+    landmarks = fa.get_landmarks(rgb)[0]
+
+    # Visualize original landmarks on the original image
+    img_with_orig = draw_landmarks(img, landmarks, color=(0,255,0), radius=3)
+
+    # Visualize morphed landmarks on the morphed image
+    #img_with_morphed = draw_landmarks(result, landmarks_final, color=(0,0,255), radius=3)
+
+    cv2.imwrite("original_landmarks.png", img_with_orig)
+    #cv2.imwrite("morphed_landmarks.png", img_with_morphed)

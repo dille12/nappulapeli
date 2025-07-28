@@ -147,8 +147,8 @@ class Weapon:
         print(f"{self.name} given to {pawn.name}")
 
     def reload(self):
-        self.currReload = self.reloadTime * self.owner.itemEffects["weaponReload"]
-        self.magazine = int(self.magazineSize * self.owner.itemEffects["weaponAmmoCap"])
+        self.currReload = self.getReloadTime()
+        self.magazine = self.getMaxCapacity()
         self.app.reloadSound.stop()
         self.app.reloadSound.play()
 
@@ -210,10 +210,13 @@ class Weapon:
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
             self.recoil += 0.25
 
+    def getMeleeTime(self):
+        return 0.5 / max(self.owner.itemEffects["weaponHandling"], 0.1)
+
     def tryToMelee(self):
         if self.meleeing(): return
 
-        self.meleeI = 0.5
+        self.meleeI = self.getMeleeTime()
         self.owner.target.takeDamage(50, fromActor = self.owner)
         self.app.meleeSound.stop()
         self.app.meleeSound.play()
@@ -245,7 +248,7 @@ class Weapon:
         self.fireTick = self.secondsPerRound
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
         for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
             self.recoil += 0.25
 
     def pointingAtTarget(self):
@@ -258,6 +261,9 @@ class Weapon:
     
     def meleeing(self):
         return self.meleeI > 0
+    
+    def getReloadTime(self):
+        return self.reloadTime * self.owner.itemEffects["weaponReload"]
 
 
     def tick(self):
@@ -291,12 +297,12 @@ class Weapon:
 
         xA, yA, rA = 0,0,0
         if self.meleeing():
-            xA, yA, rA = melee_animation((0.5-self.meleeI)/0.5)
+            xA, yA, rA = melee_animation((self.getMeleeTime()-self.meleeI)/self.getMeleeTime())
 
             #r += rA #if self.owner.facingRight else -rA
 
         elif self.isReloading():
-            r2 = reload_rotation((self.reloadTime - self.currReload)/self.reloadTime) * 1.4
+            r2 = reload_rotation((self.getReloadTime() - self.currReload)/self.getReloadTime()) * 1.4
 
             r += r2 if self.owner.facingRight else -r2
 

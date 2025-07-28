@@ -41,6 +41,7 @@ class Bullet:
         self.damage = damage
         self.vel = v2(math.cos(self.angle), math.sin(self.angle))
         self.pastPos = []
+        self.dodged = []
         self.app.ENTITIES.append(self)
         self.lifetime = 2
         if type == "normal":
@@ -85,7 +86,11 @@ class Bullet:
         for x in self.app.pawnHelpList:
             if x == self:
                 continue
-            if x.team == self.owner.team:
+
+            if x in self.dodged:
+                continue
+
+            if self.owner.itemEffects["allyProtection"] and self.owner.team == x.team:
                 continue
 
             if x.killed:
@@ -97,6 +102,12 @@ class Bullet:
                 x.hitBox.x, x.hitBox.y, x.hitBox.width, x.hitBox.height
             )
             if collides:
+
+                if random.uniform(0, 1) < x.itemEffects["dodgeChance"]:
+                    self.dodged.append(x)
+                    x.say("Läheltä liippas!")
+                    continue
+
                 if self in self.app.ENTITIES:
                     self.app.ENTITIES.remove(self)
 
@@ -108,7 +119,7 @@ class Bullet:
                 
 
                 if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.owner)
+                    Explosion(self.app, self.pos, firer = self.owner, damage = self.damage)
                 else:
                     x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
 

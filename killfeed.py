@@ -18,10 +18,10 @@ class KillFeed:
         
         t1 = self.app.font.render(self.killer.name, True, killer.teamColor)
         t2 = self.app.font.render(self.killed.name, True, killed.teamColor)
-        self.surface = pygame.Surface((t1.get_width() + t2.get_width() + gun.imageKillFeed.get_width() + 30, 30))
+        self.surface = pygame.Surface((t1.get_width() + t2.get_width() + gun.imageKillFeed.get_width() + 30, max(t1.get_height(), t2.get_height()) + 10))
         self.surface.fill(self.color)
         self.surface.blit(t1, [5,5])
-        self.surface.blit(gun.imageKillFeed, [15 + t1.get_width(), 5])
+        self.surface.blit(gun.imageKillFeed, [15 + t1.get_width(), self.surface.get_height()/2-gun.imageKillFeed.get_height()/2])
         self.surface.blit(t2, [self.surface.get_width() - t2.get_width() - 5, 5])
 
 
@@ -31,7 +31,7 @@ class KillFeed:
             self.app.killfeed.remove(self)
             return
         
-        pos = [self.app.res[0] - self.surface.get_width() - 5, 30 + self.app.killfeed.index(self)*45]
+        pos = [self.app.res[0] - self.surface.get_width() - 5, 30 + self.app.killfeed.index(self)*55]
 
         if self.lifetime >= 1.8:
             i = 1-((2 - self.lifetime)/0.2)

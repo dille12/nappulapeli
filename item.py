@@ -1,8 +1,10 @@
 class Item:
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, desc, **kwargs):
         # kwargs: key = effect name, value = (operation, amount)
         self.operations = []
         self.name = name
+        self.desc = desc
+
         for attr, (op, amount) in kwargs.items():
             if op == "add":
                 self.operations.append(lambda obj, a=attr, amt=amount: obj.itemEffects.__setitem__(a, obj.itemEffects[a] + amt))
@@ -15,5 +17,4 @@ class Item:
         for op in self.operations:
             op(to)
 
-        print("Applied", self.name, "to", to.name)
-        print(to.itemEffects)
+        to.pastItems.append(self.name)
