@@ -29,7 +29,7 @@ import tempfile
 import pygame
 import os
 from _thread import start_new_thread
-
+from weapon import Weapon
 class EspeakTTS:
     def __init__(self, owner: "Pawn", speed=175, pitch=50, voice="fi"):
         self.speed = str(speed)
@@ -47,8 +47,10 @@ class EspeakTTS:
             return
         if self.app.speeches > 1:
             return
-        if self.owner.textBubble:
+        if self.owner.textBubble or self.sound:
             return
+        
+        self.generating = True
         
         #self.stop()
 
@@ -57,8 +59,7 @@ class EspeakTTS:
     def threaded(self, text):
         self.app.speeches += 1
         self.owner.textBubble = text
-        self.generating = True
-
+        
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                 wav_path = tmp.name
@@ -322,7 +323,7 @@ class Pawn:
         self.xp = 0
         self.xpI = 15
 
-        self.weapon = None
+        self.weapon: Weapon = None
         
         self.app.skullW.give(self)
         self.skullWeapon = self.weapon
@@ -813,7 +814,7 @@ class Pawn:
         else:
             self.killsThisLife += 1
             self.kills += 1
-        self.gainXP(self.killsThisLife)
+        self.gainXP(self.killsThisLife + killed.level)
         if killed == self.lastKiller:
 
             if self.itemEffects["revenge"]:
