@@ -29,6 +29,9 @@ class Room:
     def center(self) -> Tuple[int, int]:
         return (self.x + self.width // 2, self.y + self.height // 2)
     
+    def randomCell(self) -> Tuple[int, int]:
+        return (random.randint(self.x, self.x + self.width - 1), random.randint(self.y, self.y + self.height - 1))
+    
     def contains(self, x: int, y: int) -> bool:
         return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
 
@@ -172,6 +175,13 @@ class ArenaGenerator:
                         spawn_points.append((x, y))
         
         return spawn_points
+    
+    def get_room(self, cell):
+        for x in self.rooms:
+            if x.contains(cell[0], cell[1]):
+                return x
+        return None
+
 
     def get_entrance_position(self) -> Optional[Tuple[int, int]]:
         """Get the entrance position if it exists."""
@@ -360,7 +370,7 @@ class ArenaGenerator:
                         connection_count[available_rooms[i]] += 1
         
         # Add some extra connections for interesting layouts (optional)
-        extra_connections = min(2, len(self.rooms) // 3)
+        extra_connections = min(2, len(self.rooms) // 4)
         for _ in range(extra_connections):
             room1 = random.choice(self.rooms)
             room2 = random.choice(self.rooms)

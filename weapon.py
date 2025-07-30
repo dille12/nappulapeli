@@ -50,7 +50,7 @@ def melee_animation(t):
 
 
 class Weapon:
-    def __init__(self, app: "Game", name: str, *args, owner=None, precomputedImage=None):
+    def __init__(self, app: "Game", name: str, *args, owner: "Pawn" = None, precomputedImage=None):
         """
         Initialize the Weapon object.
         :param args: Arguments for the weapon, including app, name, image_path, damage, and range.
@@ -64,6 +64,9 @@ class Weapon:
         self.name = name
         self.owner = owner
         self.typeD = typeD
+
+        
+
         if not precomputedImage:
             print("Recomputing image for weapon:", name)
             self.image = pygame.image.load(image_path).convert_alpha()
@@ -73,8 +76,15 @@ class Weapon:
         else:
             self.image = precomputedImage
 
+
+        self.shopIcon = pygame.transform.scale_by(self.image.copy(), 100 / self.image.get_height()) 
+        self.shopIcon = trim_surface(self.shopIcon)
+
+
         if image_path == "texture/skull.png":
             self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
+        else:
+            self.app.weapons.append(self)
 
         self.imageR = pygame.transform.flip(self.image.copy(), True, False)
 
@@ -93,7 +103,10 @@ class Weapon:
         self.fireTick = 0
         self.spread = 0.05
 
+        self.addedFireRate = 0
+
         self.recoil = 0
+        self.runOffset = 0
 
         self.fireFunction = fireFunction
 
@@ -155,32 +168,37 @@ class Weapon:
 
     def getMaxCapacity(self):
         return int(self.magazineSize * self.owner.itemEffects["weaponAmmoCap"])
+    
+    def getRoundsPerSecond(self):
+        return 1/((self.firerate+self.addedFireRate) * self.owner.itemEffects["weaponFireRate"])
 
 
     def RocketLauncher(self):
-        if self.isReloading(): return
-                    
-        if self.magazine == 0:
-            self.reload()
-            return
-        
-        if self.fireTick > 0:
-            self.fireTick -= self.app.deltaTime
-            return
-        if not self.pointingAtTarget(): return
+        if not self.canShoot(): return
+
         self.magazine -= 1
 
-        secondsPerRound = 1/(self.firerate * self.owner.itemEffects["weaponFireRate"])
+        self.app.playSound(self.app.rocketSound)
+        
 
-        self.fireTick = secondsPerRound
+        self.fireTick = self.getRoundsPerSecond()
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+
+        gun_x, gun_y = self.getBulletSpawnPoint()
+
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
         for x in range(self.owner.itemEffects["multiShot"]):
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), rocket=True, type=self.typeD) #-math.radians(self.FINALROTATION)
-            self.recoil += 0.25
+            self.addRecoil(3)
+
+
+    def addRecoil(self, amount):
+        self.recoil += amount / self.owner.itemEffects["recoilMult"]
 
 
     def getSpread(self):
-        return (self.spread + self.recoil * 0.5) * self.owner.itemEffects["accuracy"]
+        return (self.spread + self.recoil * 0.5) / self.owner.itemEffects["accuracy"]
 
     def getDamage(self):
         return self.damage * self.owner.itemEffects["weaponDamage"]
@@ -190,66 +208,110 @@ class Weapon:
         return
     
     def Energyshoot(self):
-        if self.isReloading(): return
-                    
-        if self.magazine == 0:
-            self.reload()
-            return
-        
-        if self.fireTick > 0:
-            self.fireTick -= self.app.deltaTime
-            return
-
-        if not self.pointingAtTarget(): return
+        if not self.canShoot(): return
 
         self.app.playSound(self.app.energySound)
         self.magazine -= 1
-        self.fireTick = self.secondsPerRound
+        self.fireTick = self.getRoundsPerSecond()
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+
+        gun_x, gun_y = self.getBulletSpawnPoint()
+
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
         for x in range(self.owner.itemEffects["multiShot"]):
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
-            self.recoil += 0.25
+            self.addRecoil(0.25)
 
     def getMeleeTime(self):
-        return 0.5 / max(self.owner.itemEffects["weaponHandling"], 0.1)
+        return 0.5 / max(self.getHandling(), 0.1)
+    
+    def getHandling(self):
+        return self.owner.itemEffects["weaponHandling"]
 
     def tryToMelee(self):
         if self.meleeing(): return
 
         self.meleeI = self.getMeleeTime()
-        self.owner.target.takeDamage(50, fromActor = self.owner)
-        self.app.meleeSound.stop()
-        self.app.meleeSound.play()
+        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+        if self.owner.onScreen():
+            self.app.meleeSound.stop()
+            self.app.meleeSound.play()
 
 
-    def AKshoot(self):
+    def suppressedShoot(self):
+        self.AKshoot(sounds = self.app.silencedSound)
+
+    def shotgunShoot(self):
         
 
-        if self.meleeing(): return
+        if not self.canShoot(): return
+
+        self.app.playSound(self.app.shotgunSound)
+
         
 
-        if self.isReloading(): return
+        self.magazine -= 1
+        self.fireTick = self.getRoundsPerSecond()
+        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+
+        gun_x, gun_y = self.getBulletSpawnPoint()
+
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
+        for x in range(10*self.owner.itemEffects["multiShot"]):
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
+            self.addRecoil(0.15)
+
+
+    def checkIfCanAddFireRate(self):
+        if not self.owner.target: return False
+        if not self.owner.sees(self.owner.target): return False
+        if self.meleeing(): return False
+        if self.isReloading(): return False
+        if not self.pointingAtTarget(): return False
+        if self.magazine == 0: return False
+        return True
+
+    def canShoot(self):
+        if self.meleeing(): return False
+     
+        if self.isReloading(): return False
                     
         if self.magazine == 0:
             self.reload()
-            return
+            return False
         
         if self.fireTick > 0:
             self.fireTick -= self.app.deltaTime
-            return
+            return False
 
-        if not self.pointingAtTarget(): return
+        if not self.pointingAtTarget(): return False
 
-        for x in self.app.ARSounds:
-            x.stop()
+        return True
 
-        random.choice(self.app.ARSounds).play()
+
+    def AKshoot(self, sounds = None):
+        
+        if not self.canShoot(): return
+        
+        if not sounds:
+            sounds = self.app.ARSounds
+
+        self.app.playSound(sounds)
+
         self.magazine -= 1
-        self.fireTick = self.secondsPerRound
+        self.fireTick = self.getRoundsPerSecond()
         r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+
+        gun_x, gun_y = self.getBulletSpawnPoint()
+
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
+
         for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
-            self.recoil += 0.25
+            Bullet(self.owner, v2(gun_x, gun_y), r, spread = self.spread + self.recoil * 0.1, damage = self.getDamage(), type=self.typeD) #-math.radians(self.FINALROTATION)
+            self.addRecoil(0.25)
 
     def pointingAtTarget(self):
         if self.owner.target:
@@ -263,7 +325,40 @@ class Weapon:
         return self.meleeI > 0
     
     def getReloadTime(self):
-        return self.reloadTime * self.owner.itemEffects["weaponReload"]
+        return self.reloadTime
+    
+    def getReloadAdvance(self):
+        return self.app.deltaTime * self.owner.itemEffects["weaponReload"]
+    
+    def raiseWeaponWhileRunning(self):
+
+        if not self.owner.walkTo:
+            return False
+        if self.owner.target:
+            return False
+        if self.name in ["Pistol", "Skull"]:
+            return False
+        if self.isReloading() or self.meleeing():
+            return False
+        
+        if self.owner.pos.distance_to(self.owner.walkTo) < 500:
+            return False
+        
+        if self.owner.route and len(self.owner.route) < 5:
+            return
+
+        return True
+    
+
+    def addFireRate(self):
+        if self.checkIfCanAddFireRate(): 
+            self.addedFireRate += self.owner.itemEffects["fireRateIncrease"] * self.app.deltaTime
+        else:
+            self.addedFireRate -= self.owner.itemEffects["fireRateIncrease"] * self.app.deltaTime
+
+        self.addedFireRate = max(0, self.addedFireRate)
+
+        
 
 
     def tick(self):
@@ -272,9 +367,9 @@ class Weapon:
             self.meleeI -= self.app.deltaTime
 
         elif self.isReloading():
-            self.currReload -= self.app.deltaTime
+            self.currReload -= self.getReloadAdvance()
 
-
+        self.addFireRate()
 
         # image is rotated 45 degrees to resemble lowering a weapon
 
@@ -286,9 +381,15 @@ class Weapon:
 
         if self.owner.target and not self.isReloading():
             r = math.degrees(self.app.getAngleFrom(self.owner.pos, self.owner.target.pos))
+            self.runOffset -= (self.app.deltaTime * self.getHandling()*2)
         else:
-            r = 135 if self.owner.facingRight else 45
-
+            if self.raiseWeaponWhileRunning():
+                r = -110 if self.owner.facingRight else -70
+                self.runOffset += (self.app.deltaTime * self.getHandling()*2)
+            else:
+                r = 135 if self.owner.facingRight else 45
+                self.runOffset -= (self.app.deltaTime * self.getHandling()*2)
+        self.runOffset = min(max(self.runOffset, 0), 1)
         #m = v2(pygame.mouse.get_pos()) + self.app.cameraPosDelta
         #
         #r = math.degrees(self.app.getAngleFrom(self.owner.pos, m))
@@ -306,24 +407,29 @@ class Weapon:
 
             r += r2 if self.owner.facingRight else -r2
 
-            
+        yA -= self.runOffset*50
 
         
         
 
         rotation = -r + rotationMod
 
-        self.recoil *= 0.97
+        self.recoil *= 0.97 ** (self.app.deltaTime*144)
+
         
         rotation = self.app.rangeDegree(rotation)
 
-        RGAIN = 1000 * self.owner.itemEffects["weaponHandling"]
+        RGAIN = 1000 * self.getHandling()
+
+        DIFF = angle_diff(self.ROTATION, rotation)
+        if self.owner.itemEffects["noscoping"] and DIFF < -20:
+            DIFF += 360
 
         # Calculate the rotation factor using proper units
         rotation_factor = self.app.smoothRotationFactor(
             self.ROTATIONVEL,  # Current angular velocity (no deltaTime here)
             RGAIN,               # Gain factor - acceleration rate (no deltaTime here)
-            angle_diff(self.ROTATION, rotation)  # Angle difference
+            DIFF  # Angle difference
         )
 
         # Apply the acceleration to velocity
@@ -356,9 +462,9 @@ class Weapon:
         recoilOffset = recoilBackwardOffset + recoilUpwardOffset
 
         if right:
-            meleeOffset = v2(-xA, yA)
+            meleeOffset = v2(-xA + self.runOffset*30, yA)
         else:
-            meleeOffset = v2(xA, yA)
+            meleeOffset = v2(xA - self.runOffset*30, yA)
         
         swiwelOffset = self.getSwiwel()
 

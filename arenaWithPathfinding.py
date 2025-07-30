@@ -7,11 +7,12 @@ import time
 from pathfinding import Pathfinder, MovementType
 from mapGen import ArenaGenerator, CellType
 import math
+from itertools import combinations
 
 class ArenaWithPathfinding:
     """Extended arena generator with integrated pathfinding capabilities."""
     
-    def __init__(self, arena_generator):
+    def __init__(self, arena_generator: ArenaGenerator):
         """Initialize with an existing ArenaGenerator instance."""
         self.arena_gen = arena_generator
         self.pathfinder = None
@@ -79,6 +80,27 @@ class ArenaWithPathfinding:
                           results["connectivity_score"] > 0.8)
         
         return results
+    
+
+    def find_spawn_rooms(self, num_spawns: int):
+        best_combo = None
+        best_min_dist = -1
+        iters = 0
+
+        for combo in combinations(self.arena_gen.rooms, num_spawns):
+            min_dist = min(
+                math.dist(r1.center(), r2.center())
+                for i, r1 in enumerate(combo)
+                for r2 in combo[i+1:]
+            )
+            iters += 1
+            if min_dist > best_min_dist:
+                best_min_dist = min_dist
+                best_combo = combo
+
+        print("Combo found", best_combo, "iterations", iters)
+        return best_combo
+
     
     def find_optimal_spawn_points(self, 
                                 num_spawns: int, 

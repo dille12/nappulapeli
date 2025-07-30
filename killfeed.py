@@ -14,7 +14,8 @@ class KillFeed:
 
 
         self.app.killfeed.append(self)
-        self.lifetime = 2
+        self.lifetime = 3
+        self.maxL = self.lifetime
         
         t1 = self.app.font.render(self.killer.name, True, killer.teamColor)
         t2 = self.app.font.render(self.killed.name, True, killed.teamColor)
@@ -33,8 +34,8 @@ class KillFeed:
         
         pos = [self.app.res[0] - self.surface.get_width() - 5, 30 + self.app.killfeed.index(self)*55]
 
-        if self.lifetime >= 1.8:
-            i = 1-((2 - self.lifetime)/0.2)
+        if self.lifetime >= self.maxL - 0.2:
+            i = 1-((self.maxL - self.lifetime)/0.2)
             pos[0] += self.surface.get_width() * 1.25 * i**2
 
         elif self.lifetime < 0.5:

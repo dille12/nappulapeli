@@ -51,7 +51,7 @@ class Bullet:
         self.b = pygame.transform.rotate(self.b, -math.degrees(self.angle))
         self.rocket = rocket
         self.type = type
-        self.pos += self.vel * 20
+        self.pos += self.vel * random.uniform(19,25)
 
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, 35]) / 70)
@@ -87,6 +87,9 @@ class Bullet:
             if x == self:
                 continue
 
+            if x == self.owner:
+                continue
+
             if x in self.dodged:
                 continue
 
@@ -111,7 +114,7 @@ class Bullet:
                 if self in self.app.ENTITIES:
                     self.app.ENTITIES.remove(self)
 
-                self.app.particle_list.append(BloodParticle(x.pos.copy(), 0.7, app = self.app))
+                self.app.bloodSplatters.append(BloodParticle(x.pos.copy(), 0.7, app = self.app))
 
 
                 damage = self.damage 

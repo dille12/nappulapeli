@@ -19,7 +19,7 @@ class BloodParticle:
 
     def tick(self):
         if self.lifetime <= 0:
-            self.app.particle_list.remove(self)
+            self.app.bloodSplatters.remove(self)
             return
 
         self.pos = [

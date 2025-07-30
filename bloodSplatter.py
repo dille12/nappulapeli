@@ -12,6 +12,7 @@ class BloodSplatter:
         self.lifetime = random.uniform(0.3, 0.7)
         self.lastTicks = 2
         self.lastPos = None
+        self.size = random.uniform(3,7)
         self.app.visualEntities.append(self)
 
     def tick(self):
@@ -29,8 +30,8 @@ class BloodSplatter:
 
     def render(self):
         if self.lifetime >= 0:
-            r = pygame.Rect(self.pos[0]-1 - self.app.cameraPosDelta[0], self.pos[1]-1 - self.app.cameraPosDelta[1], 3,3)
+            r = pygame.Rect(self.pos[0]-1 - self.app.cameraPosDelta[0], self.pos[1]-1 - self.app.cameraPosDelta[1], self.size,self.size)
             pygame.draw.rect(self.app.DRAWTO, self.color, r)
 
         elif self.lastPos:
-            pygame.draw.line(self.app.MAP, self.color, self.pos, self.lastPos, width=1)
+            pygame.draw.line(self.app.MAP, self.color, self.pos, self.lastPos, width=int(self.size/2))
