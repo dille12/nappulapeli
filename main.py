@@ -1,27 +1,30 @@
 import pygame
 import os
-
 import pygame.gfxdraw
-from pawn import Pawn
-from weapon import Weapon
+from pawn.pawn import Pawn
+from pawn.weapon import Weapon
 import random
 import threading
-from enemy import Enemy
+from utilities.enemy import Enemy
 import math
 from pygame.math import Vector2 as v2
 import time
-from mapGen import ArenaGenerator, CellType
+from levelGen.mapGen import ArenaGenerator, CellType
 import numpy as np
-from arenaWithPathfinding import ArenaWithPathfinding
-from loadAnimation import load_animation
-from item import Item
-from items import getItems
+from levelGen.arenaWithPathfinding import ArenaWithPathfinding
+from core.loadAnimation import load_animation
+from utilities.item import Item
+from utilities.items import getItems
 from keypress import key_press_manager
-from skull import Skull
+from utilities.skull import Skull
 import colorsys
-from infoBar import infoBar
-from shop import Shop
-from particle import ParticleSystem, Particle
+from utilities.infoBar import infoBar
+from utilities.shop import Shop
+from particles.particle import ParticleSystem, Particle
+from particles.laser import ThickLaser
+from gameTicks.settingsTick import settingsTick, createSettings
+from gameTicks.pawnGeneration import preGameTick
+from gameTicks.tick import battleTick
 
 def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
     """Wait until the file is stable and readable, or timeout."""
@@ -100,18 +103,28 @@ class Game:
         self.fontLarge = pygame.font.Font("texture/agencyb.ttf", 60)  # Load a default font
         self.fontLevel = pygame.font.Font("texture/agencyb.ttf", 40)  # Load a default font
         # image_path, damage, range, magSize, fireRate, fireFunction, reloadTime
+        pygame.mixer.init()
         self.weapons = []
-        self.AK = Weapon(self, "AK-47", "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", "texture/energy1.png", 75, 3000, 5, 1, Weapon.Energyshoot, 2, "energy")
-        self.e2 = Weapon(self, "Rocket Launcher", "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
-        self.e3 = Weapon(self, "EMG", "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
-        self.pistol = Weapon(self, "Pistol", "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal")
-        self.shotgun = Weapon(self, "Shotgun", "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
+        self.AK = Weapon(self, "AK-47", [1, 0], "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
+        self.e1 = Weapon(self, "Sniper", [2, 0], "texture/energy1.png", 75, 3000, 5, 1, Weapon.Energyshoot, 2, "energy")
+        self.e2 = Weapon(self, "Rocket Launcher", [3, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
+        self.e3 = Weapon(self, "EMG", [1, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
+        self.pistol = Weapon(self, "USP-S", [0.5, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
+        self.pistol2 = Weapon(self, "Glock", [0, 0], "texture/pistol2.png", 8, 1500, 20, 5, Weapon.pistolShoot, 0.5, "normal", sizeMult=0.7)
+        self.smg = Weapon(self, "SMG", [1, 0], "texture/ump.png", 10, 1800, 45, 20, Weapon.smgShoot, 1, "normal", sizeMult=0.7)
 
-        self.mg = Weapon(self, "Machine Gun", "texture/mg.png", 15, 2500, 300, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", "texture/bfg.png", 35, 2300, 50, 5, Weapon.Energyshoot, 2.5, "energy")
+        self.famas = Weapon(self, "FAMAS", [1.5, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal")
 
-        self.skullW = Weapon(self, "Skull", "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
+        self.shotgun = Weapon(self, "Shotgun", [2, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
+
+        self.mg = Weapon(self, "Machine Gun", [0, 1], "texture/mg.png", 15, 2500, 300, 16, Weapon.AKshoot, 4, "normal")
+        self.BFG = Weapon(self, "BFG", [2, 1], "texture/bfg.png", 20, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
+
+        self.weapons = [self.AK, self.e1, self.e2, self.e3, self.pistol, self.pistol2, self.smg, self.famas, self.shotgun, self.mg, self.BFG]
+
+        self.BFGLasers = []
+
+        self.skullW = Weapon(self, "Skull", [0,0], "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
 
@@ -132,7 +145,7 @@ class Game:
         #self.map = ArenaGenerator(80, 60)
 
         # TEAM COUNT
-        self.teams = 5
+        self.teams = 2
         self.MINIMAPCELLSIZE = 2
 
         self.teamInspectIndex = 0
@@ -148,6 +161,8 @@ class Game:
         self.t1 = 1
         self.t2 = 1
 
+        self.FPS = 0
+
         self.splitI = 0
         self.cameraLockTarget = v2(0,0)
         self.cameraLockOrigin = v2(0,0)
@@ -161,7 +176,7 @@ class Game:
         self.noise = []
         for x in range(10):
             y = generate_noise_surface((200,200))
-            y.set_alpha(30)
+            y.set_alpha(70)
             self.noise.append(y)
 
         
@@ -218,7 +233,7 @@ class Game:
 
         self.speeches = 0
 
-        self.GAMESTATE = "pawnGeneration"
+        self.GAMESTATE = "settings"
 
         self.objectiveCarriedBy = None
 
@@ -235,7 +250,7 @@ class Game:
         self.skullTimes = []
         self.refreshShops()
 
-        pygame.mixer.init()
+        
         self.ARSounds = self.loadSound("audio/assault")
 
         self.deathSounds = self.loadSound("audio/death")
@@ -246,7 +261,7 @@ class Game:
 
         self.clicks = self.loadSound("audio/menu_click")
 
-        self.music = self.loadSound("audio/hh/bar", volume = 1)
+        self.music = None
         self.currMusic = 0
         self.nextMusic = 0
         self.midMusicIndex = 0
@@ -257,6 +272,7 @@ class Game:
 
 
         self.bloodClearI = 0
+        self.beatI = 0
 
         self.energySound = self.loadSound("audio/nrg_fire")
         self.shotgunSound = self.loadSound("audio/shotgun")
@@ -266,22 +282,32 @@ class Game:
 
         self.rocketSound = self.loadSound("audio/rocket_launch")
 
+        self.smgSound = self.loadSound("audio/smg")
+
+        self.pistolSound = self.loadSound("audio/weapon_fire")
+
         if len(self.energySound) != 3:
             raise RuntimeError
-
+        
+        self.LAZER = ThickLaser(self, width=20)
+        self.lastTickLaser = False
         
 
         self.reloadSound = pygame.mixer.Sound("audio/reload.wav")
         self.meleeSound = pygame.mixer.Sound("audio/melee.wav")
         for x in [self.reloadSound, self.meleeSound]:
             x.set_volume(0.3)
+
+        createSettings(self)
             
 
     def refreshShops(self):
         self.shops = []
         for x in range(self.teams):
             self.skullTimes.append(0)
-            self.shops.append(Shop(self, x))
+            shop = Shop(self, x)
+            shop.totalPrice = [0, 0]
+            self.shops.append(shop)
 
 
     def genLevel(self):
@@ -324,6 +350,7 @@ class Game:
     def initiateGame(self):
 
         self.genLevel()
+        self.resetLevelUpScreen()
        
         self.endGameI = 5
         self.skullTimes = []
@@ -341,7 +368,9 @@ class Game:
                 pawn.suicides = 0
                 pawn.deaths = 0
 
-            time.sleep(0.1)
+            time.sleep(0.5)
+
+        
 
 
     def playSound(self, l):
@@ -368,6 +397,10 @@ class Game:
             x2.topleft -= self.cameraPos
             pygame.draw.rect(self.screen, [0,0,0], x2)
 
+    def reTeamPawns(self):
+        for pawn in self.pawnHelpList:
+            pawn.team = self.pawnHelpList.index(pawn)%self.teams
+
     def threadedGeneration(self, path):
         self.pawnGenI += 1
         
@@ -376,18 +409,24 @@ class Game:
             print("File ready!")
             
             pawn = Pawn(self, path)
-            pawn.team = len(self.pawnHelpList)%self.teams
+            pawn.team = self.pawnHelpList.index(pawn)%self.teams
             pawn.teamColor = self.getTeamColor(pawn.team)
-            #pawn.pos = v2(self.spawn_points[pawn.team]) * 70 + [35, 35]
-            #pawn.xp += 40
+            pawn.NPC = pawn.team != 0
             self.ENTITIES.append(pawn)
             
         else:
             print("Download was incomplete.")
+
+        self.reTeamPawns()
+
         self.pawnGenI -= 1
 
 
     def handleMusic(self):
+
+        if not self.music:
+            return
+
         for x in self.music:
             if x.get_num_channels():
                 return False
@@ -405,6 +444,11 @@ class Game:
         self.musicStart = time.time()
         self.musicLength = self.music[self.nextMusic].get_length()
         return True
+    
+    def BPM(self):
+        tempo = 150 if self.loadedMusic == "HH" else 123
+        musicPlayedFor = time.time() - self.musicStart
+        self.beatI = 1-((musicPlayedFor%(60/tempo))/(60/tempo))
 
     def getTeamColor(self, team):
 
@@ -458,9 +502,6 @@ class Game:
         return max(abs(self.levelUpI-2.5)-1.5,0)
     
     def levelUpScreen(self):
-
-        
-       
         if self.levelUpBlink > 0:
             self.levelUpBlink -= self.deltaTimeR
         else:
@@ -702,69 +743,6 @@ class Game:
             x.hideI = 0.5
 
 
-    def preGameTick(self):
-        self.PEACEFUL = True
-        self.cameraPosDelta = v2([0,0])
-        entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
-        self.DRAWTO = self.screen
-        self.DRAWTO.fill((0,0,0))
-
-        if self.musicSwitch:
-            if self.teamInspectIndex != -1:
-                self.advanceShop()
-            else:
-                t = threading.Thread(target=self.initiateGame)
-                t.daemon = True
-                t.start()
-
-                    
-
-        for x in entities_temp:
-            x.tick()
-            x.render()
-        
-        
-        self.particle_system.update_all()
-        self.particle_system.render_all(self.DRAWTO)
-
-        if self.teamInspectIndex != -1:
-            t = self.fontLarge.render(f"TIIMI {self.teamInspectIndex + 1}", True, self.getTeamColor(self.teamInspectIndex))
-            self.screen.blit(t, v2(self.res[0]/2, 100) - v2(t.get_size())/2)
-
-            if self.shops[self.teamInspectIndex].draw():
-                self.advanceShop()
-
-            underMouse = None
-            for x in self.pawnHelpList:
-                if x.team != self.teamInspectIndex:
-                    continue
-                
-                x.renderInfo()
-
-                if x.hitBox.collidepoint(self.mouse_pos):
-                    underMouse = x
-
-            if self.weaponButtonClicked:
-                w = self.weaponButtonClicked
-                self.screen.blit(w.weapon.shopIcon, w.weaponPos - [w.weapon.shopIcon.get_width()/2, w.weapon.shopIcon.get_height()/2])
-
-                if "mouse0" in self.keypress and underMouse:
-                    w.weapon.give(underMouse)
-                    self.weaponButtonClicked.outOfStock = True
-                    self.weaponButtonClicked = None
-
-
-        self.debugText(f"FPS: {1/self.t2:.0f}")
-        self.debugText(f"GEN: {self.pawnGenI:.0f}")
-        self.debugText(f"ENT: {len(self.ENTITIES):.0f}")
-        self.debugText(f"BENT: {len(self.particle_list):.0f}")
-        self.debugText(f"CAM: {self.cameraPosDelta}")
-        self.debugText(f"PLU: {self.pendingLevelUp}")
-        self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
-        self.debugText(f"INSP: {self.teamInspectIndex}")
-        
-        self.genPawns()
-
 
     def handleHud(self):
         if self.currHud == self.cameraLock and self.currHud and not self.VICTORY:
@@ -801,7 +779,7 @@ class Game:
                 t1 = self.font.render(f"Lataa: {procent}%", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
             else:
-                t1 = self.font.render(f"Luodit: {p.weapon.magazine}/{p.weapon.getMaxCapacity()}", True, c2)
+                t1 = self.font.render(f"Luodit: {p.weapon.magazine}/{p.getMaxCapacity()}", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
 
             t1 = self.font.render(f"Tapot: {p.kills} Kuolemat: {p.deaths} (KD:{p.kills/max(1, p.deaths):.1f})", True, c2)
@@ -856,182 +834,22 @@ class Game:
         
 
 
-    def tick(self):
 
-        self.PEACEFUL = False
-        
-        
+    def drawBFGLazers(self):
+        currLaser = False
+        for startPos, endPos in self.BFGLasers:
+            s1 = startPos - self.cameraPosDelta
+            e1 = endPos - self.cameraPosDelta
+            #if (0 <= s1[0] <= self.res[0] and 0 <= s1[1] <= self.res[1]) or (0 <= e1[0] <= self.res[0] and 0 <= e1[1] <= self.res[1]):
+            self.LAZER.draw(self.DRAWTO, s1, e1)
+            currLaser = True
 
-        # Sort entities by their y position for correct rendering order into a separate list to prevent modifying the list while iterating
-
-        #if self.skull:
-        #    self.cameraPos = self.skull.pos - self.res/2
-        if not self.VICTORY:
-            for i, x in enumerate(self.skullTimes):
-                if x >= self.skullVictoryTime:
-                    #print(f"Team {i+1} WON")
-                    self.victoryTeam = i
-                    self.VICTORY = True 
-                    self.points = []
-
-                    self.nextMusic = -1
-
-                    for x in self.pawnHelpList:
-                        points, reason_str = x.evaluatePawn()
-                        self.points.append((x, points, reason_str))
-
-                    self.points.sort(key=lambda x: x[1], reverse=True)
-
-                        
-                    
-        
-        
-
-        entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
-        self.CREATEDUAL = False
-        self.handleCameraLock()
-        self.handleCameraSplit()
-
-        
-        
-
-
-        self.MINIMAPTEMP = self.MINIMAP.copy()
-        self.particle_system.update_all()
-
-        for x in entities_temp:
-            x.tick()
-
-        for x in self.visualEntities:
-            x.tick()
-
-        for x in self.bloodSplatters:
-            x.tick()
-
-
-        if self.objectiveCarriedBy:
-            self.skullTimes[self.objectiveCarriedBy.team] += self.deltaTime
-
-        if self.splitI > 0:
-            self.cameraPos = self.posToTargetTo.copy()
-            self.dualCameraPos = self.posToTargetTo2.copy()
-        else:
-            self.dualCameraPos = self.cameraPos.copy()
-
-        CAMPANSPEED = 500000 * self.deltaTimeR
-        #self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
-        #self.cameraVel[1] += self.smoothRotationFactor(self.cameraVel[1], CAMPANSPEED, self.cameraPos[1] - self.cameraPosDelta[1]) * self.deltaTimeR
-        self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
-
-        self.cleanUpLevel()
-
-        DUAL = False
-        if self.splitI > 0:
-            if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > 600:
-                DUAL = True
-
-
-        for i in range(1 if not DUAL else 2):
-
-            if not DUAL:
-                self.DRAWTO = self.screen
-                
-            elif i == 0:
-                self.DRAWTO = self.screenCopy1
+        if currLaser != self.lastTickLaser:
+            if currLaser:
+                self.LAZER.activate()
             else:
-                self.DRAWTO = self.screenCopy2
-
-            self.DRAWTO.fill((0,0,0))
-
-            if i == 1:
-                SAVECAMPOS = self.cameraPosDelta.copy()
-                self.cameraPosDelta = self.posToTargetTo2.copy()
-
-            self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
-            #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
-
-            for x in entities_temp:
-                x.render()
-
-            for x in self.visualEntities:
-                x.render()
-
-            self.particle_system.render_all(self.DRAWTO)
-
-            if DUAL and i == 1:
-                self.cameraPosDelta = SAVECAMPOS.copy()
-
-        if DUAL:
-            self.splitScreen()
-            
-
-        if self.currMusic == 0:
-            t = self.fontLarge.render(f"Peli alkaa: {self.musicLength - (time.time()-self.musicStart):.0f}", True, [255,255,255])
-            self.screen.blit(t, v2(self.res[0]/2, 300) - v2(t.get_size())/2)
-                        
-
-        #self.drawWalls()
-
-        self.debugText(f"FPS: {1/self.t2:.0f}")
-        self.debugText(f"GEN: {self.pawnGenI:.0f}")
-        self.debugText(f"ENT: {len(self.ENTITIES):.0f}")
-        self.debugText(f"BENT: {len(self.particle_list):.0f}")
-        self.debugText(f"CAM: {self.cameraPosDelta}")
-        self.debugText(f"PLU: {self.pendingLevelUp}")
-        self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
-        self.debugText(f"DUAL: {DUAL} {self.CREATEDUAL}")
-        self.debugText(f"BLOOD: {self.bloodClearI}")
-        self.debugText(f"SPE: {self.speeches}")
-        
-        onscreen = 0
-        for x in self.pawnHelpList:
-            if x.onScreen():
-                onscreen += 1
-        self.debugText(f"ONSCREEN: {onscreen}")
-
-        for x in self.killfeed:
-            x.tick()
-
-        
-        if self.VICTORY:
-            if self.currMusic == -1:
-                self.tickEndGame()
-            if self.endGameI <= 0 and self.currMusic == 0:
-                self.endGame()
-                return
-        else:
-            self.tickScoreBoard()
-
-
-        
-
-
-        ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(70)
-        w, h = self.MINIMAPCELLSIZE*self.res/(70)
-        
-        pygame.draw.rect(self.MINIMAPTEMP, [255,0,0], (ox, oy, w, h), width=1)
-
-        if self.objectiveCarriedBy:
-            skullpos = self.objectiveCarriedBy.pos.copy()
-        else:
-            skullpos = self.skull.pos.copy()
-
-        pygame.draw.circle(self.MINIMAPTEMP, [255,255,255], self.MINIMAPCELLSIZE*skullpos/70, 6, width=1)
-        
-        self.screen.blit(self.MINIMAPTEMP, self.res - self.MINIMAP.get_size() - [10,10])
-
-        self.handleHud()
-
-
-
-        if self.pendingLevelUp and not self.VICTORY:
-            self.levelUpScreen()
-        else:
-            self.resetLevelUpScreen()
-
-
-        
-        #self.genPawns()
+                self.LAZER.deactivate()
+        self.lastTickLaser = currLaser
         
 
     def genPawns(self):
@@ -1085,22 +903,30 @@ class Game:
                     pygame.quit()
                     exit()  # Ensure the program exits cleanly
 
+            if self.GAMESTATE == "settings":
+                settingsTick(self)
 
-
-            if self.GAMESTATE == "pawnGeneration":
-                self.preGameTick()
+            elif self.GAMESTATE == "pawnGeneration":
+                preGameTick(self)
             else:
-                self.tick()
+                battleTick(self)
 
             for x in self.infobars:
                 x.tick()
             self.musicSwitch = self.handleMusic()
+            self.BPM()
+            r = pygame.Rect((0,0), self.res)
+            pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(5*(self.beatI**2)))
+
             pygame.display.update()
             self.t1 = time.time() - tickStartTime
             
 
             self.deltaTimeR = self.clock.tick(144) / 1000
             self.t2 = time.time() - tickStartTime
+
+            self.FPS = 0.05 * (1/self.t2) + 0.95 * self.FPS
+
             self.deltaTimeR = min(self.deltaTimeR, 1/30)
             self.deltaTime = self.deltaTimeR
 
