@@ -2,6 +2,9 @@ import pygame
 import random
 import math
 import time
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from main import Game
 
 class GlitchGamemodeDisplay:
     def __init__(self, app):
@@ -228,7 +231,7 @@ class GlitchGamemodeDisplay:
         
         # Update subtitle based on gamemode
         subtitles = {
-            'BATTLE ROYALE': 'Preparing Battle Arena',
+            'ODDBALL': 'Pidä kalloa 100 sekuntia ja voita :D',
             'TEAM DEATHMATCH': 'Loading Combat Zone',
             'CAPTURE THE FLAG': 'Initializing Objectives',
             'SURVIVAL': 'Spawning Hostile Environment',
@@ -288,3 +291,6 @@ gamemode_display.draw()
 gamemode_display.set_gamemode("TEAM DEATHMATCH")
 """
 
+def loadingTick(self: "Game"):
+    self.screen.fill((0,0,0))
+    self.gamemode_display.draw()

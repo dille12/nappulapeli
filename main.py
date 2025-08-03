@@ -25,7 +25,7 @@ from particles.laser import ThickLaser
 from gameTicks.settingsTick import settingsTick, createSettings
 from gameTicks.pawnGeneration import preGameTick
 from gameTicks.tick import battleTick
-
+from gameTicks.gameModeTick import GlitchGamemodeDisplay, loadingTick
 def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
     """Wait until the file is stable and readable, or timeout."""
     start_time = time.time()
@@ -99,9 +99,12 @@ class Game:
         self.particle_list = []
         self.playerFilesToGen = [] 
         self.clock = pygame.time.Clock()
-        self.font = pygame.font.Font("texture/agencyb.ttf", 30)  # Load a default font
-        self.fontLarge = pygame.font.Font("texture/agencyb.ttf", 60)  # Load a default font
-        self.fontLevel = pygame.font.Font("texture/agencyb.ttf", 40)  # Load a default font
+
+        self.fontName = "texture/agencyb.ttf"
+
+        self.font = pygame.font.Font(self.fontName, 30)
+        self.fontLarge = pygame.font.Font(self.fontName, 60)  # Load a default font
+        self.fontLevel = pygame.font.Font(self.fontName, 40)  # Load a default font
         # image_path, damage, range, magSize, fireRate, fireFunction, reloadTime
         pygame.mixer.init()
         self.weapons = []
@@ -139,7 +142,7 @@ class Game:
         self.deltaTime = 1/60
         self.deltaTimeR = 1/60
         self.debugI = 0
-        self.fontSmaller = pygame.font.Font("texture/agencyb.ttf", 18)  # Smaller font for debug text
+        self.fontSmaller = pygame.font.Font(self.fontName, 18)  # Smaller font for debug text
         self.pawnGenI = 0
         self.pawnGenT = 0
         #self.map = ArenaGenerator(80, 60)
@@ -157,6 +160,7 @@ class Game:
         self.keypress_held_down = []
 
         self.cameraLinger = 2
+        self.TTS_ON = True
 
         self.t1 = 1
         self.t2 = 1
@@ -176,7 +180,7 @@ class Game:
         self.noise = []
         for x in range(10):
             y = generate_noise_surface((200,200))
-            y.set_alpha(70)
+            y.set_alpha(40)
             self.noise.append(y)
 
         
@@ -299,6 +303,8 @@ class Game:
             x.set_volume(0.3)
 
         createSettings(self)
+
+        self.gamemode_display = GlitchGamemodeDisplay(self)
             
 
     def refreshShops(self):
@@ -348,7 +354,8 @@ class Game:
         self.mapCreated = True
 
     def initiateGame(self):
-
+        
+        self.gamemode_display.set_gamemode("ODDBALL")
         self.genLevel()
         self.resetLevelUpScreen()
        
@@ -411,7 +418,7 @@ class Game:
             pawn = Pawn(self, path)
             pawn.team = self.pawnHelpList.index(pawn)%self.teams
             pawn.teamColor = self.getTeamColor(pawn.team)
-            pawn.NPC = pawn.team != 0
+            pawn.NPC = pawn.name != "Micco"
             self.ENTITIES.append(pawn)
             
         else:
@@ -908,6 +915,10 @@ class Game:
 
             elif self.GAMESTATE == "pawnGeneration":
                 preGameTick(self)
+
+            elif self.GAMESTATE == "loadingScreen":
+                loadingTick(self)
+
             else:
                 battleTick(self)
 

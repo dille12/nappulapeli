@@ -33,6 +33,7 @@ def preGameTick(self: "Game"):
                 t = threading.Thread(target=self.initiateGame)
                 t.daemon = True
                 t.start()
+                self.GAMESTATE = "loadingScreen"
 
         underMouse = None
         for x in self.pawnHelpList:

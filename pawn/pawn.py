@@ -61,6 +61,8 @@ class EspeakTTS:
 
     def say(self, text):
 
+        if not self.app.TTS_ON:
+            return
         if self.generating:
             return
         if self.app.speeches > 1:
@@ -378,7 +380,8 @@ class Pawn:
 
         self.tts = EspeakTTS(self, random.randint(120,300), random.randint(0,100), voice="fi")
         
-        self.ULT = True
+        self.ULT = False
+        self.ULT_TIME = 0
 
         self.itemEffects = {
             "speedMod": 1.0, # Done
@@ -535,7 +538,7 @@ class Pawn:
         self.right_eye_center = v2(right_eye_center[0], right_eye_center[1]) / 400
         self.eyeMirror = v2(image.get_width()/image.get_height(), 0)
 
-        result = processFaceMorph(rgb, landMarks, smileIntensity=5, eyeScale=2)
+        result = processFaceMorph(rgb, landMarks, smileIntensity=8, eyeScale=2)
         surface_array = result.swapaxes(0, 1).astype(np.uint8)
 
         # Ensure alpha matches dimensions
@@ -1006,6 +1009,8 @@ class Pawn:
         self.getNextItems()
         self.healthCap += 10
         self.say(f"Jipii! Nousin tasolle {self.level}, ja sain uuden esineen!", 0.1)
+        print(self.name, "Leveled up")
+        self.level += 1
 
 
     def eyeGlow(self):

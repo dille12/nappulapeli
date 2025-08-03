@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Image Upload & Editor</title>
+    <title>Hahmogeneraattori</title>
     <style>
         * {
             margin: 0;
@@ -262,8 +262,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎮 Game Image Upload</h1>
-            <p>Upload, edit, and prepare your game images</p>
+            <h1>Hahmo generaattori</h1>
+            <p>Uploadaa kuva ja käännä siten että se katsoo <b>VASEMMALLE</b>. Kuvan tulee mennä lujaa. Mieluiten about mugshotin muotonen kuva.</p>
         </div>
         
         <div class="main-content">
@@ -281,11 +281,11 @@
                 <div class="file-input-wrapper">
                     <input type="file" id="imageInput" class="file-input" accept="image/*" required>
                     <label for="imageInput" class="file-input-button">
-                        📁 Click to select an image or drag & drop
+                        📁 Valitse luja kuva
                     </label>
                 </div>
                 
-                <input type="text" id="filenameInput" class="filename-input" placeholder="Enter a name for your image" required>
+                <input type="text" id="filenameInput" class="filename-input" placeholder="Lisää nappulan nimi" required>
             </div>
             
             <div class="editor-section" id="editorSection">
@@ -310,7 +310,7 @@
                 <input type="hidden" name="filename" id="hiddenFilename">
                 <input type="hidden" name="imageData" id="hiddenImageData">
                 <button type="submit" class="upload-button" id="uploadButton" disabled>
-                    🚀 Upload Image
+                    🚀 Lataa kuva
                 </button>
                 <div class="progress-bar" id="progressBar">
                     <div class="progress-fill" id="progressFill"></div>

@@ -3,24 +3,48 @@ if TYPE_CHECKING:
     from main import Game
 from core.dropDown import Dropdown
 from core.button import Button
+from core.ipManager import get_local_ip
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
     self.teamAmount = Dropdown(self, "Teams:", ["2", "3", "4", "5", "6", "7", "8"], (550,400))
     self.loadedMusic = None
     self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (800,400))
+    self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (1050,400))
 
     self.playButton = Button(self, (1600,850), (250,120))
+    self.toggleServer = Button(self, (200,850), (200,40))
+    self.SimpleServerController = SimpleServerController()
 
 def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
+
+
+    self.reTeamPawns()
+    teamIndices = []
+    for i in range(self.teams):
+        teamIndices.append(0)
+
+    for i, pawn in enumerate(self.pawnHelpList):
+        x = 300 + pawn.team * 100
+
+        y = 550 + 30*teamIndices[pawn.team]
+        teamIndices[pawn.team] += 1
+
+        t = self.fontSmaller.render(pawn.name, True, self.getTeamColor(pawn.team))
+        self.screen.blit(t, (x,y))
+
+    
+
     t = self.fontLarge.render("ASETUKSET", True, [255]*3)
     self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 200])
     
     self.npcType.tick()
     self.teamAmount.tick()
     self.musicChoice.tick()
+    self.ttsToggle.tick()
 
     self.teams = int(self.teamAmount.get_selected())
+    self.TTS_ON = self.teamAmount.get_selected() == "On"
 
     if self.loadedMusic != self.musicChoice.get_selected():
 
@@ -36,9 +60,62 @@ def settingsTick(self: "Game"):
     
     self.loadedMusic = self.musicChoice.get_selected()
 
+
+    serverOn = self.SimpleServerController.process and self.SimpleServerController.process.poll() is None
+    
+    if serverOn:
+        ip = get_local_ip()
+
+    t = self.font.render(f"Servu päällä ({ip}:5000)" if serverOn else "Servu pois päältä", True, [255,255,255])
+    self.screen.blit(t, (200, 900))
+
+    if self.toggleServer.draw(self.screen, "Käynnistä serveri" if not serverOn else "Lopeta serveri", font = self.font):
+        self.SimpleServerController.toggle_server()
+
     if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
         self.refreshShops()
         self.reTeamPawns()
+        self.SimpleServerController.stop_server()
 
     self.genPawns()
+
+
+# Alternative simpler approach using subprocess
+import subprocess
+import sys
+
+class SimpleServerController:
+    def __init__(self):
+        self.process = None
+        
+    def start_server(self):
+        """Start server as subprocess"""
+        if self.process and self.process.poll() is None:
+            print("Server already running!")
+            return False
+            
+        self.process = subprocess.Popen([
+            sys.executable, '-c', 
+            'from hostsite import run; run()'
+        ])
+        print("Server started!")
+        return True
+        
+    def stop_server(self):
+        """Stop the server subprocess"""
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
+            self.process.wait()
+            print("Server stopped!")
+            return True
+        else:
+            print("Server not running!")
+            return False
+            
+    def toggle_server(self):
+        """Toggle server on/off"""
+        if self.process and self.process.poll() is None:
+            return self.stop_server()
+        else:
+            return self.start_server()
