@@ -8,6 +8,28 @@ import random
 
 import pygame
 import colorsys
+
+
+def get_apex_pixel_mean(surface: pygame.Surface, threshold=1, min_pixels=3, max_spread=20):
+    arr = pygame.surfarray.array_alpha(surface)
+
+    for y in range(arr.shape[0]):
+        row = arr[y]
+        visible = row >= threshold
+        count = np.count_nonzero(visible)
+        
+        if count >= min_pixels:
+            xs = np.where(visible)[0]
+            
+            # Check if pixels are reasonably clustered (not too spread out)
+            if True:
+                x_mean = int(xs.mean())
+                print(f"Row {y}: {count} visible pixels, x_mean={x_mean}")
+                return x_mean - arr.shape[1]/2, y - arr.shape[0]/2
+
+    print("No valid apex found.")
+    return None
+
 def set_image_hue_rgba(surface, hue_degrees):
     hue = hue_degrees / 360.0
     rgb_array = pygame.surfarray.pixels3d(surface).copy()

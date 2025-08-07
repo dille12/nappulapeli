@@ -25,6 +25,10 @@ class Room:
         self.height = height
         self.room_type = room_type
         self.area = self.width * self.height
+        self.turfWarTeam = None
+        self.pawnsPresent = []
+        self.connections = []
+        self.occupyI = 5
 
     def center(self) -> Tuple[int, int]:
         return (self.x + self.width // 2, self.y + self.height // 2)
@@ -34,6 +38,12 @@ class Room:
     
     def contains(self, x: int, y: int) -> bool:
         return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
+    
+    def addConnection(self, room):
+        if room not in self.connections:
+            self.connections.append(room)
+        if self not in room.connections:
+            room.connections.append(self)
 
 class ArenaGenerator:
     def __init__(self, width: int = 80, height: int = 60, seed: Optional[int] = None):
@@ -306,6 +316,9 @@ class ArenaGenerator:
         
         # Create minimum spanning tree of room connections
         connections = self._generate_room_connections()
+        
+        for r1, r2 in connections:
+            r1.addConnection(r2)
         
         for room1, room2 in connections:
             self._carve_corridor(room1, room2, width)

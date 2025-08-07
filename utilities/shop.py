@@ -85,9 +85,28 @@ class Shop:
 
 
         self.weapon_slots = []
+
+        weapons = []
+        rates = []
+        for w in self.app.weapons:
+            
+            price = w.price[0] + w.price[1]*5
+            if price == 0:
+                continue
+            rates.append(price)
+            weapons.append(w)
+
+        maxRate = max(rates) * 1.05
+        for i in range(len(rates)):
+            origRate = rates[i]
+            rates[i] = (maxRate - origRate)
+        
+        print(rates)
+        print(weapons)
+
         for i in range(3):
             pos = (20, 80 + i * 120)
-            w = random.choice(self.app.weapons)
+            w = weapons[self.app.randomWeighted(*rates)]
             size = w.shopIcon.get_size()
             size = (600, 110)
             self.weapon_slots.append(Button(app, self, pos, size, self.team, weapon = w))

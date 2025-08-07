@@ -4,6 +4,44 @@ import numpy as np
 from scipy.spatial import Delaunay
 from scipy import ndimage
 
+import os, json
+
+
+def load_landmarks_cache(app, cache_path="landmarks_cache.json"):
+    with app.cacheLock:
+        if os.path.isfile(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+def save_landmarks_cache(app, data, cache_path="landmarks_cache.json"):
+    with app.cacheLock:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+
+def get_or_load_landmarks(app, name, rgb, cache_path="landmarks_cache.json"):
+    initial_cache = load_landmarks_cache(app, cache_path)
+
+    if name in initial_cache:
+        print(f"Loading landmarks for '{name}' from cache")
+        return np.array(initial_cache[name]) if initial_cache[name] is not None else np.array(None)
+
+    print(f"Detecting landmarks for '{name}'")
+    try:
+        landmarks = getFaceLandMarks(rgb)
+        new_data = landmarks.tolist()
+    except:
+        landmarks = np.array(None)
+        new_data = None
+
+    # Reload latest cache just before writing to avoid overwriting updates
+    latest_cache = load_landmarks_cache(app, cache_path)
+    latest_cache[name] = new_data
+    save_landmarks_cache(app, latest_cache, cache_path)
+    
+    return landmarks
+
+
 def create_triangular_mesh(landmarks, img_shape):
     """Create a triangular mesh from facial landmarks"""
     h, w = img_shape[:2]
@@ -197,8 +235,9 @@ def draw_landmarks(img, landmarks, color=(0, 255, 0), radius=2, connect=True):
     landmarks = landmarks.astype(int)
 
     # Draw points
-    for (x, y) in landmarks:
+    for idx, (x, y) in enumerate(landmarks):
         cv2.circle(img_vis, (x, y), radius, color, -1)
+        cv2.putText(img_vis, str(idx), (x + 3, y - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, cv2.LINE_AA)
 
     if not connect:
         return img_vis
@@ -239,25 +278,69 @@ def draw_landmarks(img, landmarks, color=(0, 255, 0), radius=2, connect=True):
 
     return img_vis
 
+def make_sigma_face(landmarks, eye_closure=0.5, brow_raise=1.5, smile_intensity=0.5):
+    landmarks_mod = landmarks.copy()
+
+    # --- Eye squint: lower upper eyelid, raise lower eyelid ---
+    # Left eye: 37-42, Right eye: 43-48
+    eye_pairs = [
+        (37, 41), (38, 40),  # Left eye verticals
+        (43, 47), (44, 46)   # Right eye verticals
+    ]
+    for i_top, i_bottom in eye_pairs:
+        center = (landmarks[i_top] + landmarks[i_bottom]) / 2
+        direction = landmarks[i_bottom] - landmarks[i_top]
+        landmarks_mod[i_top] += direction * eye_closure * 0.5
+        landmarks_mod[i_bottom] -= direction * eye_closure * 0.5
+
+    # --- Raise inner eyebrows (serious/stern look) ---
+
+    # --- Optional: Lower outer eyebrows slightly ---
+    for i in range(17, 27):  # Outer eyebrows
+        landmarks_mod[i] += [0, -brow_raise]
+
+    # --- Subtle smile ---
+    landmarks_mod = create_smile(landmarks_mod, intensity=smile_intensity)
+
+    return landmarks_mod
+
+
+class debugClass:
+    def __init__(self):
+        import threading
+
+        self.cacheLock = threading.Lock()
+
 
 if __name__ == "__main__":
 
     # Load image
-    img = cv2.imread("players/Christian.jpg")
+    img = cv2.imread("Aapodebug.jpg")
     if img is None:
         raise FileNotFoundError("Could not load image. Please check the path.")
 
     rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+    #target_height = 400
+    #h, w = rgb.shape[:2]
+    #aspect_ratio = w / h
+    #new_width = int(target_height * aspect_ratio)
+#
+    #resized_rgb = cv2.resize(rgb, (new_width, target_height), interpolation=cv2.INTER_AREA)
+
     # Initialize face-alignment with 2D landmarks
-    fa = face_alignment.FaceAlignment(face_alignment.LandmarksType.TWO_D, device='cpu')
-    landmarks = fa.get_landmarks(rgb)[0]
+
+    debug = debugClass()
+
+    landmarks = get_or_load_landmarks(app=debug, name="Aapodebug", rgb=rgb)
+    landmarks = enlarge_eyes_advanced(landmarks, scale_factor=2)
+    landmarks_sigma = make_sigma_face(landmarks, eye_closure=0.6, brow_raise=50, smile_intensity=5)
+    result = apply_triangular_warp(img, landmarks, landmarks_sigma)
+
+    #
 
     # Visualize original landmarks on the original image
-    img_with_orig = draw_landmarks(img, landmarks, color=(0,255,0), radius=3)
+    result = draw_landmarks(result, landmarks_sigma, color=(0,255,0), radius=3)
 
-    # Visualize morphed landmarks on the morphed image
-    #img_with_morphed = draw_landmarks(result, landmarks_final, color=(0,0,255), radius=3)
-
-    cv2.imwrite("original_landmarks.png", img_with_orig)
+    cv2.imwrite("original_landmarks.png", result)
     #cv2.imwrite("morphed_landmarks.png", img_with_morphed)

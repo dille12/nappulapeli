@@ -4,6 +4,7 @@ if TYPE_CHECKING:
 from core.dropDown import Dropdown
 from core.button import Button
 from core.ipManager import get_local_ip
+import random
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
     self.teamAmount = Dropdown(self, "Teams:", ["2", "3", "4", "5", "6", "7", "8"], (550,400))
@@ -11,7 +12,11 @@ def createSettings(self: "Game"):
     self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (800,400))
     self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (1050,400))
 
+    self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1300,400))
+    self.roundLength = Dropdown(self, "Round Length:", ["0:30", "3:00", "5:00", "10:00"], (1550,400))
+
     self.playButton = Button(self, (1600,850), (250,120))
+    self.giveRandomWeapons = Button(self, (1600,750), (200,40))
     self.toggleServer = Button(self, (200,850), (200,40))
     self.SimpleServerController = SimpleServerController()
 
@@ -42,9 +47,24 @@ def settingsTick(self: "Game"):
     self.teamAmount.tick()
     self.musicChoice.tick()
     self.ttsToggle.tick()
+    self.itemToggle.tick()
+    self.roundLength.tick()
+
+    s = self.roundLength.get_selected()
+    if s == "0:30":
+        self.MAXROUNDLENGTH = 30
+    elif s == "3:00":
+        self.MAXROUNDLENGTH = 180
+    elif s == "5:00":
+        self.MAXROUNDLENGTH = 300
+    elif s == "10:00":
+        self.MAXROUNDLENGTH = 600
+
 
     self.teams = int(self.teamAmount.get_selected())
-    self.TTS_ON = self.teamAmount.get_selected() == "On"
+    self.teamsSave = self.teams
+    self.TTS_ON = self.ttsToggle.get_selected() == "On"
+    self.ITEM_AUTO = self.itemToggle.get_selected() == "Auto"
 
     if self.loadedMusic != self.musicChoice.get_selected():
 
@@ -53,11 +73,11 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar")
+            self.music = self.loadSound("audio/bar", volume=0.5)
             
         elif self.musicChoice.get_selected() == "HH":
-            self.music = self.loadSound("audio/hh/bar")
-    
+            self.music = self.loadSound("audio/hh/bar", volume=0.5)
+
     self.loadedMusic = self.musicChoice.get_selected()
 
 
@@ -72,11 +92,17 @@ def settingsTick(self: "Game"):
     if self.toggleServer.draw(self.screen, "Käynnistä serveri" if not serverOn else "Lopeta serveri", font = self.font):
         self.SimpleServerController.toggle_server()
 
+    if self.giveRandomWeapons.draw(self.screen, "Anna aseita", font = self.font):
+        for pawn in self.pawnHelpList:
+            w = random.choice(self.weapons)
+            w.give(pawn)
+
     if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
         self.refreshShops()
         self.reTeamPawns()
         self.SimpleServerController.stop_server()
+        
 
     self.genPawns()
 

@@ -13,7 +13,7 @@ from killfeed import KillFeed
 from utilities.explosion import Explosion
 from particles.bloodSplatter import BloodSplatter
 from imageprocessing.pixelSort import pixel_sort_surface
-from imageprocessing.faceMorph import getFaceLandMarks, processFaceMorph
+from imageprocessing.faceMorph import getFaceLandMarks, processFaceMorph, get_or_load_landmarks
 from _thread import start_new_thread
 import json
 import subprocess
@@ -35,123 +35,10 @@ from particles.particle import Particle
 if TYPE_CHECKING:
     from main import Game
 
+from pawn.behaviour import PawnBehaviour
+from pawn.getStat import getStat
+from pawn.tts import EspeakTTS
 
-def ult_multiplier(func):
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        return result * 2 if self.ULT else result
-    return wrapper
-
-def ult_division(func):
-    def wrapper(self, *args, **kwargs):
-        result = func(self, *args, **kwargs)
-        return result / 2 if self.ULT else result
-    return wrapper
-
-class EspeakTTS:
-    def __init__(self, owner: "Pawn", speed=175, pitch=50, voice="fi"):
-        self.speed = str(speed)
-        self.pitch = str(pitch)
-        self.voice = voice
-        self.owner = owner
-        self.app: "Game" = owner.app
-        self.current_path = None
-        self.sound = None
-        self.generating = False
-
-    def say(self, text):
-
-        if not self.app.TTS_ON:
-            return
-        if self.generating:
-            return
-        if self.app.speeches > 1:
-            return
-        if self.owner.textBubble or self.sound:
-            return
-        
-        self.generating = True
-        
-        #self.stop()
-
-        start_new_thread(self.threaded, (text, ))
-
-    def threaded(self, text):
-        self.app.speeches += 1
-        self.owner.textBubble = text
-        
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                wav_path = tmp.name
-            subprocess.run([
-                "espeak",
-                "-s", self.speed,
-                "-p", self.pitch,
-                "-v", self.voice,
-                "-w", wav_path,
-                text
-            ], check=True)
-
-            self.sound = pygame.mixer.Sound(wav_path)
-            self.generating = False
-            self.sound.play()
-            while True:
-                if not self.sound:
-                    break
-                if self.sound.get_num_channels():
-                    pygame.time.wait(100)
-                else:
-                    break
-
-        finally:
-            if os.path.exists(wav_path):
-                os.remove(wav_path)
-            self.owner.textBubble = None
-            self.app.speeches -= 1
-            self.sound = None
-
-    def stop(self):
-        if self.generating:
-            return
-
-        if self.sound:
-            self.sound.stop()
-            self.owner.textBubble = None
-
-
-def load_landmarks_cache(app, cache_path="landmarks_cache.json"):
-    with app.cacheLock:
-        if os.path.isfile(cache_path):
-            with open(cache_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        return {}
-
-def save_landmarks_cache(app, data, cache_path="landmarks_cache.json"):
-    with app.cacheLock:
-        with open(cache_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False)
-
-def get_or_load_landmarks(app, name, rgb, cache_path="landmarks_cache.json"):
-    initial_cache = load_landmarks_cache(app, cache_path)
-
-    if name in initial_cache:
-        print(f"Loading landmarks for '{name}' from cache")
-        return np.array(initial_cache[name]) if initial_cache[name] is not None else np.array(None)
-
-    print(f"Detecting landmarks for '{name}'")
-    try:
-        landmarks = getFaceLandMarks(rgb)
-        new_data = landmarks.tolist()
-    except:
-        landmarks = np.array(None)
-        new_data = None
-
-    # Reload latest cache just before writing to avoid overwriting updates
-    latest_cache = load_landmarks_cache(app, cache_path)
-    latest_cache[name] = new_data
-    save_landmarks_cache(app, latest_cache, cache_path)
-    
-    return landmarks
 
 def debug_draw_alpha(surface):
     alpha_arr = pygame.surfarray.array_alpha(surface)
@@ -159,25 +46,7 @@ def debug_draw_alpha(surface):
     debug_surface = pygame.surfarray.make_surface(alpha_rgb)
     return debug_surface
 
-def get_apex_pixel_mean(surface: pygame.Surface, threshold=1, min_pixels=3, max_spread=20):
-    arr = pygame.surfarray.array_alpha(surface)
 
-    for y in range(arr.shape[0]):
-        row = arr[y]
-        visible = row >= threshold
-        count = np.count_nonzero(visible)
-        
-        if count >= min_pixels:
-            xs = np.where(visible)[0]
-            
-            # Check if pixels are reasonably clustered (not too spread out)
-            if True:
-                x_mean = int(xs.mean())
-                print(f"Row {y}: {count} visible pixels, x_mean={x_mean}")
-                return x_mean - arr.shape[1]/2, y - arr.shape[0]/2
-
-    print("No valid apex found.")
-    return None
 
 
 
@@ -226,12 +95,15 @@ def heat_color(v):
     return (r, g, b)
 
 
-class Pawn:
+class Pawn(PawnBehaviour, getStat):
     def __init__(self, app: "Game", cardPath):
         self.app: "Game" = app
         self.cardPath = cardPath
         # extract the name from the path
         self.name = cardPath.split("/")[-1].split(".")[0]
+
+        PawnBehaviour.__init__(self)
+        getStat.__init__(self)
 
         info = infoBar(self.app, f"{self.name}: Generating")
 
@@ -297,6 +169,8 @@ class Pawn:
         info.text = f"{self.name}: Morphing"
         self.levelUpImage = self.morph(self.levelUpImage)
 
+        self.currentRoom = None
+
 
 
         #pygame.draw.circle(self.imagePawn, [255,0,0], self.left_eye_center*100, 5)
@@ -315,6 +189,7 @@ class Pawn:
 
         self.facingRight = True
         self.team = 0
+        self.originalTeam = 0
         self.teamColor = self.app.getTeamColor(self.team) 
 
 
@@ -324,7 +199,18 @@ class Pawn:
         self.walkTo = None
         self.route = None
         self.speed = 400
+
+        self.vel = v2(0,0)
+
         self.stepI = 0 
+        self.stats = {
+            "kills": 0,
+            "deaths": 0,
+            "damageDealt": 0,
+            "damageTaken": 0,
+            "teamkills": 0,
+            "suicides": 0,
+        }
 
         self.takeStepEvery = 0.5
         self.lastStep = -1
@@ -352,6 +238,7 @@ class Pawn:
 
         self.xp = 0
         self.xpI = 15
+        self.enslaved = False
 
         self.weapon: Weapon = None
         
@@ -382,6 +269,11 @@ class Pawn:
         
         self.ULT = False
         self.ULT_TIME = 0
+
+        self.tripped = False
+        self.tripI = 0.0  # [0..1] animation progress
+        self.getUpI = 0
+        self.tripRot = random.choice([-90, 90])  # fall direction
 
         self.itemEffects = {
             "speedMod": 1.0, # Done
@@ -425,6 +317,8 @@ class Pawn:
             "hat": False,
             "noscoping": False,
             "piercing": False,
+            "detonation": False,
+            "tripChance": 0.0,
         }
 
         self.effect_labels_fi = {
@@ -468,6 +362,8 @@ class Pawn:
             "noscoping": "360",
             "recoilMult": "Rekyyli",
             "piercing": "Lävistävät luodit",
+            "detonation": "Detonaatio",
+            "tripChance": "Kaatumisen todennäköisyys",
         }
 
 
@@ -574,77 +470,6 @@ class Pawn:
     
 
 
-    @ult_multiplier
-    def getSpeed(self):
-        s = self.speed * self.itemEffects["speedMod"] * (1 + 0.5*self.weapon.runOffset)
-        if self.revengeHunt():
-            s *= 2
-        return s
-    
-
-    def getRegenRate(self):
-        return self.healthRegen * self.itemEffects["healthRegenMult"]
-    
-    def thorns(self):
-        return self.itemEffects["thorns"]
-    
-    def getHealthCap(self):
-        return self.healthCap * self.itemEffects["healthCapMult"]
-    
-    @ult_multiplier
-    def getWeaponHandling(self):
-        return self.itemEffects["weaponHandling"]
-    def getRange(self):
-        if self.carryingSkull():
-            return self.skullWeapon.range * self.itemEffects["weaponRange"]
-        return self.weapon.range * self.itemEffects["weaponRange"]
-    
-    def revengeHunt(self):
-        return self.itemEffects["revenge"] and self.lastKiller and not self.lastKiller.killed and not self.app.PEACEFUL
-    
-    @ult_multiplier
-    def defenceNormal(self):
-        s = self.itemEffects["defenceNormal"]
-        if self.revengeHunt():
-            s *= 5
-        return s
-    
-    @ult_multiplier
-    def defenceEnergy(self):
-        s = self.itemEffects["defenceEnergy"]
-        if self.revengeHunt():
-            s *= 5
-        return s
-    
-    @ult_multiplier
-    def defenceExplosion(self):
-        s = self.itemEffects["defenceExplosion"]
-        if self.revengeHunt():
-            s *= 5
-        return s
-    
-    def getSpread(self):
-        return (self.weapon.spread + self.weapon.recoil * 0.5) / self.itemEffects["accuracy"]
-
-    @ult_multiplier
-    def getDamage(self):
-        return self.weapon.damage * self.itemEffects["weaponDamage"]
-    
-    @ult_multiplier
-    def getMaxCapacity(self):
-        return int(self.weapon.magazineSize * self.itemEffects["weaponAmmoCap"])
-
-    @ult_division
-    def getRoundsPerSecond(self):
-        return 1/((self.weapon.firerate+self.weapon.addedFireRate) * self.itemEffects["weaponFireRate"])
-    
-    @ult_multiplier
-    def getHandling(self):
-        return self.itemEffects["weaponHandling"]
-    
-    @ult_multiplier
-    def getReloadAdvance(self):
-        return self.app.deltaTime * self.itemEffects["weaponReload"]
 
     def getNextItems(self):
         self.nextItems = []
@@ -663,7 +488,7 @@ class Pawn:
         if x == self or not isinstance(x, Pawn):
             return
         
-        if not self.revengeHunt():
+        if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
             if x.team == self.team:
                 return
         
@@ -693,45 +518,6 @@ class Pawn:
 
 
 
-    def shoot(self):
-
-        if self.loseTargetI <= 0:
-            if self.target:
-                self.say("Karkas saatana", 0.1)
-            self.target = None
-            self.loseTargetI = 1
-
-        
-        if not self.target:
-            self.searchEnemies()
-        if not self.target:
-            return
-        
-        if self.target.killed:
-            self.target = None
-            return
-        dist = self.pos.distance_to(self.target.pos)
-        if dist > self.getRange():
-            self.loseTargetI -= self.app.deltaTime
-            self.searchEnemies()
-            return
-        
-        if not self.sees(self.target):
-            self.loseTargetI -= self.app.deltaTime
-            self.searchEnemies()
-            return
-        
-        self.facingRight = self.target.pos[0] <= self.pos[0]
-        if dist < 250:
-            if self.carryingSkull():
-                self.skullWeapon.tryToMelee()
-            else:
-                self.weapon.tryToMelee()
-        elif self.carryingSkull(): # Cannot shoot with the skull!
-            pass
-        else:
-            self.weapon.fireFunction(self.weapon)
-        self.loseTargetI = 1
 
     def dropSkull(self):
         if self.app.objectiveCarriedBy != self:
@@ -770,14 +556,21 @@ class Pawn:
 
         self.reset()
 
-        if self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
+        if self.app.GAMEMODE == "1v1":
+            self.respawnI = 2
+
+        elif self.app.GAMEMODE == "TEAM DEATHMATCH":
+            self.respawnI = 2
+
+        elif self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
             self.respawnI = 15
         else:
-            self.respawnI = 5
+            self.respawnI = 10
 
 
         self.killsThisLife = 0
         self.deaths += 1
+        self.stats["deaths"] += 1
 
 
     def getCellInSpawnRoom(self):
@@ -789,6 +582,13 @@ class Pawn:
         return P
 
     def reset(self):
+        
+        if self.app.GAMEMODE == "TURF WARS" and not self.app.PEACEFUL:
+            self.enslaved = self.app.teamSpawnRooms[self.originalTeam].turfWarTeam != self.originalTeam
+            self.team = self.app.teamSpawnRooms[self.originalTeam].turfWarTeam
+        else:
+            self.enslaved = False
+            self.team = self.originalTeam
 
         P = self.getCellInSpawnRoom()
 
@@ -822,6 +622,10 @@ class Pawn:
         elif typeD == "explosion":
             damage /= self.defenceExplosion()
 
+        self.stats["damageTaken"] += damage
+        if fromActor:
+            fromActor.stats["damageDealt"] += damage
+
         self.health -= damage
         self.outOfCombat = 2
         self.hurtI = 0.25
@@ -846,7 +650,10 @@ class Pawn:
         else:
 
             if fromActor == self:
-                self.say(onOwnDamage(), 0.5)
+                if self.itemEffects["detonation"]:
+                    self.say("Allahu Akbar!", 1)
+                else:
+                    self.say(onOwnDamage(), 0.5)
 
             elif fromActor.team == self.team:
                 self.say(onTeamDamage(fromActor.name), 0.4)
@@ -898,11 +705,18 @@ class Pawn:
         if killed and killed.team == self.team:
             if killed == self:
                 self.suicides += 1
-            else:
-                self.teamKills += 1
+                self.stats["suicides"] += 1
+            elif self.app.GAMEMODE != "1v1":
+                self.killsThisLife += 1
+                self.kills += 1
+                self.stats["kills"] += 1
+            elif not self.app.VICTORY:
+                    self.teamKills += 1
+                    self.stats["teamkills"] += 1
         else:
             self.killsThisLife += 1
             self.kills += 1
+            self.stats["kills"] += 1
         self.gainXP(self.killsThisLife + killed.level)
         if killed == self.lastKiller:
 
@@ -924,6 +738,7 @@ class Pawn:
             self.say(f"Ähäkutti! Kuulun joukkueeseen {self.team+1}!", 1)
             if self.target and self.target.team == self.team:
                 self.target = None
+            self.enslaved = False
 
     def fetchInfo(self, addItems = True):
         info_lines = []
@@ -1063,6 +878,7 @@ class Pawn:
             return
         
         if self.killed:
+            self.reset()
             self.app.particle_system.create_healing_particles(self.pos[0], self.pos[1])
 
         self.killed = False
@@ -1078,9 +894,12 @@ class Pawn:
             self.outOfCombat -= self.app.deltaTime
         
         if self.health < self.getHealthCap():
-            if self.outOfCombat <= 0 or self.itemEffects["instaHeal"]:
+            if self.outOfCombat <= 0 or self.itemEffects["instaHeal"] or self.ULT:
                 self.health += self.getRegenRate() * self.app.deltaTime
                 self.health = min(self.health, self.getHealthCap())
+        
+        if self.enslaved:
+            self.health = min(self.health, self.getHealthCap())
 
 
         if self.xp >= self.app.levelUps[self.level-1] and not self.app.pendingLevelUp:
@@ -1090,16 +909,29 @@ class Pawn:
                 self.app.particle_system.create_level_up_indicator(self.pos[0], self.pos[1])
                 print("LEVEL UP ANIM CREATED")
                 
-            if self.NPC:
+            if self.NPC or self.app.ITEM_AUTO:
                 self.levelUp()
             else:
                 self.app.pendingLevelUp = self
 
-        if self.app.currMusic != 0 or self.app.PEACEFUL:
-            self.think()
-        self.walk()
-        if self.app.currMusic != 0 or self.app.PEACEFUL:
-            self.shoot()
+        if not self.tripped:
+            if self.app.currMusic != 0 or self.app.PEACEFUL:
+                self.think()
+            self.walk()
+            if self.app.currMusic != 0 or self.app.PEACEFUL:
+                self.shoot()
+
+        if self.tripped:
+            self.tripI = min(self.tripI + self.app.deltaTime, 1.0)
+            if self.tripI >= 1.0:
+                self.getUpI += self.app.deltaTime
+            if self.getUpI >= 1:
+                self.getUpI = 0
+                if random.uniform(0, 1) < 0.25:
+                    self.tripped = False
+                    self.say("Päätä särkee!", 0.5)
+        else:
+            self.tripI = max(self.tripI - self.app.deltaTime * 3, 0.0)
         
         
 
@@ -1150,6 +982,19 @@ class Pawn:
             self.breatheIm = pygame.transform.rotate(self.breatheIm, self.rotation + Addrotation)
 
         newPos = self.pos - [self.xComponent, self.yComponent - yAdd]
+
+        # TRIPPING:
+        if self.tripI > 0:
+            fall_offset = self.tripI ** 2
+    
+            # Y movement shaped: fast up, slow linger, hard drop
+            shaped = math.sin(self.tripI * math.pi)  # [0..1..0], slow fall
+            rotation = math.sin(self.tripI * 0.5 * math.pi)  # [0..1]]
+            y_off = -shaped * 150  # peak height = -150 px
+
+            self.breatheIm = pygame.transform.rotate(self.breatheIm, self.tripRot * rotation)
+            newPos += [0, y_off]
+
         self.deltaPos = newPos * 0.35 + self.deltaPos * 0.65
 
         # Draw an arc to resemble a circle around the player
@@ -1161,11 +1006,10 @@ class Pawn:
         #pygame.draw.arc(self.app.screen, (255, 255, 255), arcRect, 0, math.pi)
 
         #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
-
+        #if not self.tripped:
         if self.carryingSkull():
             self.skullWeapon.tick()
             self.tryToTransferSkull()
-
 
         elif self.weapon:
             self.weapon.tick()           
@@ -1179,6 +1023,8 @@ class Pawn:
 
         #t = self.app.font.render(f"{self.name}", True, (255, 255, 255))
         #self.app.screen.blit(t, (self.pos.x - t.get_width() / 2, self.pos.y - t.get_height() - 70) - self.app.cameraPosDelta)
+
+        self.handleTurfWar()
 
         cx, cy = self.getOwnCell()
 
@@ -1198,6 +1044,20 @@ class Pawn:
 
     def carryingSkull(self):
         return self.app.objectiveCarriedBy == self
+    
+    def handleTurfWar(self):
+        if self.app.GAMEMODE != "TURF WARS":
+            return
+        
+        if not hasattr(self.app, "map"):
+            return
+
+        x, y = self.getOwnCell()
+        for r in self.app.map.rooms:
+            if r.contains(x, y):
+                r.pawnsPresent.append(self.team)
+                self.currentRoom = r
+                return
 
     def tryToTransferSkull(self):
         p: "Pawn" = random.choice(self.app.pawnHelpList)
@@ -1239,7 +1099,7 @@ class Pawn:
             arcRectI = self.arcRect.copy()
             arcRectI.inflate_ip(120*I, 60*I)
 
-        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, math.pi)
+        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, 2*math.pi)
 
         if self.app.cameraLock == self:
             pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi)
@@ -1249,17 +1109,11 @@ class Pawn:
         if self.itemEffects["hat"]:
             self.app.DRAWTO.blit(self.topHat, self.deltaPos + [-self.xComponent*0.2, self.breatheY - self.yComponent - self.weapon.recoil*20]  - self.app.cameraPosDelta + self.apexPawn - v2(self.topHat.get_size())/2)
 
-
+        #if not self.tripped:
         if self.app.objectiveCarriedBy == self:
             self.skullWeapon.render()
         elif self.weapon:
             self.weapon.render()      
-
-
-        
-
-
-        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, math.pi, math.pi * 2)
 
         if self.NPC:
             self.app.DRAWTO.blit(self.npcPlate, (self.pos.x - self.npcPlate.get_width() / 2, self.pos.y - self.npcPlate.get_height() - 45) - self.app.cameraPosDelta)
@@ -1279,109 +1133,21 @@ class Pawn:
             t2 = self.app.fontSmaller.render(f"RELOADING", True, [255,255,255])
             self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
 
+        elif self.enslaved:
+            
+            t2 = self.app.fontSmaller.render(f"Orja", True, self.app.getTeamColor(self.originalTeam))
+            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
+
         #if not self.app.PEACEFUL and self.app.cameraLock == self:
         #    self.renderInfo()
 
 
-    def think(self):
-        self.thinkI += self.app.deltaTime
-        if self.thinkI >= self.thinkEvery or self.ULT:
-            self.thinkI = 0
-            # Do some thinking logic here, e.g., print a message or change state
-
-            c = self.app.randomWeighted(0.2, 0.2)
-            if c == 0:
-                if not self.target:
-                    if not self.weapon.isReloading() and self.weapon.magazine < self.getMaxCapacity()/2 and not self.carryingSkull():
-                        self.weapon.reload()
-
-
-            if c == 1:
-                if self.walkTo is None:
-                    self.pickWalkingTarget()
     
     def distanceToPawn(self, pawn):
         return self.pos.distance_to(pawn.pos)
-    
+
     def skullCarriedByOwnTeam(self):
         return self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team
-
-    def pickWalkingTarget(self):
-
-        if self.app.PEACEFUL:
-            
-            if self.app.teamInspectIndex != -1:
-                inspect_team = [p for p in self.app.pawnHelpList.copy() if p.team == self.app.teamInspectIndex]
-                other_team = [p for p in self.app.pawnHelpList.copy() if p.team != self.app.teamInspectIndex]
-                inspect_team.sort(key=lambda p: id(p))
-                other_team.sort(key=lambda p: id(p))
-                spacing = 250
-                spacing2 = 100
-                base_x = self.app.res[0]/2 + spacing/2
-                base_x2 = self.app.res[0]/2 + spacing2/2
-                base_y = 300
-                offset_y = 600  # vertical gap between top and bottom lines
-                if self.team == self.app.teamInspectIndex:
-                    index = inspect_team.index(self)
-                    total = len(inspect_team)
-                    x = base_x + (index - total / 2) * spacing
-                    y = base_y
-                else:
-                    index = other_team.index(self)
-                    total = len(other_team)
-                    x = base_x2 + (index - total / 2) * spacing2
-                    y = base_y + offset_y + 70*(index%2)
-
-                self.walkTo = [x, y]
-            else:
-                self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
-            return
-
-
-        if not self.target:
-        #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
-            if self.revengeHunt():
-                self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
-                self.say(f"Tuu tänne {self.lastKiller.name}!")
-            else:
-                if self.app.skull:
-                    if not self.app.objectiveCarriedBy:
-                        self.getRouteTo(endPosGrid=self.app.skull.cell) # RUN TOWARDS DROPPED SKULL
-                    else:
-                        if self.carryingSkull(): # CARRYING SKULL
-                            if not self.route: # Else go to spawn
-                                self.getRouteTo(endPosGrid=self.getCellInSpawnRoom())
-                            #if len(self.route) > 6:
-                            #    self.route = self.route[0:5] # WALKS TOWARDS OWN SPAWN
-                        else:
-                            c = self.app.randomWeighted(0.5, 0.2)
-                            if c == 1 and self.skullCarriedByOwnTeam():
-                                self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
-                                print("Attacking!")
-                            else:
-                                
-                                cells = self.app.objectiveCarriedBy.getVisibility() # ELSE WALK TOWARDS SKULL CARRIER VICINITY
-                                self.getRouteTo(endPosGrid=random.choice(cells))
-                else:
-                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
-        else:
-
-            if self.carryingSkull(): # Go melee target
-                self.getRouteTo(endPosGrid=self.target.getOwnCell())
-
-            elif self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
-                self.say("APUA")
-                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team])
-                if len(self.route) > 18:
-                    self.route = self.route[0:15]
-
-            else:
-                CELLS = self.getVisibility()
-
-                if self.app.skull.cell in CELLS and not self.app.objectiveCarriedBy:
-                    self.getRouteTo(endPosGrid=self.app.skull.cell)
-                else:
-                    self.getRouteTo(endPosGrid=random.choice(CELLS))
 
 
     def getRouteTo(self, endPos = None, endPosGrid = None):
@@ -1411,6 +1177,8 @@ class Pawn:
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, 35]) / 70)
 
+    def getCell(self, pos):
+        return self.v2ToTuple((pos + [0, 35]) / 70)
 
     def getVisibility(self):
         cell = self.getOwnCell()
@@ -1421,40 +1189,5 @@ class Pawn:
         c2 = target.getOwnCell()
         return self.app.map.can_see(c1[0], c1[1], c2[0], c2[1])
 
-
-    def walk(self):
-        if self.walkTo is not None:
-            
-            if not self.target:
-                self.facingRight = self.walkTo[0] <= self.pos[0]
-
-            direction = self.walkTo - self.pos
-            if direction.length() > self.getSpeed() * self.app.deltaTime:
-                direction = direction.normalize()
-                self.pos += direction * self.getSpeed() * self.app.deltaTime
-                self.stepI += self.app.deltaTime * self.getSpeed() / 300
-
-                if self.lastStep != self.stepI // self.takeStepEvery:
-                    self.lastStep = self.stepI // self.takeStepEvery
-                    if self.onScreen():
-                        self.app.playSound(self.app.waddle)
-                
-            else:
-                if self.route:
-                    self.advanceRoute()
-                else:
-                    self.walkTo = None
-                    self.stepI = 0  # Reset step index when reaching the target
-
-            if self.route and len(self.route) > 5:
-                c = self.getOwnCell()
-                r1x, r1y = self.route[0]
-                r2x, r2y = self.route[1]
-
-                if self.app.map.can_see(c[0], c[1], r1x, r1y) and self.app.map.can_see(c[0], c[1], r2x, r2y):
-                    self.advanceRoute()
-
-        elif self.route:
-            self.advanceRoute()
 
 

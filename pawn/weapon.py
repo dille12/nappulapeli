@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 import random
 from utilities.bullet import Bullet, line_intersects_rect
 from particles.laser import ThickLaser
-
+from utilities.explosion import Explosion
 def angle_diff(a, b):
     diff = (b - a + 180) % 360 - 180
     return diff
@@ -186,7 +186,7 @@ class Weapon:
         
 
         self.fireTick = self.owner.getRoundsPerSecond()
-        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        r = math.radians(-self.ROTATION)
 
         gun_x, gun_y = self.getBulletSpawnPoint()
         pierce = self.owner.itemEffects["piercing"]
@@ -194,7 +194,8 @@ class Weapon:
 
         for x in range(self.owner.itemEffects["multiShot"]):
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce) #-math.radians(self.FINALROTATION)
-            self.addRecoil(3)
+            self.addRecoil(0.4)
+        self.addRecoil(3)
 
 
     def addRecoil(self, amount):
@@ -212,7 +213,7 @@ class Weapon:
         self.magazine -= 1
         self.fireTick = self.owner.getRoundsPerSecond()
 
-        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        r = math.radians(-self.ROTATION)
         gun_x, gun_y = self.getBulletSpawnPoint()
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
@@ -289,6 +290,8 @@ class Weapon:
 
         self.meleeI = self.getMeleeTime()
         self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+        if self.owner.itemEffects["detonation"]:
+            Explosion(self.app, self.owner.target.pos, self.owner, 100)
         if self.owner.onScreen():
             self.app.meleeSound.stop()
             self.app.meleeSound.play()
@@ -327,7 +330,7 @@ class Weapon:
                 self.currBurstRounds -= 1
                 self.currBurstRounds = max(0, self.currBurstRounds)
 
-                r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+                r = math.radians(-self.ROTATION)
                 gun_x, gun_y = self.getBulletSpawnPoint()
                 self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
@@ -342,7 +345,7 @@ class Weapon:
 
 
     def createBullet(self, recoil):
-        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        r = math.radians(-self.ROTATION)
         pierce = self.owner.itemEffects["piercing"]
         Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
@@ -360,7 +363,7 @@ class Weapon:
 
         self.magazine -= 1
         self.fireTick = self.owner.getRoundsPerSecond()
-        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        r = math.radians(-self.ROTATION)
         gun_x, gun_y = self.getBulletSpawnPoint()
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
@@ -410,7 +413,7 @@ class Weapon:
         self.fireTick = self.owner.getRoundsPerSecond()
 
 
-        r = self.app.getAngleFrom(self.owner.pos, self.owner.target.pos)
+        r = math.radians(-self.ROTATION)
         gun_x, gun_y = self.getBulletSpawnPoint()
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
@@ -483,7 +486,7 @@ class Weapon:
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
         else:
             if self.raiseWeaponWhileRunning():
-                if self.name not in ["Skull", "Glock", "USP"]:
+                if self.name not in ["Skull", "Glock", "USP-S"]:
                     r = -110 if self.owner.facingRight else -70
                 else:
                     r = 135 if self.owner.facingRight else 45

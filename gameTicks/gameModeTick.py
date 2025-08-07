@@ -232,9 +232,9 @@ class GlitchGamemodeDisplay:
         # Update subtitle based on gamemode
         subtitles = {
             'ODDBALL': 'Pidä kalloa 100 sekuntia ja voita :D',
-            'TEAM DEATHMATCH': 'Loading Combat Zone',
-            'CAPTURE THE FLAG': 'Initializing Objectives',
-            'SURVIVAL': 'Spawning Hostile Environment',
+            'TEAM DEATHMATCH': 'Tapa sata vihua ja voita :D',
+            'TURF WARS': 'Valtaa 2/3 huoneista ja voita :D',
+            '1v1': 'Tapa vihu ja voita :D',
             'RACING': 'Calibrating Track Systems',
             'PUZZLE': 'Loading Brain Teasers'
         }
@@ -263,8 +263,8 @@ class GlitchGamemodeDisplay:
         center_y = self.height // 2
         
         # "Initialize Gamemode" label
-        self.draw_fade_in_text("INITIALIZE GAMEMODE", center_x, center_y - 100, 
-                              self.font, self.cyan, self.phase_timers['label'])
+        self.draw_fade_in_text(f"ROUND: {self.app.round + 1}", center_x, center_y - 100, 
+                              self.font_large, self.cyan, self.phase_timers['label'])
         
         # Main gamemode title with glitch effect
         if current_time >= self.phase_timers['title']:

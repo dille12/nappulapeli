@@ -50,7 +50,9 @@ def getItems():
         Item("Flash hider", "Pibgistä tuttu.", recoilMult = ["mult", 1.5], weaponDamage=["add", 0.2]),
         Item("AP-Luodit", "Kun äijät ampuu vihuja nii omat on vaa tiellä.", piercing=["set", True]),
         Item("Litra mälliä", "Jos sulle maksettais kaks sataa...", healthCapMult=["add", 0.5]),
-
+        Item("Rauhan uskonto", "Rauha on paras ase.", detonation=["set", True], defenceExplosion=["mult", 5]),
+        Item("Tankki", "Nää ei oo niitä nopeimpia kavereita.", speedMod=["mult", 0.5], healthCapMult=["mult", 2]),
+        Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.1], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
     ]
 
 
