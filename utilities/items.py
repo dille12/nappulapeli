@@ -52,7 +52,8 @@ def getItems():
         Item("Litra mälliä", "Jos sulle maksettais kaks sataa...", healthCapMult=["add", 0.5]),
         Item("Rauhan uskonto", "Rauha on paras ase.", detonation=["set", True], defenceExplosion=["mult", 5]),
         Item("Tankki", "Nää ei oo niitä nopeimpia kavereita.", speedMod=["mult", 0.5], healthCapMult=["mult", 2]),
-        Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.1], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
+        Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.05], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
+        Item("Niken Nyssykkä", "Voi tätä valinnan vaikeutta.", extraItem=["set", True]),
     ]
 
 

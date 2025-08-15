@@ -10,13 +10,19 @@ def tickShops(self: "Game"):
         t = self.fontLarge.render(f"TIIMI {self.teamInspectIndex + 1}", True, self.getTeamColor(self.teamInspectIndex))
         self.screen.blit(t, v2(self.res[0]/2, 100) - v2(t.get_size())/2)
 
+        FULL_NPC_TEAM = True
+        for x in self.pawnHelpList:
+            if x.team == self.teamInspectIndex:
+                if not x.NPC:
+                    FULL_NPC_TEAM = False
+                    break
+        if FULL_NPC_TEAM:
+            self.shops[self.teamInspectIndex].autoBuyForTeam()
+            self.advanceShop()
+
+
         if self.shops[self.teamInspectIndex].draw():
             self.advanceShop()
-            if self.teamInspectIndex == -1:
-                t = threading.Thread(target=self.initiateGame)
-                t.daemon = True
-                t.start()
-                self.GAMESTATE = "loadingScreen"
 
         underMouse = None
         for x in self.pawnHelpList:
@@ -39,6 +45,12 @@ def tickShops(self: "Game"):
 
                 self.shops[self.teamInspectIndex].totalPrice[0] += w.weapon.price[0]
                 self.shops[self.teamInspectIndex].totalPrice[1] += w.weapon.price[1]
+    
+    if self.teamInspectIndex == -1:
+        t = threading.Thread(target=self.initiateGame)
+        t.daemon = True
+        t.start()
+        self.GAMESTATE = "loadingScreen"
 
 def judgementTick(self: "Game"):
     self.judgementTime += self.deltaTime

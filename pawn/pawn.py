@@ -234,7 +234,7 @@ class Pawn(PawnBehaviour, getStat):
         self.outOfCombat = 0
         self.loseTargetI = 0
         self.pastItems = []
-        self.getNextItems()
+        
 
         self.xp = 0
         self.xpI = 15
@@ -319,6 +319,7 @@ class Pawn(PawnBehaviour, getStat):
             "piercing": False,
             "detonation": False,
             "tripChance": 0.0,
+            "extraItem": False,  
         }
 
         self.effect_labels_fi = {
@@ -364,9 +365,10 @@ class Pawn(PawnBehaviour, getStat):
             "piercing": "Lävistävät luodit",
             "detonation": "Detonaatio",
             "tripChance": "Kaatumisen todennäköisyys",
+            "extraItem": "Extraesine", 
         }
 
-
+        self.getNextItems()
         self.referenceEffects = self.itemEffects.copy()
 
         info.text = f"{self.name}: Done!"
@@ -477,7 +479,7 @@ class Pawn(PawnBehaviour, getStat):
             item = random.choice(self.app.items)
             if item not in self.nextItems and item.name not in self.pastItems:
                 self.nextItems.append(item)
-                if len(self.nextItems) == 3:
+                if len(self.nextItems) == (4 if self.itemEffects["extraItem"] else 3):
                     break
 
     def searchEnemies(self):
@@ -698,21 +700,19 @@ class Pawn(PawnBehaviour, getStat):
         return points, reason_str
 
 
-
-
     def gainKill(self, killed):
         self.health += self.itemEffects["healOnKill"]
         if killed and killed.team == self.team:
             if killed == self:
                 self.suicides += 1
                 self.stats["suicides"] += 1
-            elif self.app.GAMEMODE != "1v1":
+            elif self.app.GAMEMODE == "1v1":
                 self.killsThisLife += 1
                 self.kills += 1
                 self.stats["kills"] += 1
             elif not self.app.VICTORY:
-                    self.teamKills += 1
-                    self.stats["teamkills"] += 1
+                self.teamKills += 1
+                self.stats["teamkills"] += 1
         else:
             self.killsThisLife += 1
             self.kills += 1

@@ -179,7 +179,7 @@ def run():
         flash('An internal server error occurred. Please try again.')
         return redirect(url_for('upload_form'))
 
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=25565, debug=False, threaded=True, use_reloader=False)
 
 
 

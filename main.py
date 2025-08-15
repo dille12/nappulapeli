@@ -201,6 +201,7 @@ class Game:
         self.victoryTeam = -1
         self.musicSwitch = False
         self.mapCreated = False
+        self.LEVELUPTIME = 10
 
         self.topHat = pygame.image.load("texture/tophat.png").convert_alpha()
         self.topHat = pygame.transform.scale(self.topHat, (70, 70))
@@ -479,10 +480,13 @@ class Game:
 
     def reTeamPawns(self):
         for pawn in self.pawnHelpList:
-            pawn.team = self.pawnHelpList.index(pawn)%self.teams
+            if pawn.NPC:
+                pawn.team = self.pawnHelpList.index(pawn) % (self.teams - self.playerTeams) + self.playerTeams
+            else:
+                pawn.team = self.pawnHelpList.index(pawn)%self.playerTeams
             pawn.originalTeam = pawn.team 
 
-    def threadedGeneration(self, path):
+    def threadedGeneration(self, path, non_npc):
         self.pawnGenI += 1
         
         print("Probing if file ready.")
@@ -490,9 +494,12 @@ class Game:
             print("File ready!")
             
             pawn = Pawn(self, path)
-            pawn.team = self.pawnHelpList.index(pawn)%self.teams
+            if non_npc:
+                pawn.team = self.pawnHelpList.index(pawn)%self.playerTeams
+            else:
+                pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
             pawn.teamColor = self.getTeamColor(pawn.team)
-            pawn.NPC = False
+            pawn.NPC = not non_npc
             self.ENTITIES.append(pawn)
             
         else:
@@ -580,9 +587,11 @@ class Game:
         return angle % 360
     
     def levelUpTimeFreeze(self):
-        return max(abs(self.levelUpI-2.5)-1.5,0)
+        return max(abs(self.levelUpI-(self.LEVELUPTIME/2))-(self.LEVELUPTIME/2 - 1),0)
     
     def levelUpScreen(self):
+
+
         if self.levelUpBlink > 0:
             self.levelUpBlink -= self.deltaTimeR
         else:
@@ -604,7 +613,7 @@ class Game:
 
         self.screen.blit(IM, self.res/2 - [random.randint(-2, 2), 300+random.randint(-2, 2)] - v2(IM.get_size())/2 - [0, 800*lowering])
 
-        text_t = min(max((5-self.levelUpI) - 0.8, 0)/0.7, 1.0)
+        text_t = min(max((self.LEVELUPTIME-self.levelUpI) - 0.8, 0)/0.7, 1.0)
         text = combinedText(self.pendingLevelUp.name, self.pendingLevelUp.teamColor, f" LEVELED UP (LVL {self.pendingLevelUp.level+1})", [255]*3, font=self.fontLarge)
         text.set_alpha(int(255 * (1-I)))
         self.screen.blit(text, self.res/2 - [0, 150] - v2(text.get_size())/2)
@@ -612,7 +621,7 @@ class Game:
         r1 = pygame.Rect(self.res[0]/2 - 400, 800, 800, 30)
         pygame.draw.rect(self.screen, [255,255,255], r1, width=1)
         r2 = r1.copy()
-        ir2 = max(0, 1-(5-self.levelUpI)/5)
+        ir2 = max(0, 1-(self.LEVELUPTIME-self.levelUpI)/self.LEVELUPTIME)
         r2.width = ir2*796
         r2.height = 26
         r2.center = r1.center
@@ -624,8 +633,9 @@ class Game:
             t = self.font.render(y, True, [255]*3)
             self.screen.blit(t, [40, 430 + 30*i])
 
-        for x in range(3):
-            xpos = (x-1)*450 + self.res[0]/2
+        amountOfItems = len(self.pendingLevelUp.nextItems)
+        for x in range(amountOfItems):
+            xpos = (x-(amountOfItems/2 - 0.5))*450 + self.res[0]/2
             item = self.pendingLevelUp.nextItems[x]
 
             pulse = 1 + 0.05 * math.sin(pygame.time.get_ticks()/200 + x)
@@ -869,6 +879,8 @@ class Game:
     def advanceShop(self):
         self.teamInspectIndex += 1
         self.teamInspectIndex = ((self.teamInspectIndex+1)%(self.teams+1))-1
+
+
         for x in self.pawnHelpList:
             x.walkTo = None
             x.pickWalkingTarget()
@@ -1078,21 +1090,24 @@ class Game:
         if self.pawnGenT > 1:
             self.pawnGenT -= 1
             for x in os.listdir("players/"):
-                if x not in self.playerFiles and x not in self.playerFilesToGen:
+                if x not in self.playerFiles and (x, True) not in self.playerFilesToGen:
                     print(x, "Not present")
-                    self.playerFilesToGen.append(x)
+                    self.playerFilesToGen.append((x, True))
 
         if self.pawnGenI < 3 and self.playerFilesToGen:
 
-            x = random.choice(self.playerFilesToGen)
+            x, non_npc = random.choice(self.playerFilesToGen)
             self.playerFiles.append(x)
-            self.playerFilesToGen.remove(x)
-            t = threading.Thread(target=self.threadedGeneration, args=("players/" + x,))
+            self.playerFilesToGen.remove((x, non_npc))
+
+            p = "players/" if non_npc else "npcs/"
+
+            t = threading.Thread(target=self.threadedGeneration, args=(p + x, non_npc))
             t.daemon = True
             t.start()
         
     def resetLevelUpScreen(self):
-        self.levelUpI = 5
+        self.levelUpI = self.LEVELUPTIME
         self.levelUpBlink = 1
         self.levelUpIndex = random.randint(0,2)
 

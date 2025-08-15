@@ -164,3 +164,19 @@ class Shop:
 
         self.app.screen.blit(self.surf, self.getDefPos(), special_flags=pygame.BLEND_PREMULTIPLIED)
         return a
+    
+    def autoBuyForTeam(self):
+        pawns = [p for p in self.app.pawnHelpList if p.team == self.team and p.NPC]
+        if not pawns:
+            return
+
+        available_weapons = [b.weapon for b in self.weapon_slots if not b.outOfStock]
+        if not available_weapons:
+            return
+
+        weapon = random.choice(available_weapons)
+        pawn = random.choice(pawns)
+
+        weapon.give(pawn)
+
+

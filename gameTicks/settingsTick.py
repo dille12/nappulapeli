@@ -5,14 +5,19 @@ from core.dropDown import Dropdown
 from core.button import Button
 from core.ipManager import get_local_ip
 import random
+import os
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
-    self.teamAmount = Dropdown(self, "Teams:", ["2", "3", "4", "5", "6", "7", "8"], (550,400))
-    self.loadedMusic = None
-    self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (800,400))
-    self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (1050,400))
+    self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600))
+    self.npcTeamAmount = Dropdown(self, "NPC Teams:", ["0", "1", "2", "3", "4", "5", "6", "7", "8"], (350,600))
+    self.teamFill = Dropdown(self, "Fill teams to:", ["1", "2", "3", "4", "5", "6", "7", "8"], (600,600))
 
-    self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1300,400))
+
+    self.loadedMusic = None
+    self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (550,400))
+    self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (800,400))
+
+    self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1050,400))
     self.roundLength = Dropdown(self, "Round Length:", ["0:30", "3:00", "5:00", "10:00"], (1550,400))
 
     self.playButton = Button(self, (1600,850), (250,120))
@@ -30,7 +35,7 @@ def settingsTick(self: "Game"):
         teamIndices.append(0)
 
     for i, pawn in enumerate(self.pawnHelpList):
-        x = 300 + pawn.team * 100
+        x = 900 + pawn.team * 100
 
         y = 550 + 30*teamIndices[pawn.team]
         teamIndices[pawn.team] += 1
@@ -49,6 +54,8 @@ def settingsTick(self: "Game"):
     self.ttsToggle.tick()
     self.itemToggle.tick()
     self.roundLength.tick()
+    self.npcTeamAmount.tick()
+    self.teamFill.tick()
 
     s = self.roundLength.get_selected()
     if s == "0:30":
@@ -61,7 +68,9 @@ def settingsTick(self: "Game"):
         self.MAXROUNDLENGTH = 600
 
 
-    self.teams = int(self.teamAmount.get_selected())
+    self.teams = int(self.teamAmount.get_selected()) + int(self.npcTeamAmount.get_selected())
+    self.playerTeams = int(self.teamAmount.get_selected())
+    self.fillTeamsTo = int(self.teamFill.get_selected())
     self.teamsSave = self.teams
     self.TTS_ON = self.ttsToggle.get_selected() == "On"
     self.ITEM_AUTO = self.itemToggle.get_selected() == "Auto"
@@ -99,6 +108,15 @@ def settingsTick(self: "Game"):
 
     if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
+
+        npcsToAdd =  (self.teams - self.playerTeams) * self.fillTeamsTo
+        for x in range(npcsToAdd):
+            for x in os.listdir("npcs/"):
+                if x not in self.playerFiles and (x, False) not in self.playerFilesToGen:
+                    print(x, "Adding npc")
+                    self.playerFilesToGen.append((x, False))
+                    break
+
         self.refreshShops()
         self.reTeamPawns()
         self.SimpleServerController.stop_server()
