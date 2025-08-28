@@ -12,7 +12,7 @@ def tickShops(self: "Game"):
 
         FULL_NPC_TEAM = True
         for x in self.pawnHelpList:
-            if x.team == self.teamInspectIndex:
+            if x.team.i == self.teamInspectIndex:
                 if not x.NPC:
                     FULL_NPC_TEAM = False
                     break
@@ -26,7 +26,7 @@ def tickShops(self: "Game"):
 
         underMouse = None
         for x in self.pawnHelpList:
-            if x.team != self.teamInspectIndex:
+            if x.team.i != self.teamInspectIndex:
                 continue
             
             x.renderInfo()

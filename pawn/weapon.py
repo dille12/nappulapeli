@@ -58,7 +58,6 @@ class Weapon:
         :param owner: The Pawn object that owns this weapon.
         :param precomputedImage: Optional precomputed image to avoid loading it again.
         """
-        print("Initializing weapon with args:", args)
         self.args = args
         image_path, damage, range, magSize, fireRate, fireFunction, reloadTime, typeD = args
         self.app = app
@@ -160,12 +159,10 @@ class Weapon:
         Give this weapon to a pawn.
         :param pawn: The Pawn object to give the weapon to.
         """
-        print("Giving weapon:", self.name, "to", pawn.name)
 
         # This creates a memory leak if the weapon is given to multiple pawns?
         pawn.weapon = Weapon(self.app, self.name, self.price, *self.args, owner=pawn, precomputedImage=self.image.copy())  # Pass the image as a precomputed image
 
-        print(f"{self.name} given to {pawn.name}")
 
     def reload(self):
         self.currReload = self.getReloadTime()
@@ -289,9 +286,14 @@ class Weapon:
         if self.meleeing(): return
 
         self.meleeI = self.getMeleeTime()
+        t = self.owner.target.pos.copy()
+
         self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+
         if self.owner.itemEffects["detonation"]:
-            Explosion(self.app, self.owner.target.pos, self.owner, 100)
+            Explosion(self.app, t, self.owner, 100)
+
+
         if self.owner.onScreen():
             self.app.meleeSound.stop()
             self.app.meleeSound.play()

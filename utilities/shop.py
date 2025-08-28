@@ -90,7 +90,7 @@ class Shop:
         rates = []
         for w in self.app.weapons:
             
-            price = w.price[0] + w.price[1]*5
+            price = w.price[0] + w.price[1]
             if price == 0:
                 continue
             rates.append(price)

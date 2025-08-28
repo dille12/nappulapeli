@@ -47,7 +47,7 @@ class PawnBehaviour:
             else:
                 c = self.app.randomWeighted(0.5, 0.2)
                 if c == 1 and self.skullCarriedByOwnTeam():
-                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
+                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team.i+1)%self.app.teams])
                     print("Attacking!")
                 else:
                     
@@ -56,21 +56,21 @@ class PawnBehaviour:
 
     def turfWarWalkingTarget(self):
 
-        if self.app.teamSpawnRooms[self.team].turfWarTeam != self.team:
-            self.getRouteTo(endPosGrid=self.app.teamSpawnRooms[self.team].randomCell())
+        if self.app.teamSpawnRooms[self.team.i].turfWarTeam != self.team.i:
+            self.getRouteTo(endPosGrid=self.app.teamSpawnRooms[self.team.i].randomCell())
             return
         
         if self.currentRoom:
-            if self.currentRoom.turfWarTeam != self.team:
+            if self.currentRoom.turfWarTeam != self.team.i:
                 self.getRouteTo(endPosGrid=self.currentRoom.randomCell())
                 return
         
         preferableChoices = []
         choices = []
         for x in self.app.map.rooms:
-            if x.turfWarTeam == self.team:
+            if x.turfWarTeam == self.team.i:
                 for y in x.connections:
-                    if y.turfWarTeam != self.team:
+                    if y.turfWarTeam != self.team.i:
                         choices.append(y)
                         if x == self.currentRoom:
                             preferableChoices.append(y)
@@ -90,8 +90,8 @@ class PawnBehaviour:
 
     def shopWalkPos(self):
         if self.app.teamInspectIndex != -1:
-            inspect_team = [p for p in self.app.pawnHelpList.copy() if p.team == self.app.teamInspectIndex]
-            other_team = [p for p in self.app.pawnHelpList.copy() if p.team != self.app.teamInspectIndex]
+            inspect_team = [p for p in self.app.pawnHelpList.copy() if p.team.i == self.app.teamInspectIndex]
+            other_team = [p for p in self.app.pawnHelpList.copy() if p.team.i != self.app.teamInspectIndex]
             inspect_team.sort(key=lambda p: id(p))
             other_team.sort(key=lambda p: id(p))
             spacing = 250
@@ -100,7 +100,7 @@ class PawnBehaviour:
             base_x2 = self.app.res[0]/2 + spacing2/2
             base_y = 300
             offset_y = 600  # vertical gap between top and bottom lines
-            if self.team == self.app.teamInspectIndex:
+            if self.team.i == self.app.teamInspectIndex:
                 index = inspect_team.index(self)
                 total = len(inspect_team)
                 x = base_x + (index - total / 2) * spacing
@@ -166,14 +166,14 @@ class PawnBehaviour:
                     endPos = self.app.duelPawns[(i+1)%2].getOwnCell()
                     self.getRouteTo(endPosGrid=endPos)
                 else: # Random attack
-                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team+1)%self.app.teams])
+                    self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team.i+1)%self.app.teams])
         else:
             if self.carryingSkull(): # Go melee target
                 self.getRouteTo(endPosGrid=self.target.getOwnCell())
 
             elif self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
                 self.say("APUA")
-                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team])
+                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team.i])
 
             else:
                 CELLS = self.getVisibility()

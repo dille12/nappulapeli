@@ -123,21 +123,21 @@ class ArenaGenerator:
         surface = pygame.Surface((surface_width, surface_height))
         
         # Scale textures if provided
-        if wall_texture:
-            wall_texture = pygame.transform.scale(wall_texture, (cell_size, cell_size))
-        if floor_texture:
-            floor_texture = pygame.transform.scale(floor_texture, (cell_size, cell_size))
+        #if wall_texture:
+        #    wall_texture = pygame.transform.scale(wall_texture, (cell_size, cell_size))
+        #if floor_texture:
+        #    floor_texture = pygame.transform.scale(floor_texture, (cell_size, cell_size))
         
         # Default colors if no textures
         default_colors = {
-            CellType.WALL.value: (40, 40, 40),
-            CellType.FLOOR.value: (200, 200, 200),
-            CellType.DOOR.value: (139, 69, 19),
-            CellType.STAIRS_UP.value: (70, 130, 180),
-            CellType.STAIRS_DOWN.value: (25, 25, 112),
-            CellType.ENTRANCE.value: (0, 255, 0),
-            CellType.EXIT.value: (255, 0, 0)
-        }
+                CellType.WALL.value: (0,0,0),           # Dark gray
+                CellType.FLOOR.value: (55,55,55),       # Light gray
+                CellType.DOOR.value: (139, 69, 19),          # Brown
+                CellType.STAIRS_UP.value: (70, 130, 180),    # Steel blue
+                CellType.STAIRS_DOWN.value: (25, 25, 112),   # Midnight blue
+                CellType.ENTRANCE.value: (0, 255, 0),        # Green
+                CellType.EXIT.value: (255, 0, 0)             # Red
+            }
         
         # Fill surface
         for y in range(self.height):
@@ -150,7 +150,7 @@ class ArenaGenerator:
                 if cell_type == CellType.WALL.value and wall_texture:
                     surface.blit(wall_texture, (pixel_x, pixel_y))
                 elif cell_type == CellType.FLOOR.value and floor_texture:
-                    surface.blit(floor_texture, (pixel_x, pixel_y))
+                    surface.blit(random.choice(floor_texture), (pixel_x, pixel_y))
                 else:
                     # Fall back to solid colors
                     color = default_colors.get(cell_type, (128, 0, 128))
@@ -224,8 +224,8 @@ class ArenaGenerator:
         self._create_corridors(corridor_width)
         
         # Step 4: Add doors and special features
-        self._add_doors()
-        self._add_special_features()
+        #self._add_doors()
+        #self._add_special_features()
         
         # Step 5: Smooth and refine
         # self._smooth_arena()

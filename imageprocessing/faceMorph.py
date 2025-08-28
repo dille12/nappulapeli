@@ -6,6 +6,14 @@ from scipy import ndimage
 
 import os, json
 
+import os
+import json
+import hashlib
+import numpy as np
+
+def rgb_hash(rgb: np.ndarray) -> str:
+    """Compute a SHA-256 hash of the RGB image array."""
+    return hashlib.sha256(rgb.tobytes()).hexdigest()
 
 def load_landmarks_cache(app, cache_path="landmarks_cache.json"):
     with app.cacheLock:
@@ -19,14 +27,15 @@ def save_landmarks_cache(app, data, cache_path="landmarks_cache.json"):
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
 
-def get_or_load_landmarks(app, name, rgb, cache_path="landmarks_cache.json"):
+def get_or_load_landmarks(app, rgb, cache_path="landmarks_cache.json"):
+    key = rgb_hash(rgb)
     initial_cache = load_landmarks_cache(app, cache_path)
 
-    if name in initial_cache:
-        print(f"Loading landmarks for '{name}' from cache")
-        return np.array(initial_cache[name]) if initial_cache[name] is not None else np.array(None)
+    if key in initial_cache:
+        print(f"Loading landmarks from cache")
+        return np.array(initial_cache[key]) if initial_cache[key] is not None else np.array(None)
 
-    print(f"Detecting landmarks for '{name}'")
+    print(f"Detecting landmarks")
     try:
         landmarks = getFaceLandMarks(rgb)
         new_data = landmarks.tolist()
@@ -34,12 +43,12 @@ def get_or_load_landmarks(app, name, rgb, cache_path="landmarks_cache.json"):
         landmarks = np.array(None)
         new_data = None
 
-    # Reload latest cache just before writing to avoid overwriting updates
     latest_cache = load_landmarks_cache(app, cache_path)
-    latest_cache[name] = new_data
+    latest_cache[key] = new_data
     save_landmarks_cache(app, latest_cache, cache_path)
-    
+
     return landmarks
+
 
 
 def create_triangular_mesh(landmarks, img_shape):

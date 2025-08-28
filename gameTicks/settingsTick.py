@@ -6,6 +6,8 @@ from core.button import Button
 from core.ipManager import get_local_ip
 import random
 import os
+from core.qrcodeMaker import make_qr_surface
+from pawn.teamLogic import Team
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
     self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600))
@@ -25,6 +27,12 @@ def createSettings(self: "Game"):
     self.toggleServer = Button(self, (200,850), (200,40))
     self.SimpleServerController = SimpleServerController()
 
+    ip = get_local_ip()
+    
+    self.QR = make_qr_surface(f"http://{ip}:5000", 4)
+    threading.Thread(target=startServer, args=(self,), daemon=True).start()
+
+
 def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
 
@@ -37,10 +45,10 @@ def settingsTick(self: "Game"):
     for i, pawn in enumerate(self.pawnHelpList):
         x = 900 + pawn.team * 100
 
-        y = 550 + 30*teamIndices[pawn.team]
-        teamIndices[pawn.team] += 1
+        y = 550 + 30*teamIndices[pawn.team.i]
+        teamIndices[pawn.team.i] += 1
 
-        t = self.fontSmaller.render(pawn.name, True, self.getTeamColor(pawn.team))
+        t = self.fontSmaller.render(pawn.name, True, pawn.team.color)
         self.screen.blit(t, (x,y))
 
     
@@ -68,7 +76,14 @@ def settingsTick(self: "Game"):
         self.MAXROUNDLENGTH = 600
 
 
-    self.teams = int(self.teamAmount.get_selected()) + int(self.npcTeamAmount.get_selected())
+    T = int(self.teamAmount.get_selected()) + int(self.npcTeamAmount.get_selected())
+    if T != self.teams:
+        self.teams = T
+        self.allTeams = []
+        for i in range(T):
+            self.allTeams.append(Team(self, i))
+
+
     self.playerTeams = int(self.teamAmount.get_selected())
     self.fillTeamsTo = int(self.teamFill.get_selected())
     self.teamsSave = self.teams
@@ -82,10 +97,10 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar", volume=0.5)
+            self.music = self.loadSound("audio/bar", volume=0.3)
             
         elif self.musicChoice.get_selected() == "HH":
-            self.music = self.loadSound("audio/hh/bar", volume=0.5)
+            self.music = self.loadSound("audio/hh/bar", volume=0.3)
 
     self.loadedMusic = self.musicChoice.get_selected()
 
@@ -98,8 +113,14 @@ def settingsTick(self: "Game"):
     t = self.font.render(f"Servu päällä ({ip}:5000)" if serverOn else "Servu pois päältä", True, [255,255,255])
     self.screen.blit(t, (200, 900))
 
+    if serverOn:
+        self.screen.blit(self.QR, (200,700))
+
     if self.toggleServer.draw(self.screen, "Käynnistä serveri" if not serverOn else "Lopeta serveri", font = self.font):
-        self.SimpleServerController.toggle_server()
+        pass
+        
+
+
 
     if self.giveRandomWeapons.draw(self.screen, "Anna aseita", font = self.font):
         for pawn in self.pawnHelpList:
@@ -110,11 +131,19 @@ def settingsTick(self: "Game"):
         self.GAMESTATE = "pawnGeneration"
 
         npcsToAdd =  (self.teams - self.playerTeams) * self.fillTeamsTo
-        for x in range(npcsToAdd):
-            for x in os.listdir("npcs/"):
-                if x not in self.playerFiles and (x, False) not in self.playerFilesToGen:
-                    print(x, "Adding npc")
-                    self.playerFilesToGen.append((x, False))
+        for _ in range(npcsToAdd):
+            for file_name in os.listdir("npcs/"):
+                npc_name = os.path.splitext(file_name)[0]  # filename without extension
+                if npc_name not in self.playerFiles and not any(t[0] == npc_name for t in self.playerFilesToGen):
+                    
+                    file_path = os.path.join("npcs", file_name)
+
+                    # Load image as raw bytes (like imageRaw)
+                    with open(file_path, "rb") as f:
+                        imageRaw = f.read()
+
+                    print(npc_name, "Adding npc")
+                    self.playerFilesToGen.append((npc_name, imageRaw, None))
                     break
 
         self.refreshShops()
@@ -128,6 +157,20 @@ def settingsTick(self: "Game"):
 # Alternative simpler approach using subprocess
 import subprocess
 import sys
+import asyncio
+import websockets
+from server.test import make_handler
+import threading
+
+def startServer(app):
+    handler = make_handler(app)
+    async def serverMain():
+        async with websockets.serve(handler, "0.0.0.0", 8765, max_size=None):
+            print("Server listening")
+            app.loop = asyncio.get_event_loop() 
+            await asyncio.Future()  # run forever
+
+    asyncio.run(serverMain())
 
 class SimpleServerController:
     def __init__(self):

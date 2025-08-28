@@ -44,7 +44,7 @@ def battleTick(self: "Game"):
         elif self.GAMEMODE == "TEAM DEATHMATCH":
             victoryCondition = [0 for _ in range(self.teams)]
             for p in self.pawnHelpList:
-                victoryCondition[p.team] += p.kills
+                victoryCondition[p.team.i] += p.kills
             
             for i, x in enumerate(victoryCondition):
                 if x >= 50:
@@ -58,7 +58,7 @@ def battleTick(self: "Game"):
             
             for i, x in enumerate(victoryCondition):
                 if x >= 10:
-                    announceVictory(self, self.duelPawns[i].team)
+                    announceVictory(self, self.duelPawns[i].team.i)
                     break
 
         elif self.GAMEMODE == "TURF WARS":
@@ -163,7 +163,7 @@ def battleTick(self: "Game"):
 
 
     if self.objectiveCarriedBy:
-        self.skullTimes[self.objectiveCarriedBy.team] += self.deltaTime
+        self.skullTimes[self.objectiveCarriedBy.team.i] += self.deltaTime
 
     if self.splitI > 0:
         self.cameraPos = self.posToTargetTo.copy()
@@ -201,6 +201,7 @@ def battleTick(self: "Game"):
             self.cameraPosDelta = self.posToTargetTo2.copy()
 
         self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
+        self.renderParallax2()
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
 
@@ -213,6 +214,8 @@ def battleTick(self: "Game"):
         self.drawBFGLazers()
 
         self.particle_system.render_all(self.DRAWTO)
+
+        
 
         if DUAL and i == 1:
             self.cameraPosDelta = SAVECAMPOS.copy()
@@ -261,8 +264,8 @@ def battleTick(self: "Game"):
     if self.currMusic in [0, 1]:
         self.drawRoundInfo()
 
-    ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(70)
-    w, h = self.MINIMAPCELLSIZE*self.res/(70)
+    ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(self.tileSize)
+    w, h = self.MINIMAPCELLSIZE*self.res/(self.tileSize)
     
     pygame.draw.rect(self.MINIMAPTEMP, [255,0,0], (ox, oy, w, h), width=1)
 
@@ -273,7 +276,7 @@ def battleTick(self: "Game"):
         else:
             skullpos = self.skull.pos.copy()
 
-        pygame.draw.circle(self.MINIMAPTEMP, [255,255,255], self.MINIMAPCELLSIZE*skullpos/70, 6, width=1)
+        pygame.draw.circle(self.MINIMAPTEMP, [255,255,255], self.MINIMAPCELLSIZE*skullpos/self.tileSize, 6, width=1)
     
     self.screen.blit(self.MINIMAPTEMP, self.res - self.MINIMAP.get_size() - [10,10])
 

@@ -28,6 +28,51 @@ from gameTicks.tick import battleTick
 from gameTicks.gameModeTick import GlitchGamemodeDisplay, loadingTick
 from core.drawRectPerimeter import draw_rect_perimeter
 from core.getCommonRoom import find_farthest_room
+import asyncio
+from core.qrcodeMaker import make_qr_surface
+from pawn.teamLogic import Team
+
+# KILL STREAKS
+# Flash bang: Ampuu sinne tänne nänni pohjassa
+# Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
+# Dessu
+# Lisää aseita (tf2 medic gun, vasara jolla voi rakentaa suojia ja turretteja), eri classit (medic engineer soldier scout) jotka valitaan classiin sopivilla itemeillä
+# Class specific itemit, logot määrittävät kelle itemi sopii sekä värjätty itemin classin perusteella
+# Levelupit ja itemi valinta tehdään apissa
+# Hattu tulee kun vaikka 3 itemiä enemmän kuin muita classin itemeitä
+
+# USAS 12 Frag rounds
+# Pickup guns
+# Block corridors
+# Highroller: 10% Megaitem, 90 Eternal orja
+# Piilorasismi: Muuttuu mustaksi, mutta näkymätön välillä, 10x damage johonkin joukkueeseen.
+# Pislarundi, zeus (klitoriskiihdytin t:teemu) jotenkin sisään, se antaa shottiallokaation jollekin pelaajalle.
+# Pyörätuoli: +50% nopeus (animaatio)
+
+# Näkyvä rasismi, 
+
+
+
+# Riisifarmari: Pienenee, silmät ohistuu, mutta nopeus kasvaa
+# Paskapajeeti: Paskoo alleen, paskoihin liukastuu
+# DIY Liekinheitin: Tuplalämä paheeteihin, 
+# Juutalainen: Muuttaa kaikki tuhkakasaksi
+# Pelin alussa: Valitse etninen ryhmä: (Juutalainen, Riisiviljelijä, Kaaleet, Punanahka, Turaani, Yön timo)
+# Juutalainen: Kaikki aseet on kalliimpia mut parempia
+# Intiaani värtjätään punaseksi, alkuaseena jousipyssy, buffi jos omia ympärillä, kasino
+# Kaaleilla tupla damage melee aseilla
+# Tomahawk
+# Rättipäät: Tupladamage räjähdyksillä, Masokismi innate
+# Turaaneilla alku ase musta makkara
+# Riisifarmareilla syömäpuikot alkuaseina
+# 
+# Musta mies, varastaa parhaan aseen laittaa kissanaamion pelaajaspritelle.
+
+# Teemun oikeet ideat
+# Joka roundi uudet ostot
+# 
+
+
 def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
     """Wait until the file is stable and readable, or timeout."""
     start_time = time.time()
@@ -91,7 +136,7 @@ class Game:
         for x in range(20):
             d2 = d.copy()
             d2.fill((0,0,0))
-            d2.set_alpha((x+1)*5)
+            d2.set_alpha((x+1)*10)
             self.darken.append(d2)
 
         self.mask = pygame.Surface(self.res, pygame.SRCALPHA).convert_alpha()
@@ -103,6 +148,20 @@ class Game:
         self.playerFiles = []  # List to hold player objects
         self.particle_list = []
         self.playerFilesToGen = [] 
+
+        self.teams = 2
+        self.allTeams = []
+        for i in range(self.teams):
+            self.allTeams.append(Team(self, i))
+
+        if True:
+            for x in os.listdir("players"):
+                playerName = os.path.splitext(x)[0]
+                file_path = os.path.join("players", x)
+                with open(file_path, "rb") as f:
+                    imageRaw = f.read()
+                self.add_player(playerName, imageRaw, "DEBUG")
+
         self.clock = pygame.time.Clock()
 
         self.fontName = "texture/agencyb.ttf"
@@ -154,6 +213,19 @@ class Game:
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
 
+        self.concrete = pygame.image.load("texture/concrete.png").convert()
+        self.concretes = []
+        self.tileSize = 100
+        tile_w = 70
+        w, h = self.concrete.get_width(), self.concrete.get_height()
+
+        for i in range(w//tile_w):
+            rect = pygame.Rect(i * tile_w, 0, tile_w, h)
+            tile = self.concrete.subsurface(rect).copy()
+
+            tile = pygame.transform.scale(tile, (self.tileSize, self.tileSize))
+
+            self.concretes.append(tile)
         
 
         self.deltaTime = 1/60
@@ -165,7 +237,7 @@ class Game:
         #self.map = ArenaGenerator(80, 60)
 
         # TEAM COUNT
-        self.teams = 2
+        
         self.teamsSave = self.teams
         self.MINIMAPCELLSIZE = 2
         self.round = 0
@@ -175,7 +247,7 @@ class Game:
         self.ultCalled = False
         self.ultFreeze = 0
 
-        self.gameModeLineUp = ["TEAM DEATHMATCH", "ODDBALL", "TURF WARS"]
+        self.gameModeLineUp = ["TEAM DEATHMATCH"] # , "ODDBALL", "TURF WARS"
 
         self.teamInspectIndex = 0
         self.safeToUseCache = True
@@ -211,31 +283,7 @@ class Game:
             y.set_alpha(40)
             self.noise.append(y)
 
-        
 
-        #self.arena = ArenaWithPathfinding(self.map)
-        #connectivity = self.arena.validate_arena_connectivity()
-        #print(f"Arena Connectivity: {connectivity}")
-
-        #self.spawn_points = self.arena.find_optimal_spawn_points(self.teams, min_distance=20)
-        #print(f"Spawn points: {self.spawn_points}")
-
-        #self.map.get_spawn_points()
-
-        #self.MAP = self.map.to_pygame_surface(cell_size=70)
-
-        #floor_mask = pygame.Surface((80*70, 60*70))
-        #self.wall_mask = pygame.Surface((80*70, 60*70), flags=pygame.SRCALPHA).convert_alpha()
-        #for y in range(60):
-        #    for x in range(80):
-        #        if self.map.grid[y,x] != CellType.WALL.value:  # Your tile logic
-        #            pygame.draw.rect(floor_mask, (55,55,55), (x*70, y*70, 70, 70))
-        #        else:
-        #            pygame.draw.rect(self.wall_mask, (0,0,0), (x*70, y*70, 70, 70))
-
-        #self.MAP = floor_mask
-
-        #self.MINIMAP = self.map.to_pygame_surface(cell_size=3)
         self.MINIMAPTEMP = None
         self.cameraPos = v2(0, 0)
         self.cameraPosDelta = self.cameraPos.copy()
@@ -346,6 +394,146 @@ class Game:
             self.shops.append(shop)
 
 
+    def findCorners(self, grid):
+        h, w = grid.shape
+        corners = []
+        wallMidPoints = []
+
+        for y in range(h+1):    
+            if y in (0, h):
+                continue      # vertices go one past grid
+            for x in range(w+1):
+                if x in (0, w):
+                    continue 
+                block = []
+                if y > 0 and x > 0:
+                    block.append(grid[y-1, x-1])
+                if y > 0 and x < w:
+                    block.append(grid[y-1, x])
+                if y < h and x > 0:
+                    block.append(grid[y, x-1])
+                if y < h and x < w:
+                    block.append(grid[y, x])
+
+                if not block: 
+                    continue
+
+                wall_count = sum(1 for v in block if v == 0)
+                if wall_count in (1, 3):
+                    corners.append((x, y))
+                elif wall_count == 2:
+                    wallMidPoints.append((x,y))
+
+        return corners, wallMidPoints
+    
+    def findWalls(self, corners, wallMidPoints):
+        wallMidSet = set(wallMidPoints)
+        cornerSet  = set(corners)
+        walls = []
+
+        for c in corners:
+            cx, cy = c
+
+            # search four directions: left, right, up, down
+            directions = [(-1,0),(1,0),(0,-1),(0,1)]
+            for dx, dy in directions:
+                nx, ny = cx+dx, cy+dy
+                path = []
+
+                # walk until you hit another corner or fail
+                while (nx, ny) in wallMidSet:
+                    path.append((nx,ny))
+                    nx += dx
+                    ny += dy
+
+                if (nx, ny) in cornerSet:
+                    # found valid wall
+                    other = (nx, ny)
+                    seg = tuple(sorted([c, other]))
+                    if seg not in walls:
+                        walls.append(seg)
+
+        return walls
+    
+    def wall_intersects_screen(self, p1, p2):
+        W, H = self.res
+        x1, y1 = p1
+        x2, y2 = p2
+
+        if x1 == x2:  # vertical
+            ymin, ymax = sorted((y1, y2))
+            return (0 <= x1 <= W) and not (ymax < 0 or ymin > H)
+        else:  # horizontal
+            xmin, xmax = sorted((x1, x2))
+            return (0 <= y1 <= H) and not (xmax < 0 or xmin > W)
+
+    
+
+    def renderParallax2(self):
+        camCenter = v2(self.res[0]*0.5, self.res[1]*0.8)
+        for p1, p2 in self.walls:
+
+            polygon = [p1 - self.cameraPosDelta, p2 - self.cameraPosDelta]
+
+            # skip if both endpoints are outside screen
+            in_frame = self.wall_intersects_screen(polygon[0], polygon[1])
+            if not in_frame:
+                continue
+
+            # wall vector + normal
+            wall_vec = polygon[1] - polygon[0]
+            normal = np.array([-wall_vec[1], wall_vec[0]])
+            normal /= np.linalg.norm(normal) + 1e-6
+
+            # extrusion & lighting
+            extruded = []
+            maxDiff = 0
+            for x in range(2):
+                o = polygon[1-x]
+                dist = np.linalg.norm(o - camCenter) / self.res[0]
+                extrude = (150 + 200*dist) * (o - camCenter) / self.res[0]
+                extruded.append(o + extrude)
+                maxDiff = max(maxDiff, abs(extrude[0]), abs(extrude[1]))
+
+            # light shading based on wall normal vs camera
+            mid = (polygon[0] + polygon[1]) / 2
+            to_cam = camCenter - mid
+            to_cam /= np.linalg.norm(to_cam) + 1e-6
+            light = np.clip(np.dot(normal, to_cam), -1, 1)
+
+            # base shade from extrusion + directional light
+            shade = 40 + int(maxDiff/6) + int(80*light)
+            shade = max(20, min(220, shade))
+            color = (shade, shade, shade)
+            colorOutline = (shade+25, shade+25, shade+25)
+
+            pygame.draw.polygon(self.DRAWTO, color, polygon + extruded)
+
+            pygame.draw.lines(self.DRAWTO, colorOutline, True, polygon + extruded, width = 2)
+
+
+
+
+    def renderParallax(self):
+        camCenter = self.res/2
+        for p1, p2 in self.walls:
+
+            polygon = [p1 - self.cameraPosDelta, p2 - self.cameraPosDelta]
+            p1InFrame = 0 <= polygon[0][0] <= self.res[0] and 0 <= polygon[0][1] <= self.res[1]
+            p2InFrame = 0 <= polygon[1][0] <= self.res[0] and 0 <= polygon[1][1] <= self.res[1]
+            if not p1InFrame and not p2InFrame:
+                continue
+            maxDiff = 0
+            for x in range(2):
+                o = polygon[1-x]
+                diff = 300 * (o - camCenter) / self.res[0]
+                maxDiff = max(maxDiff, abs(diff[0]), abs(diff[1]))
+                polygon.append(o + diff)
+
+            color = [10 + int(maxDiff/6)] * 3
+
+            pygame.draw.polygon(self.DRAWTO, color, polygon)
+
     def genLevel(self):
 
         
@@ -361,6 +549,7 @@ class Game:
         self.arena = ArenaWithPathfinding(self.map)
         connectivity = self.arena.validate_arena_connectivity()
         print(f"Arena Connectivity: {connectivity}")
+        print(self.map.grid.shape)
 
         print("Rooms", len(self.map.rooms))
         i.text ="Finding spawn points"
@@ -380,16 +569,27 @@ class Game:
         print("Spawn Rooms")
         self.commonRoom = find_farthest_room(self.map.rooms, self.teamSpawnRooms, mode="min")
 
+        self.corners, midpoints = self.findCorners(self.map.grid)
+        walls = self.findWalls(self.corners, midpoints)
+        self.walls = []
+        for p1, p2 in walls:
+            self.walls.append([v2(p1)*self.tileSize, v2(p2)*self.tileSize])
+        
+        
+
         self.map.get_spawn_points()
         i.text ="Drawing the map"
-        self.MAP = self.map.to_pygame_surface(cell_size=70)
+        self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes)
+        #for p1, p2 in self.walls:
+        #    pygame.draw.line(self.MAP, [255,255,255], p1, p2, 3)
+
         
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
         
         for team, r in enumerate(self.teamSpawnRooms):
             print("Drawing", team, "spawn room")
-            pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*70, r.y*70, 
-                                                                                      r.width*70, r.height*70))
+            pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize, r.y*self.tileSize, 
+                                                                                      r.width*self.tileSize, r.height*self.tileSize))
 
         self.MINIMAPTEMP = self.MINIMAP.copy()
         #entrance = self.map.get_entrance_position()
@@ -479,31 +679,28 @@ class Game:
             pygame.draw.rect(self.screen, [0,0,0], x2)
 
     def reTeamPawns(self):
+        
         for pawn in self.pawnHelpList:
-            if pawn.NPC:
-                pawn.team = self.pawnHelpList.index(pawn) % (self.teams - self.playerTeams) + self.playerTeams
-            else:
-                pawn.team = self.pawnHelpList.index(pawn)%self.playerTeams
-            pawn.originalTeam = pawn.team 
+            i = self.pawnHelpList.index(pawn)%self.playerTeams
+            self.allTeams[i].add(pawn)
 
-    def threadedGeneration(self, path, non_npc):
+
+    def add_player(self, name, image, client):
+        self.playerFilesToGen.append((name, image, client))
+
+    def threadedGeneration(self, name, image, client):
         self.pawnGenI += 1
         
-        print("Probing if file ready.")
-        if wait_for_file_ready(path):
-            print("File ready!")
+        print("File ready!")
+        
+        pawn = Pawn(self, name, image, client)
+        #if client:
+        
+        #else:
+        #    pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
+        pawn.teamColor = self.getTeamColor(pawn.team.i)
+        self.ENTITIES.append(pawn)
             
-            pawn = Pawn(self, path)
-            if non_npc:
-                pawn.team = self.pawnHelpList.index(pawn)%self.playerTeams
-            else:
-                pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
-            pawn.teamColor = self.getTeamColor(pawn.team)
-            pawn.NPC = not non_npc
-            self.ENTITIES.append(pawn)
-            
-        else:
-            print("Download was incomplete.")
 
         self.reTeamPawns()
 
@@ -860,12 +1057,13 @@ class Game:
             x.enslaved = False
             x.reset()
             x.defaultPos()
+            x.respawnI = 0
 
 
         self.refreshShops()
         self.particle_list.clear()
         self.round += 1
-        if self.round == 2:
+        if self.round == 2 and False:
             self.judgePawns()
 
 
@@ -958,12 +1156,14 @@ class Game:
                 continue
             
         
-            pygame.draw.rect(self.MAP, (0,0,0), (x*70,y*70, 70, 70))
+            pygame.draw.rect(self.MAP, (0,0,0), (x*self.tileSize,y*self.tileSize, 
+                                                 self.tileSize, self.tileSize))
 
     def drawTurfs(self):
         for r in self.map.rooms:
             if r.turfWarTeam is not None:
-                rect = pygame.Rect(r.x*70, r.y*70, r.width*70, r.height*70)
+                rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
+                                   r.width*self.tileSize, r.height*self.tileSize)
                 rect.topleft -= self.cameraPosDelta
                 draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, self.getTeamColor(r.turfWarTeam), width=5)
 
@@ -978,7 +1178,7 @@ class Game:
         elif self.GAMEMODE in "TEAM DEATHMATCH":
             kills = [0 for _ in range(self.teams)]
             for p in self.pawnHelpList:
-                kills[p.team] += p.kills
+                kills[p.team.i] += p.kills
 
             for i, x in sorted(enumerate(kills), key=lambda pair: pair[1], reverse=True):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} kills", self.getTeamColor(i), font=self.fontSmaller)
@@ -1086,23 +1286,22 @@ class Game:
             return
 
     def genPawns(self):
-        self.pawnGenT += self.deltaTime
-        if self.pawnGenT > 1:
-            self.pawnGenT -= 1
-            for x in os.listdir("players/"):
-                if x not in self.playerFiles and (x, True) not in self.playerFilesToGen:
-                    print(x, "Not present")
-                    self.playerFilesToGen.append((x, True))
-
         if self.pawnGenI < 3 and self.playerFilesToGen:
 
-            x, non_npc = random.choice(self.playerFilesToGen)
-            self.playerFiles.append(x)
-            self.playerFilesToGen.remove((x, non_npc))
+            name, image, client = random.choice(self.playerFilesToGen)
+            self.playerFiles.append(name)
+            self.playerFilesToGen.remove((name, image, client))
 
-            p = "players/" if non_npc else "npcs/"
+            #p = "players/" if non_npc else "npcs/"
+            if client:
+                if client != "DEBUG":
+                    client_ip, client_port = client.remote_address
+                else:
+                    client_ip = "DEBUG"
+            else:
+                client_ip = None
 
-            t = threading.Thread(target=self.threadedGeneration, args=(p + x, non_npc))
+            t = threading.Thread(target=self.threadedGeneration, args=(name, image, client_ip))
             t.daemon = True
             t.start()
         

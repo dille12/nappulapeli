@@ -426,6 +426,56 @@ def fast_gaussian_blur(surface, sigma=5):
 
     return blurred
 
+def remove_background_bytes(input_bytes):
+    # Remove the background
+    output_bytes = remove(input_bytes)
+
+    # Return output bytes (PNG format)
+    return output_bytes
+
+import base64
+import hashlib
+import json
+import os
+
+def bytes_hash(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+def load_bg_cache(app, cache_path="background_cache.json"):
+    with app.cacheLock:
+        if os.path.isfile(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        return {}
+
+def save_bg_cache(app, data, cache_path="background_cache.json"):
+    with app.cacheLock:
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+
+def get_or_remove_background(app, input_bytes, cache_path="background_cache.json"):
+    key = bytes_hash(input_bytes)
+    initial_cache = load_bg_cache(app, cache_path)
+
+    if key in initial_cache:
+        print("Loading background-removed image from cache")
+        return base64.b64decode(initial_cache[key]) if initial_cache[key] is not None else None
+
+    print("Removing background")
+    try:
+        output_bytes = remove(input_bytes)
+        new_data = base64.b64encode(output_bytes).decode("utf-8")
+    except:
+        output_bytes = None
+        new_data = None
+
+    latest_cache = load_bg_cache(app, cache_path)
+    latest_cache[key] = new_data
+    save_bg_cache(app, latest_cache, cache_path)
+
+    return output_bytes
+
+
 
 def remove_background(input_path, output_path):
     print("Removing:", input_path)

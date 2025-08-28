@@ -7,7 +7,7 @@ import random
 import os
 import math
 import numpy as np
-from imageprocessing.imageProcessing import gaussian_blur, trim_surface, remove_background, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood
+from imageprocessing.imageProcessing import gaussian_blur, trim_surface, remove_background, remove_background_bytes, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood, get_or_remove_background
 from particles.blood import BloodParticle
 from killfeed import KillFeed
 from utilities.explosion import Explosion
@@ -32,12 +32,15 @@ from _thread import start_new_thread
 from pawn.weapon import Weapon
 from typing import TYPE_CHECKING
 from particles.particle import Particle
+import asyncio
 if TYPE_CHECKING:
     from main import Game
 
 from pawn.behaviour import PawnBehaviour
 from pawn.getStat import getStat
 from pawn.tts import EspeakTTS
+import base64
+from pawn.teamLogic import Team
 
 
 def debug_draw_alpha(surface):
@@ -95,27 +98,40 @@ def heat_color(v):
     return (r, g, b)
 
 
+def surface_to_base64(surface: pygame.Surface) -> str:
+    buf = io.BytesIO()
+    pygame.image.save(surface, buf, "PNG")
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode("utf-8")
+    return b64  # Just the base64, no prefix
+
+
 class Pawn(PawnBehaviour, getStat):
-    def __init__(self, app: "Game", cardPath):
+    def __init__(self, app: "Game", pawnName, pawnAvatarEncoded, client):
         self.app: "Game" = app
-        self.cardPath = cardPath
         # extract the name from the path
-        self.name = cardPath.split("/")[-1].split(".")[0]
+        self.name = pawnName
+        self.client = client
 
         PawnBehaviour.__init__(self)
         getStat.__init__(self)
 
-        info = infoBar(self.app, f"{self.name}: Generating")
+        # pawnAvatarEncoded is encoded as base64
 
-        self.removeBGPath = "player_images_removed/" + self.name + ".png"
-        if not os.path.exists(self.removeBGPath):
-            print("NEW PAWN INBOUND")
-            info.text = f"{self.name}: Removing bg"
-            remove_background(cardPath, self.removeBGPath)
-            
-            image = pygame.image.load(self.removeBGPath).convert_alpha()
-        else:
-            image = pygame.image.load(self.removeBGPath).convert_alpha()
+        info = infoBar(self.app, f"{self.name}: Removing BG")
+
+        # decode base64
+        #image_bytes = base64.b64decode(pawnAvatarEncoded)
+
+        # remove background in memory
+        bg_removed_bytes = get_or_remove_background(self.app, pawnAvatarEncoded)
+
+        # convert to pygame.Surface
+        img = Image.open(io.BytesIO(bg_removed_bytes)).convert("RGBA")
+        mode = img.mode
+        size = img.size
+        data = img.tobytes()
+        image = pygame.image.frombuffer(data, size, mode)
             
         self.textBubble = None
 
@@ -125,7 +141,9 @@ class Pawn(PawnBehaviour, getStat):
         self.defaultPos()
 
 
-        self.NPC = random.choice((True, True, False))
+        self.NPC = not bool(self.client)
+        if self.client == "DEBUG":
+            self.client = None
 
         self.left_eye_center = v2(0,0)
         self.right_eye_center = v2(0,0)
@@ -178,6 +196,11 @@ class Pawn(PawnBehaviour, getStat):
 
         self.hudImage = pygame.transform.scale_by(self.levelUpImage.copy(), 200 / self.levelUpImage.get_size()[1])
 
+
+        enc = pygame.transform.scale_by(self.hudImage, 40 / self.hudImage.get_size()[1])
+
+        self.encodedImage = surface_to_base64(enc)
+
         info.text = f"{self.name}: Pixel sorting"
         self.levelUpIms = []
         for x in range(4):
@@ -188,9 +211,16 @@ class Pawn(PawnBehaviour, getStat):
             self.levelUpIms.append(l)
 
         self.facingRight = True
-        self.team = 0
-        self.originalTeam = 0
-        self.teamColor = self.app.getTeamColor(self.team) 
+        self.app.pawnHelpList.append(self)
+        self.team: Team = None
+
+        I = self.app.pawnHelpList.index(self)%self.app.playerTeams
+        self.app.allTeams[I].add(self)
+
+        self.teamColor = self.team.color
+
+        self.reconnectJson = None
+        self.pendingAppLU = False
 
 
         self.breatheI = random.uniform(0, 1)
@@ -211,6 +241,9 @@ class Pawn(PawnBehaviour, getStat):
             "teamkills": 0,
             "suicides": 0,
         }
+        self.playerSpecificStats = {}
+        self.mostKilled = None
+        self.mostKilledBy = None
 
         self.takeStepEvery = 0.5
         self.lastStep = -1
@@ -236,7 +269,7 @@ class Pawn(PawnBehaviour, getStat):
         self.pastItems = []
         
 
-        self.xp = 0
+        self.xp = 9
         self.xpI = 15
         self.enslaved = False
 
@@ -253,7 +286,7 @@ class Pawn(PawnBehaviour, getStat):
         weapon = self.app.pistol2
 
         weapon.give(self)  # Give the AK-47 to this pawn
-        self.app.pawnHelpList.append(self)
+        
 
         self.kills = 0
         self.killsThisLife = 0
@@ -367,17 +400,83 @@ class Pawn(PawnBehaviour, getStat):
             "tripChance": "Kaatumisen todennäköisyys",
             "extraItem": "Extraesine", 
         }
-
         self.getNextItems()
+        
         self.referenceEffects = self.itemEffects.copy()
+        info.text = f"{self.name}: sending"
+        # self.client is the WebSocket
+
+        self.app.clientPawns[self.client] = self
+
+        if self.client:
+            self.fullSync()
 
         info.text = f"{self.name}: Done!"
         info.killed = True
+        
 
         #for x in range(3):
         #    i = random.choice(self.app.items)
         #    i.apply(self)
 
+        #for x in range(20):
+        #    self.getNextItems()
+        #    self.levelUp()
+
+    def fullSync(self):
+        if not self.client:
+            return       
+        
+        asyncio.run_coroutine_threadsafe(self.completeToApp(), self.app.loop)
+
+        self.updateStats({"xp": int(self.xp), "level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
+
+        self.sendHudInfo()
+
+        if self.pendingAppLU:
+            asyncio.run_coroutine_threadsafe(self.sendPacket(self.reconnectJson), self.app.loop)
+            print("Level up sent upon reconnection")
+        
+        self.sendKDStats()
+        
+        self.sendNemesisInfo(True, True)
+
+    def sendKDStats(self):
+        if not self.client:
+            return
+        
+        kd = self.stats["kills"] / max(1, self.stats["deaths"])
+
+        self.updateStats({"Kills": self.stats["kills"], "Deaths" : self.stats["deaths"], "KD" : f"{kd:.1f}"})
+
+        
+
+    async def completeToApp(self):
+        # Convert pygame.Surface to PNG bytes
+        img = self.hudImage  # pygame.Surface
+        buf = io.BytesIO()
+        pil_img = Image.frombytes("RGBA", img.get_size(), pygame.image.tostring(img, "RGBA"))
+        pil_img.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+
+        # Encode to base64
+        b64_image = base64.b64encode(png_bytes).decode("ascii")
+        teamColor = self.team.color
+
+        # Build JSON
+        message = {
+            "type": "completePawn",
+            "name": self.name,
+            "image": b64_image,
+            "teamColor" : teamColor
+        }
+        # Send JSON to client
+        #import json
+
+        c = self.app.clients[self.client]
+
+        await c.send(json.dumps(message))
+        print("Info sent!")
 
     def defaultPos(self):
         if random.randint(0, 1) == 0:
@@ -417,7 +516,7 @@ class Pawn(PawnBehaviour, getStat):
         rgb = pygame.surfarray.array3d(image).swapaxes(0, 1)
         alpha = pygame.surfarray.array_alpha(image)
 
-        landMarks = get_or_load_landmarks(self.app, self.name, rgb)
+        landMarks = get_or_load_landmarks(self.app, rgb)
         print("LandMarkType:", type(landMarks))
         if landMarks.dtype == object and landMarks.size == 1 and landMarks[()] is None:
             print(self.name, "No morph!!!")
@@ -515,7 +614,7 @@ class Pawn(PawnBehaviour, getStat):
         self.loseTargetI = 1
         
         if not self.itemEffects["berserker"] and not self.carryingSkull():
-            self.walkTo = v2(self.getOwnCell()) * 70
+            self.walkTo = v2(self.getOwnCell()) * self.app.tileSize
             self.route = None
 
 
@@ -576,25 +675,23 @@ class Pawn(PawnBehaviour, getStat):
 
 
     def getCellInSpawnRoom(self):
-        SPAWNROOM = self.app.teamSpawnRooms[self.team]
+        SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
         if SPAWNROOM:
             P = SPAWNROOM.randomCell()
         else:
-            P = self.app.spawn_points[self.team]
+            P = self.app.spawn_points[self.team.i]
         return P
 
     def reset(self):
         
         if self.app.GAMEMODE == "TURF WARS" and not self.app.PEACEFUL:
             self.enslaved = self.app.teamSpawnRooms[self.originalTeam].turfWarTeam != self.originalTeam
-            self.team = self.app.teamSpawnRooms[self.originalTeam].turfWarTeam
         else:
             self.enslaved = False
-            self.team = self.originalTeam
 
         P = self.getCellInSpawnRoom()
 
-        self.pos = v2(P) * 70 + [35, 35]
+        self.pos = v2(P) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
         self.deltaPos = self.pos.copy()
         self.health = self.getHealthCap()
         self.hurtI = 0
@@ -602,6 +699,7 @@ class Pawn(PawnBehaviour, getStat):
         self.walkTo = None
         self.target = None
         self.respawnI = 0
+        self.tripped = False
         
 
         self.killsThisLife = 0
@@ -609,6 +707,7 @@ class Pawn(PawnBehaviour, getStat):
         self.weapon.magazine = self.getMaxCapacity()
         self.weapon.currReload = 0
         self.tts.stop()
+        self.sendKDStats()
 
     def takeDamage(self, damage, fromActor = None, thornDamage = False, typeD = "normal", bloodAngle = None):
         if self.killed:
@@ -667,6 +766,32 @@ class Pawn(PawnBehaviour, getStat):
             return
         self.xp += amount * self.itemEffects["xpMult"]
 
+        
+        self.updateStats({"xp": self.xp})
+
+    def updateStats(self, stats: dict):
+        if not self.client:
+            return
+        packet = {
+            "type": "statUpdate",
+            "stats": stats  # e.g., {"xp": 5, "level": 2, "health": 50}
+        }
+        json_packet = json.dumps(packet)
+        asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
+
+
+    def createPacket(self, packet):
+        if not self.client:
+            return
+        json_packet = json.dumps(packet)
+        asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
+
+    async def sendPacket(self, packet):
+        c = self.app.clients[self.client]
+        await c.send(packet)
+        
+
+
     def evaluatePawn(self):
 
         print(self.name, "Evaluation")
@@ -700,7 +825,7 @@ class Pawn(PawnBehaviour, getStat):
         return points, reason_str
 
 
-    def gainKill(self, killed):
+    def gainKill(self, killed: "Pawn"):
         self.health += self.itemEffects["healOnKill"]
         if killed and killed.team == self.team:
             if killed == self:
@@ -725,6 +850,70 @@ class Pawn(PawnBehaviour, getStat):
 
             self.lastKiller = None
             print("Retribution!")
+
+        self.handleNemesisStats(killed)
+        self.handleNemesis()
+        killed.handleNemesis()
+        
+        self.sendKDStats()
+
+    def handleNemesisStats(self, killed):
+        if killed.name not in self.playerSpecificStats:
+            self.playerSpecificStats[killed.name] = [killed, 0, 0]
+        self.playerSpecificStats[killed.name][1] += 1
+
+        if self.name not in killed.playerSpecificStats:
+            killed.playerSpecificStats[self.name] = [self, 0, 0]
+        killed.playerSpecificStats[self.name][2] += 1
+
+        
+
+    def handleNemesis(self):
+        mostKilledSend = mostKilledBySend = True
+
+        if self.playerSpecificStats:
+            MK_entry = max(self.playerSpecificStats.items(), key=lambda kv: kv[1][1])[1]
+            MK = MK_entry[0]  # pawn object
+            if MK != self.mostKilled:
+                mostKilledSend = True
+            self.mostKilled = MK
+
+            MKB_entry = max(self.playerSpecificStats.items(), key=lambda kv: kv[1][2])[1]
+            MKB = MKB_entry[0]  # pawn object
+            if MKB != self.mostKilledBy:
+                mostKilledBySend = True
+            self.mostKilledBy = MKB
+
+        self.sendNemesisInfo(mostKilledSend, mostKilledBySend)
+
+    def sendNemesisInfo(self, mostKilledSend=False, mostKilledBySend=False):
+
+        if not self.client:
+            return
+        
+        if not mostKilledBySend and not mostKilledSend:
+            return
+
+        d = {"type": "rivalryInfo", "mostKilled": None, "mostKilledBy": None}
+
+        if mostKilledSend and self.mostKilled:
+            d["mostKilled"] = {
+                "name": self.mostKilled.name,
+                "image": self.mostKilled.encodedImage,
+                "kills": self.playerSpecificStats[self.mostKilled.name][1]
+            }
+
+        if mostKilledBySend and self.mostKilledBy:
+            d["mostKilledBy"] = {
+                "name": self.mostKilledBy.name,
+                "image": self.mostKilledBy.encodedImage,
+                "kills": self.playerSpecificStats[self.mostKilledBy.name][2]
+            }
+
+        self.dumpAndSend(d)
+
+
+
             
 
     def handleTurnCoat(self):
@@ -732,13 +921,27 @@ class Pawn(PawnBehaviour, getStat):
             return
         self.turnCoatI += self.app.deltaTime
         if self.turnCoatI >= 60:
-            self.team += random.randint(1, self.app.teams-1)
-            self.team = self.team%self.app.teams
+            T = random.choice(self.app.allTeams)
+            T.add(self)
             self.turnCoatI = 0
-            self.say(f"Ähäkutti! Kuulun joukkueeseen {self.team+1}!", 1)
+            self.say(f"Ähäkutti! Kuulun joukkueeseen {self.team.i+1}!", 1)
             if self.target and self.target.team == self.team:
                 self.target = None
             self.enslaved = False
+
+    def sendHudInfo(self):
+        hud_data = []
+        for line, color in self.fetchInfo(addItems=False):
+            hud_data.append({
+                "text": line,
+                "color": {"r": int(color[0]), "g": int(color[1]), "b": int(color[2])}  # [R, G, B]
+            })
+        packet = {"type": "hudInfo", "lines": hud_data}
+        self.dumpAndSend(packet)
+
+    def dumpAndSend(self, packet):
+        json_packet = json.dumps(packet)
+        asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
 
     def fetchInfo(self, addItems = True):
         info_lines = []
@@ -827,6 +1030,12 @@ class Pawn(PawnBehaviour, getStat):
         print(self.name, "Leveled up")
         self.level += 1
 
+        self.updateStats({"level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
+        self.sendHudInfo()
+        self.reconnectJson = None
+        self.pendingAppLU = False
+
+
 
     def eyeGlow(self):
 
@@ -840,7 +1049,7 @@ class Pawn(PawnBehaviour, getStat):
             eye = x.copy()
 
             POS = self.deltaPos + eye - v2(self.breatheIm.get_size()) / 2 + [0, self.breatheY]
-            endC = self.app.getTeamColor(self.team) + [0]
+            endC = self.team.color + [0]
             Particle(self.app, POS[0], POS[1], 
                      start_color = [255,255,255,255], end_color=endC, 
                     vel_x=random.uniform(-1, 1), vel_y=random.uniform(-1, 1), 
@@ -850,8 +1059,27 @@ class Pawn(PawnBehaviour, getStat):
             #self.app.particle_system.create_fire(x[0], x[1], 1, start_color = [0, 255,255,255], end_color=[0,0,255,0], 
             #                                     vel_x=random.uniform(-0.01, 0.01), vel_y=random.uniform(0.01, 0.05), lifetime=10)
         
-        
+    
+    def levelUpClient(self):
+        print("Trying to level up a client")
+        # Select 3 items (or 4 if a special item is present)
+        choices = self.nextItems  # returns list of Item instances
 
+        # Build minimal JSON info
+        items_info = [{"name": item.name, "desc": item.desc} for item in choices]
+
+        packet = {
+            "type": "levelUpChoices",
+            "items": items_info,
+            "pawn": self.name,   # optional, to identify which pawn leveled up
+        }
+        print(packet)
+        json_packet = json.dumps(packet)
+        self.reconnectJson = json_packet
+        self.pendingAppLU = True
+        # Send to client
+        asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
+        print("Level up sent")
 
     def tick(self):
 
@@ -865,7 +1093,7 @@ class Pawn(PawnBehaviour, getStat):
         if self.itemEffects["turnCoat"]:
             self.handleTurnCoat()
 
-        self.teamColor = self.app.getTeamColor(self.team) 
+        self.teamColor = self.team.color
 
         if self.respawnI > 0:
 
@@ -904,15 +1132,17 @@ class Pawn(PawnBehaviour, getStat):
 
         if self.xp >= self.app.levelUps[self.level-1] and not self.app.pendingLevelUp:
 
-            if self.xp >= self.app.levelUps[self.levelUpCreatedFor]:
+            if self.xp >= self.app.levelUps[self.levelUpCreatedFor] and self.levelUpCreatedFor == self.level - 1:
                 self.levelUpCreatedFor += 1
                 self.app.particle_system.create_level_up_indicator(self.pos[0], self.pos[1])
                 print("LEVEL UP ANIM CREATED")
+                if self.client:
+                    self.levelUpClient()
                 
             if self.NPC or self.app.ITEM_AUTO:
                 self.levelUp()
-            else:
-                self.app.pendingLevelUp = self
+            elif not self.client:
+                self.app.pendingLevelUp = self # Old implementation, the screen displays the item choices. 
 
         if not self.tripped:
             if self.app.currMusic != 0 or self.app.PEACEFUL:
@@ -925,7 +1155,7 @@ class Pawn(PawnBehaviour, getStat):
             self.tripI = min(self.tripI + self.app.deltaTime, 1.0)
             if self.tripI >= 1.0:
                 self.getUpI += self.app.deltaTime
-            if self.getUpI >= 1:
+            if self.getUpI >= 0.5:
                 self.getUpI = 0
                 if random.uniform(0, 1) < 0.25:
                     self.tripped = False
@@ -1055,7 +1285,7 @@ class Pawn(PawnBehaviour, getStat):
         x, y = self.getOwnCell()
         for r in self.app.map.rooms:
             if r.contains(x, y):
-                r.pawnsPresent.append(self.team)
+                r.pawnsPresent.append(self.team.i)
                 self.currentRoom = r
                 return
 
@@ -1152,12 +1382,12 @@ class Pawn(PawnBehaviour, getStat):
 
     def getRouteTo(self, endPos = None, endPosGrid = None):
         if endPos:
-            endPos = (int(endPos[0]/70), int(endPos[1]/70))
+            endPos = (int(endPos[0]/self.app.tileSize), int(endPos[1]/self.app.tileSize))
 
         elif endPosGrid:
             endPos = endPosGrid
 
-        startPos = (int(self.pos[0]/70), int(self.pos[1]/70))
+        startPos = (int(self.pos[0]/self.app.tileSize), int(self.pos[1]/self.app.tileSize))
 
         self.route = self.app.arena.pathfinder.find_path(startPos, endPos)
 
@@ -1167,7 +1397,7 @@ class Pawn(PawnBehaviour, getStat):
     def advanceRoute(self):
         if not self.route:
             return
-        self.walkTo = v2(self.route[0]) * 70 + [35, 0]
+        self.walkTo = v2(self.route[0]) * self.app.tileSize + [self.app.tileSize/2, 0]
         self.route.pop(0)
 
 
@@ -1175,10 +1405,10 @@ class Pawn(PawnBehaviour, getStat):
         return (int(p[0]), int(p[1]))
     
     def getOwnCell(self):
-        return self.v2ToTuple((self.pos + [0, 35]) / 70)
+        return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
 
     def getCell(self, pos):
-        return self.v2ToTuple((pos + [0, 35]) / 70)
+        return self.v2ToTuple((pos + [0, self.app.tileSize/2]) / self.app.tileSize)
 
     def getVisibility(self):
         cell = self.getOwnCell()

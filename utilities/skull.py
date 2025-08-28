@@ -7,7 +7,7 @@ class Skull:
         self.app = app
         self.cell = cell
         self.originalCell = cell
-        self.pos = v2(self.cell) * 70 + [35, 35]
+        self.pos = v2(self.cell) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
         self.image = pygame.image.load("texture/skull.png")
         self.image = pygame.transform.scale(self.image, [40, 40])
         self.bounce = 0
@@ -24,7 +24,7 @@ class Skull:
         if self.app.map.grid[self.cell[1], self.cell[0]] == CellType.WALL.value:
             self.reset()
 
-        self.pos = v2(self.cell) * 70 + [35, 35]
+        self.pos = v2(self.cell) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
         self.bounce += self.app.deltaTime 
         self.bounce = self.bounce%0.5
 

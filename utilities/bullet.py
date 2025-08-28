@@ -55,7 +55,7 @@ class Bullet:
         self.piercing = piercing
 
     def getOwnCell(self):
-        return self.v2ToTuple((self.pos + [0, 35]) / 70)
+        return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
     
     def v2ToTuple(self, p):
         return (int(p[0]), int(p[1]))
