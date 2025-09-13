@@ -26,6 +26,8 @@ def tickShops(self: "Game"):
 
         underMouse = None
         for x in self.pawnHelpList:
+            if x.GENERATING:
+                continue
             if x.team.i != self.teamInspectIndex:
                 continue
             

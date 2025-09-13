@@ -20,7 +20,150 @@ def ult_division(func):
 
 class getStat:
     def __init__(self: "Pawn"):
-        pass
+        self.itemEffects = {
+            "speedMod": 1.0, # Done
+            "healthRegenMult": 1.0,
+            "thorns": 0.0,
+            "healthCapMult": 1.0,
+            "berserker" : False,
+            "martyrdom" : False,
+
+            "weaponHandling" : 1.0,
+            "weaponDamage" : 1.0,
+            "weaponReload" : 1.0,
+            "weaponFireRate" : 1.0,
+            "weaponAmmoCap" : 1.0,
+            "weaponRange":1.0,
+            "accuracy":1.0,
+            "multiShot" : 1,
+            "meleeDamage": 1.0,
+            "recoilMult": 1.0,
+            
+
+            "instaHeal" : False,
+            "saveChance" : 0.0,
+            "fireRateIncrease" : 0,
+            "allyProtection" : False,
+            "coward" : False,
+            "revenge" : False,
+            "duplicator" : False,
+
+            "defenceNormal" : 1.0,
+            "defenceEnergy" : 1.0,
+            "defenceExplosion" : 1.0,
+
+            "dodgeChance": 0.0,
+            "xpMult":1.0,
+            "healOnKill":0,
+            "knockbackMult":1.0,
+            "healAllies":0,
+            "talking": False,
+            "turnCoat" : False,
+            "hat": False,
+            "noscoping": False,
+            "piercing": False,
+            "detonation": False,
+            "tripChance": 0.0,
+            "shitChance": 0.0,
+            "extraItem": False,  
+            "homing": False,
+        }
+
+        self.effect_labels_fi = {
+            "speedMod": "Nopeus",
+            "healthRegenMult": "Elpymisnopeus",
+            "thorns": "Piikit",
+            "healthCapMult": "Maksimi HP",
+            "berserker": "Berserkki",
+            "martyrdom": "Marttyyri",
+
+            "weaponHandling": "Aseen käsittely",
+            "weaponDamage": "Aseen vahinko",
+            "weaponReload": "Latausnopeus",
+            "weaponFireRate": "Tulinopeus",
+            "weaponAmmoCap": "Lipas",
+            "weaponRange": "Kantama",
+            "accuracy": "Tarkkuus",
+            "multiShot": "Monilaukaus",
+            "meleeDamage": "Lyöntivahinko",
+
+            "instaHeal": "Pika-parannus",
+            "saveChance": "Pelastumis-%",
+            "fireRateIncrease": "Ajan myötä lisääntynyt tuli",
+            "allyProtection": "Liittolaisten suoja",
+            "coward": "Pelkuri",
+            "revenge": "Kosto",
+            "duplicator": "Kaksoiskappale",
+
+            "defenceNormal": "Normaali puolustus",
+            "defenceEnergy": "Energiapuolustus",
+            "defenceExplosion": "Räjähdyssuoja",
+
+            "dodgeChance": "Väistön todennäköisyys",
+            "xpMult": "XP-kerroin",
+            "healOnKill": "Parannus tapon yhteydessä",
+            "knockbackMult": "Takaisku",
+            "healAllies": "Liittolaisten parannus",
+            "talking": "Puhuva",
+            "turnCoat": "Petturi",
+            "hat": "Hattu",
+            "noscoping": "360",
+            "recoilMult": "Rekyyli",
+            "piercing": "Lävistävät luodit",
+            "detonation": "Detonaatio",
+            "tripChance": "Kaatumisen todennäköisyys",
+            "extraItem": "Extraesine", 
+            "homing": "Itseohjautuva",
+            "shitChance": "Paskantamisen todennäköisyys",
+        }
+
+        self.effect_labels_en = {
+            "speedMod": "Speed",
+            "healthRegenMult": "Health Regeneration",
+            "thorns": "Thorns",
+            "healthCapMult": "Max HP",
+            "berserker": "Berserker",
+            "martyrdom": "Martyrdom",
+
+            "weaponHandling": "Weapon Handling",
+            "weaponDamage": "Weapon Damage",
+            "weaponReload": "Reload Speed",
+            "weaponFireRate": "Fire Rate",
+            "weaponAmmoCap": "Magazine",
+            "weaponRange": "Range",
+            "accuracy": "Accuracy",
+            "multiShot": "Multishot",
+            "meleeDamage": "Melee Damage",
+
+            "instaHeal": "Instant Heal",
+            "saveChance": "Survival Chance",
+            "fireRateIncrease": "Increasing Fire Rate",
+            "allyProtection": "Ally Protection",
+            "coward": "Coward",
+            "revenge": "Revenge",
+            "duplicator": "Duplicator",
+
+            "defenceNormal": "Normal Defence",
+            "defenceEnergy": "Energy Defence",
+            "defenceExplosion": "Explosion Defence",
+
+            "dodgeChance": "Dodge Chance",
+            "xpMult": "XP Multiplier",
+            "healOnKill": "Heal on Kill",
+            "knockbackMult": "Knockback",
+            "healAllies": "Heal Allies",
+            "talking": "Talking",
+            "turnCoat": "Turncoat",
+            "hat": "Hat",
+            "noscoping": "360",
+            "recoilMult": "Recoil",
+            "piercing": "Piercing Bullets",
+            "detonation": "Detonation",
+            "tripChance": "Trip Chance",
+            "extraItem": "Extra Item",
+            "homing": "Homing",
+            "shitChance": "Shitting Chance",
+        }
 
 
     @ult_multiplier
@@ -84,6 +227,10 @@ class getStat:
     @ult_multiplier
     def getMaxCapacity(self):
         return int(self.weapon.magazineSize * self.itemEffects["weaponAmmoCap"])
+    
+    @ult_multiplier
+    def getFireRateMod(self):
+        return 1 / self.itemEffects["weaponFireRate"]
 
     @ult_division
     def getRoundsPerSecond(self):

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
 
-
+import threading
 class ClientHandler:
     def __init__(self, websocket):
         self.ws = websocket
@@ -78,7 +78,7 @@ def make_handler(app: "Game"):
 
             async for message in ws:
                 data = json.loads(message)
-
+                print("Received:", data.get("type"))
                 # Example: tell the app about the avatar
                 if data.get("type") == "avatar":
                     name = data.get("name")
@@ -94,6 +94,85 @@ def make_handler(app: "Game"):
                         chosen_item = next((i for i in pawn.nextItems if i.name == item_name), None)
                         if chosen_item:
                             pawn.levelUp(chosen_item)
+
+                if data.get("type") == "registerDrink":
+                    print(data)
+                    pawn_name = data.get("pawnName")
+                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+                    pawn.team.currency += data.get("drinkValue")
+                    am = data.get("drinkValue")
+                    """Send drink registration response to client"""
+                    packet = {
+                        "type": "drinkRegistrationResponse",
+                        "success": True,
+                        "drinkType": data.get("drinkType"),
+                        "drinkValue": data.get("drinkValue"),
+                        "message": f"{am} drinks earned!"
+                    }
+                    await ws.send(json.dumps(packet))
+                    pawn.team.updateCurrency()
+
+
+                if data.get("type") == "musicRequest":
+                    trackLink = data.get("youtubeLink")
+                    print("Music request:", trackLink)
+                    threading.Thread(target=app.addToPlaylist, args=(trackLink,), daemon=True).start()
+
+
+                if data.get("type") == "rerollRequest":
+                    
+                    pawn_name = data.get("pawnName")
+
+                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+
+                    if not pawn.canReroll():
+                        p = {
+                            "type": "rerollResponse",
+                            "success": False,
+                            "rerollType": "weapon",
+                            "message": "Not enough drinks for reroll!"
+                            }
+                    else:
+                        p = {
+                            "type": "rerollResponse",
+                            "success": True,
+                            "rerollType": "weapon",
+                            "message": "Weapon rerolled!"
+                            }
+                        
+                        pawn.rerollWeapon()
+
+                    await ws.send(json.dumps(p))
+
+                    pawn.team.updateCurrency()
+
+                if data.get("type") == "purchaseRequest":
+                    item_type = data.get("itemType")
+                    item_name = data.get("itemName")
+                    pawn_name = data.get("pawnName")
+                    
+
+                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+                    if not pawn.canBuy():
+                        p = {
+                            "type": "purchaseResponse",
+                            "success": False,
+                            "itemName": item_name,
+                            "message": "Not enough drinks!"
+                            }
+                        
+                    else:
+                        pawn.purchaseWeapon(item_name)
+                        p = {
+                            "type": "purchaseResponse",
+                            "success": True,
+                            "itemName": item_name,
+                            "message": "Weapon purchased successfully!"
+                            }
+                    
+                    await ws.send(json.dumps(p))
+
+                    pawn.team.updateCurrency()
 
                 # Echo back
                 for ip in app.clients:

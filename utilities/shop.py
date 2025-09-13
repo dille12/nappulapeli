@@ -101,9 +101,6 @@ class Shop:
             origRate = rates[i]
             rates[i] = (maxRate - origRate)
         
-        print(rates)
-        print(weapons)
-
         for i in range(3):
             pos = (20, 80 + i * 120)
             w = weapons[self.app.randomWeighted(*rates)]

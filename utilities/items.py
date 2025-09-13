@@ -9,12 +9,11 @@ def getItems():
         Item("Berserker", "Holtittomuus toimii.", berserker=["set", True]),
         Item("God is king", "Usko niin pelastut.", saveChance=["add", 0.05]),
         Item("Lasersääntö", "Älä ny omia ammu.", allyProtection=["set", True]),
-        Item("Paskahousu", "Pelottaa nii perkelleesti.", coward=["set", True]),
+        Item("Pelkuri", "Pelottaa nii perkelleesti.", coward=["set", True]),
         Item("Kevut", "Suojaa kineettisiltä vahingolta.", defenceNormal=["mult", 2], defenceExplosion=["mult", 1.5]),
         Item("Adrenaliiniruiske", "HP:t nousee silmissä.", instaHeal=["set", True]),
         Item("Martyrdom", "Ni.", martyrdom=["set", True]),
         Item("Masokismi", "Minun kipu on sinun kipu.", thorns=["add", 0.25], weaponFireRate=["add", 0.5], healthCapMult=["mult", 1.25]),
-        Item("Replikaattori", "Kopiointi kannattaa.", duplicator=["set", True]),
         Item("Rage", "Vitutus on voimaa.", fireRateIncrease=["add", 5]),
         Item("Romupanssari", "Teipillä ja toivolla koottu.", defenceNormal=["mult", 1.5], speedMod=["mult", 0.85]),
         Item("Cryo-puku", "Suojaa hyvin energia-ammuksilta.", defenceEnergy=["mult", 2], speedMod=["mult", 0.8]),
@@ -33,7 +32,7 @@ def getItems():
         Item("Verenhimoprosessori", "Tekis mieli ampua sut saatana...", healOnKill=["add", 40], berserker=["set", True]),
         Item("Ammuskompaktori", "Panokset vievät vähemmän tilaa.", weaponAmmoCap=["mult", 3.0], weaponReload=["mult", 0.7]),
         Item("Satelliittivalvonta", "Täält ylhäältä näkyy kaikki.", weaponRange=["add", 0.2], defenceNormal=["mult", 0.9]),
-        Item("Kelan työttömyysturva", "Jälkeenjääneille.", xpMult=["mult", 1.5], weaponHandling=["mult", 0.5], speedMod=["mult", 0.6]),
+        Item("Kelan työttömyysturva", "Jälkeenjääneille.", xpMult=["mult", 5], weaponHandling=["mult", 0.5], speedMod=["mult", 0.6]),
         Item("Lasikanuuna", "4750$.", weaponDamage=["mult", 2], healthCapMult=["mult", 0.5]),
         Item("Tuplatusautus", "Kaksi kutii yhden hinnalla.", multiShot=["add", 1]),
         Item("Sleight of hand", "Niiku Kodissa.", weaponReload=["mult", 2]),
@@ -52,8 +51,11 @@ def getItems():
         Item("Litra mälliä", "Jos sulle maksettais kaks sataa...", healthCapMult=["add", 0.5]),
         Item("Rauhan uskonto", "Rauha on paras ase.", detonation=["set", True], defenceExplosion=["mult", 5]),
         Item("Tankki", "Nää ei oo niitä nopeimpia kavereita.", speedMod=["mult", 0.5], healthCapMult=["mult", 2]),
-        Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.05], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
+        Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.01], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
         Item("Niken Nyssykkä", "Voi tätä valinnan vaikeutta.", extraItem=["set", True]),
+        Item("Magneetti", "Miten ne toimii?", homing=["set", True], weaponDamage=["mult", 0.75]),
+        Item("Paskahouse", "Nyt täytyy mennä varovasti", shitChance=["add", 0.025], speedMod=["mult", 0.9], healthCapMult=["mult", 1.1]),
+        Item("Tuplaruuti", "Pyssy potkii pirusti", recoilMult=["mult", 0.25], weaponDamage=["mult", 2])
     ]
 
 

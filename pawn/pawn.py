@@ -112,6 +112,7 @@ class Pawn(PawnBehaviour, getStat):
         # extract the name from the path
         self.name = pawnName
         self.client = client
+        self.GENERATING = True
 
         PawnBehaviour.__init__(self)
         getStat.__init__(self)
@@ -269,7 +270,7 @@ class Pawn(PawnBehaviour, getStat):
         self.pastItems = []
         
 
-        self.xp = 9
+        self.xp = 0
         self.xpI = 15
         self.enslaved = False
 
@@ -308,98 +309,10 @@ class Pawn(PawnBehaviour, getStat):
         self.getUpI = 0
         self.tripRot = random.choice([-90, 90])  # fall direction
 
-        self.itemEffects = {
-            "speedMod": 1.0, # Done
-            "healthRegenMult": 1.0,
-            "thorns": 0.0,
-            "healthCapMult": 1.0,
-            "berserker" : False,
-            "martyrdom" : False,
+        self.shopCurrWeapon = random.choice(self.app.weapons)
 
-            "weaponHandling" : 1.0,
-            "weaponDamage" : 1.0,
-            "weaponReload" : 1.0,
-            "weaponFireRate" : 1.0,
-            "weaponAmmoCap" : 1.0,
-            "weaponRange":1.0,
-            "accuracy":1.0,
-            "multiShot" : 1,
-            "meleeDamage": 1.0,
-            "recoilMult": 1.0,
-            
+        
 
-            "instaHeal" : False,
-            "saveChance" : 0.0,
-            "fireRateIncrease" : 0,
-            "allyProtection" : False,
-            "coward" : False,
-            "revenge" : False,
-            "duplicator" : False,
-
-            "defenceNormal" : 1.0,
-            "defenceEnergy" : 1.0,
-            "defenceExplosion" : 1.0,
-
-            "dodgeChance": 0.0,
-            "xpMult":1.0,
-            "healOnKill":0,
-            "knockbackMult":1.0,
-            "healAllies":0,
-            "talking": False,
-            "turnCoat" : False,
-            "hat": False,
-            "noscoping": False,
-            "piercing": False,
-            "detonation": False,
-            "tripChance": 0.0,
-            "extraItem": False,  
-        }
-
-        self.effect_labels_fi = {
-            "speedMod": "Nopeus",
-            "healthRegenMult": "Elpymisnopeus",
-            "thorns": "Piikit",
-            "healthCapMult": "Maksimi HP",
-            "berserker": "Berserkki",
-            "martyrdom": "Marttyyri",
-
-            "weaponHandling": "Aseen käsittely",
-            "weaponDamage": "Aseen vahinko",
-            "weaponReload": "Latausnopeus",
-            "weaponFireRate": "Tulinopeus",
-            "weaponAmmoCap": "Lipas",
-            "weaponRange": "Kantama",
-            "accuracy": "Tarkkuus",
-            "multiShot": "Monilaukaus",
-            "meleeDamage": "Lyöntivahinko",
-
-            "instaHeal": "Pika-parannus",
-            "saveChance": "Pelastumis-%",
-            "fireRateIncrease": "Ajan myötä lisääntynyt tuli",
-            "allyProtection": "Liittolaisten suoja",
-            "coward": "Pelkuri",
-            "revenge": "Kosto",
-            "duplicator": "Kaksoiskappale",
-
-            "defenceNormal": "Normaali puolustus",
-            "defenceEnergy": "Energiapuolustus",
-            "defenceExplosion": "Räjähdyssuoja",
-
-            "dodgeChance": "Väistön todennäköisyys",
-            "xpMult": "XP-kerroin",
-            "healOnKill": "Parannus tapon yhteydessä",
-            "knockbackMult": "Takaisku",
-            "healAllies": "Liittolaisten parannus",
-            "talking": "Puhuva",
-            "turnCoat": "Petturi",
-            "hat": "Hattu",
-            "noscoping": "360",
-            "recoilMult": "Rekyyli",
-            "piercing": "Lävistävät luodit",
-            "detonation": "Detonaatio",
-            "tripChance": "Kaatumisen todennäköisyys",
-            "extraItem": "Extraesine", 
-        }
         self.getNextItems()
         
         self.referenceEffects = self.itemEffects.copy()
@@ -413,7 +326,10 @@ class Pawn(PawnBehaviour, getStat):
 
         info.text = f"{self.name}: Done!"
         info.killed = True
+
+        self.app.notify(f"{self.name} joined!", self.teamColor)
         
+        self.GENERATING = False
 
         #for x in range(3):
         #    i = random.choice(self.app.items)
@@ -429,17 +345,55 @@ class Pawn(PawnBehaviour, getStat):
         
         asyncio.run_coroutine_threadsafe(self.completeToApp(), self.app.loop)
 
-        self.updateStats({"xp": int(self.xp), "level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
+        self.updateStats({"xp": int(self.xp), "currency": self.team.currency, "level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
 
         self.sendHudInfo()
 
         if self.pendingAppLU:
             asyncio.run_coroutine_threadsafe(self.sendPacket(self.reconnectJson), self.app.loop)
-            print("Level up sent upon reconnection")
         
         self.sendKDStats()
         
         self.sendNemesisInfo(True, True)
+
+        self.sendCurrWeaponShop()
+
+    def pickAnother(self, exclude, pickFrom):
+        exclude_set = set(exclude)
+        candidates = [x for x in pickFrom if x not in exclude_set]
+        if not candidates:
+            raise ValueError("No available elements after exclusion")
+        return random.choice(candidates)
+
+
+    def canBuy(self):
+        return self.shopCurrWeapon.price[0] <= self.team.currency
+    def canReroll(self):
+        return self.team.currency >= 25
+    
+    def rerollWeapon(self):
+        self.team.currency -= 25
+        self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
+        self.sendCurrWeaponShop()
+    
+    def purchaseWeapon(self, weaponName):
+        weapon = [weapon for weapon in self.app.weapons if weapon.name == weaponName][0]
+        self.team.currency -= weapon.price[0]
+        weapon.give(self)
+
+        self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
+        self.sendCurrWeaponShop()
+
+    def sendCurrWeaponShop(self):
+        
+        p = self.shopCurrWeapon.getPacket()
+
+        p = {"type": "shopUpdate", "nextWeapon": p}
+        self.dumpAndSend(p)
+
+        
+
+        
 
     def sendKDStats(self):
         if not self.client:
@@ -476,7 +430,6 @@ class Pawn(PawnBehaviour, getStat):
         c = self.app.clients[self.client]
 
         await c.send(json.dumps(message))
-        print("Info sent!")
 
     def defaultPos(self):
         if random.randint(0, 1) == 0:
@@ -517,12 +470,8 @@ class Pawn(PawnBehaviour, getStat):
         alpha = pygame.surfarray.array_alpha(image)
 
         landMarks = get_or_load_landmarks(self.app, rgb)
-        print("LandMarkType:", type(landMarks))
         if landMarks.dtype == object and landMarks.size == 1 and landMarks[()] is None:
-            print(self.name, "No morph!!!")
             self.morphed = False
-            print(landMarks)
-            print("nää ei jostain syystä käyny")
             return image
         
         # Left eye (landmarks 36-41)
@@ -625,7 +574,6 @@ class Pawn(PawnBehaviour, getStat):
             return
         self.app.objectiveCarriedBy = None
         self.app.skull.cell = self.getOwnCell()
-        print("Skull dropped!")
 
     def die(self):
 
@@ -794,9 +742,6 @@ class Pawn(PawnBehaviour, getStat):
 
     def evaluatePawn(self):
 
-        print(self.name, "Evaluation")
-        print(self.kills, self.deaths, self.teamKills, self.suicides)
-
         sorted_pawns = sorted(self.app.pawnHelpList.copy(), key=lambda x: x.kills)
         total = len(sorted_pawns)
         try:
@@ -842,7 +787,14 @@ class Pawn(PawnBehaviour, getStat):
             self.killsThisLife += 1
             self.kills += 1
             self.stats["kills"] += 1
-        self.gainXP(self.killsThisLife + killed.level)
+
+        xp = int((killed.level ** 0.5) * (max(1, killed.level - self.level)))
+
+        self.gainXP(xp)
+
+        self.killStreak()
+
+
         if killed == self.lastKiller:
 
             if self.itemEffects["revenge"]:
@@ -856,6 +808,17 @@ class Pawn(PawnBehaviour, getStat):
         killed.handleNemesis()
         
         self.sendKDStats()
+
+    def killStreak(self):
+        if self.killsThisLife % 5 != 0 or self.killsThisLife > 25 or self.killsThisLife == 0:
+            return
+        
+        i = int(self.killsThisLife / 5 - 1)
+
+        s = self.app.killstreaks[i]
+        s.stop()
+        s.play()
+        self.app.notify(f"{self.name} {self.app.killStreakText[i]}", self.teamColor)
 
     def handleNemesisStats(self, killed):
         if killed.name not in self.playerSpecificStats:
@@ -948,7 +911,6 @@ class Pawn(PawnBehaviour, getStat):
 
         g = [0,255,0]
         r = [255,0,0]
-
         for key in self.itemEffects:
             ref = self.referenceEffects.get(key, None)
             val = self.itemEffects[key]
@@ -1061,7 +1023,6 @@ class Pawn(PawnBehaviour, getStat):
         
     
     def levelUpClient(self):
-        print("Trying to level up a client")
         # Select 3 items (or 4 if a special item is present)
         choices = self.nextItems  # returns list of Item instances
 
@@ -1073,13 +1034,11 @@ class Pawn(PawnBehaviour, getStat):
             "items": items_info,
             "pawn": self.name,   # optional, to identify which pawn leveled up
         }
-        print(packet)
         json_packet = json.dumps(packet)
         self.reconnectJson = json_packet
         self.pendingAppLU = True
         # Send to client
         asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
-        print("Level up sent")
 
     def tick(self):
 
@@ -1135,7 +1094,6 @@ class Pawn(PawnBehaviour, getStat):
             if self.xp >= self.app.levelUps[self.levelUpCreatedFor] and self.levelUpCreatedFor == self.level - 1:
                 self.levelUpCreatedFor += 1
                 self.app.particle_system.create_level_up_indicator(self.pos[0], self.pos[1])
-                print("LEVEL UP ANIM CREATED")
                 if self.client:
                     self.levelUpClient()
                 
@@ -1145,10 +1103,9 @@ class Pawn(PawnBehaviour, getStat):
                 self.app.pendingLevelUp = self # Old implementation, the screen displays the item choices. 
 
         if not self.tripped:
-            if self.app.currMusic != 0 or self.app.PEACEFUL:
-                self.think()
+            self.think()
             self.walk()
-            if self.app.currMusic != 0 or self.app.PEACEFUL:
+            if not self.app.PEACEFUL:
                 self.shoot()
 
         if self.tripped:
@@ -1159,7 +1116,7 @@ class Pawn(PawnBehaviour, getStat):
                 self.getUpI = 0
                 if random.uniform(0, 1) < 0.25:
                     self.tripped = False
-                    self.say("Päätä särkee!", 0.5)
+                    self.say("Päätä särkee!", 0.2)
         else:
             self.tripI = max(self.tripI - self.app.deltaTime * 3, 0.0)
         
@@ -1258,6 +1215,12 @@ class Pawn(PawnBehaviour, getStat):
 
         cx, cy = self.getOwnCell()
 
+        if not self.app.PEACEFUL and cx*200 + cy in self.app.shitDict:
+            s = self.app.shitDict[cx*200 + cy]
+            if s.owner.team != self.team and not self.tripped:
+                self.trip()
+                s.kill()
+
         self.hurtI -= self.app.deltaTime
         self.hurtI = max(0, self.hurtI)
         self.cameraLockI += self.app.deltaTimeR
@@ -1307,8 +1270,6 @@ class Pawn(PawnBehaviour, getStat):
             return
         
         self.app.objectiveCarriedBy = p
-        print("Transferred skull to", p.name)
-        self.say("Ota sää tää paska!", 1)
         p.route = None
         p.walkTo = None
         self.route = None

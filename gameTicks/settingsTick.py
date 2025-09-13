@@ -97,10 +97,10 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar", volume=0.3)
+            self.music = self.loadSound("audio/bar", volume=0)
             
         elif self.musicChoice.get_selected() == "HH":
-            self.music = self.loadSound("audio/hh/bar", volume=0.3)
+            self.music = self.loadSound("audio/hh/bar", volume=0)
 
     self.loadedMusic = self.musicChoice.get_selected()
 
@@ -130,7 +130,7 @@ def settingsTick(self: "Game"):
     if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
 
-        npcsToAdd =  (self.teams - self.playerTeams) * self.fillTeamsTo
+        npcsToAdd =  self.playerTeams * self.fillTeamsTo - len(self.pawnHelpList)
         for _ in range(npcsToAdd):
             for file_name in os.listdir("npcs/"):
                 npc_name = os.path.splitext(file_name)[0]  # filename without extension
@@ -150,7 +150,7 @@ def settingsTick(self: "Game"):
         self.reTeamPawns()
         self.SimpleServerController.stop_server()
         
-
+    self.debugText("SUBS: " + str(bool(self.subs)))
     self.genPawns()
 
 

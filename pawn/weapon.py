@@ -10,6 +10,14 @@ import random
 from utilities.bullet import Bullet, line_intersects_rect
 from particles.laser import ThickLaser
 from utilities.explosion import Explosion
+import io, base64
+def surface_to_base64(surface: pygame.Surface) -> str:
+    buf = io.BytesIO()
+    pygame.image.save(surface, buf, "PNG")
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode("utf-8")
+    return b64  # Just the base64, no prefix
+
 def angle_diff(a, b):
     diff = (b - a + 180) % 360 - 180
     return diff
@@ -90,6 +98,8 @@ class Weapon:
         self.imageKillFeed = pygame.transform.scale_by(self.image, 20 / self.image.get_height())
         self.imageKillFeed = trim_surface(self.imageKillFeed)
 
+        self.encodedImage = surface_to_base64(self.imageKillFeed)
+
         self.damage = damage
         self.range = range
         self.magazineSize = magSize
@@ -124,6 +134,13 @@ class Weapon:
 
         self.lazerActive = False
         self.lazerTimer = 0
+
+    def getPacket(self):
+        p = {"name": self.name,
+             "price": self.price[0],
+             "image": self.encodedImage}
+        return p
+    
 
     def isReloading(self):
         return self.currReload > 0
@@ -187,10 +204,11 @@ class Weapon:
 
         gun_x, gun_y = self.getBulletSpawnPoint()
         pierce = self.owner.itemEffects["piercing"]
+        homing = self.owner.itemEffects["homing"]
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
         for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.5, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce) #-math.radians(self.FINALROTATION)
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.4)
         self.addRecoil(3)
 
@@ -328,7 +346,7 @@ class Weapon:
         if self.currBurstRounds > 0:
             
             if self.currBurstI <= 0:
-                self.currBurstI += self.burstI
+                self.currBurstI += self.burstI * self.owner.getFireRateMod()
                 self.currBurstRounds -= 1
                 self.currBurstRounds = max(0, self.currBurstRounds)
 
@@ -349,7 +367,8 @@ class Weapon:
     def createBullet(self, recoil):
         r = math.radians(-self.ROTATION)
         pierce = self.owner.itemEffects["piercing"]
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce) #-math.radians(self.FINALROTATION)
+        homing = self.owner.itemEffects["homing"]
+        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
 
 
@@ -370,8 +389,9 @@ class Weapon:
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
         pierce = self.owner.itemEffects["piercing"]
+        homing = self.owner.itemEffects["homing"]
         for x in range(10*self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.1, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce) #-math.radians(self.FINALROTATION)
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.15)
 
 
@@ -565,7 +585,7 @@ class Weapon:
         # Combined recoil offset
         recoilOffset = recoilBackwardOffset + recoilUpwardOffset
 
-        if self.name not in ["Glock", "USP", "Skull"]:
+        if self.name not in ["Glock", "USP-S", "Skull"]:
             yA -= self.runOffset*50
             runOffset = self.runOffset*30
         else:

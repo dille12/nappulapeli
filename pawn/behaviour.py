@@ -6,7 +6,7 @@ import random
 import math
 from pygame.math import Vector2 as v2
 from levelGen.mapGen import CellType
-
+from utilities.shit import Shit
 
 class PawnBehaviour:
     def __init__(self: "Pawn"):
@@ -237,6 +237,19 @@ class PawnBehaviour:
         elif self.route:
             self.advanceRoute()
 
+    def trip(self):
+        self.tripped = True
+        self.tripI = 0.0
+        self.getUpI = 0
+        self.tripRot = random.choice([-90, 90])
+        self.say("Vittu kaaduin", 0.1)
+        if self.onScreen():
+            self.app.tripSound.stop()
+            self.app.tripSound.play()
+        self.target = None
+        self.walkTo = None
+        self.route = None
+
 
     def walk(self):
         if self.walkTo is not None:
@@ -267,18 +280,13 @@ class PawnBehaviour:
                     if self.onScreen():
                         self.app.playSound(self.app.waddle)
 
+                    if not self.app.PEACEFUL and random.uniform(0, 1) < self.itemEffects["shitChance"]:
+                        self.say("Nyt tuli paskat housuun", 0.1)
+                        cell = self.getOwnCell()
+                        Shit(self.app, cell, self)
+
                     if random.uniform(0, 1) < self.itemEffects["tripChance"]:
-                        self.tripped = True
-                        self.tripI = 0.0
-                        self.getUpI = 0
-                        self.tripRot = random.choice([-90, 90])
-                        self.say("Vittu kaaduin", 0.1)
-                        if self.onScreen():
-                            self.app.tripSound.stop()
-                            self.app.tripSound.play()
-                        self.target = None
-                        self.walkTo = None
-                        self.route = None
+                        self.trip()
                         
                 
             else:

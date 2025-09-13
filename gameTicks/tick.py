@@ -91,7 +91,7 @@ def battleTick(self: "Game"):
     self.handleCameraSplit()
     self.handleUltingCall()
 
-    if self.currMusic == 1 and not self.VICTORY:
+    if not self.VICTORY:
         self.roundTime -= self.deltaTime
         if self.roundTime <= 0:
             # Pick out from the victoryCondition the highest index
@@ -122,6 +122,7 @@ def battleTick(self: "Game"):
                 pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(i, 1), (r2.x*self.MINIMAPCELLSIZE, r2.y*self.MINIMAPCELLSIZE, 
                                                                                       r2.width*self.MINIMAPCELLSIZE, r2.height*self.MINIMAPCELLSIZE), width=1)
 
+    
 
     for x in entities_temp:
         x.tick()
@@ -205,6 +206,9 @@ def battleTick(self: "Game"):
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
 
+        for x in self.shitDict.values():
+            x.render()
+
         for x in entities_temp:
             x.render()
 
@@ -224,9 +228,9 @@ def battleTick(self: "Game"):
         self.splitScreen()
         
 
-    if self.currMusic == 0:
-        t = self.fontLarge.render(f"Peli alkaa: {self.musicLength - (time.time()-self.musicStart):.0f}", True, [255,255,255])
-        self.screen.blit(t, v2(self.res[0]/2, 300) - v2(t.get_size())/2)
+    #if self.currMusic == 0:
+    #    t = self.fontLarge.render(f"Peli alkaa: {self.musicLength - (time.time()-self.musicStart):.0f}", True, [255,255,255])
+    #    self.screen.blit(t, v2(self.res[0]/2, 300) - v2(t.get_size())/2)
                     
 
     #self.drawWalls()
@@ -253,15 +257,15 @@ def battleTick(self: "Game"):
 
     
     if self.VICTORY:
-        if self.currMusic == -1:
+        if self.endGameI >= 0:
             self.tickEndGame()
-        if self.endGameI <= 0 and self.currMusic == 0:
+        else:
             self.endGame()
             return
     else:
         self.tickScoreBoard()
 
-    if self.currMusic in [0, 1]:
+    if not self.VICTORY:
         self.drawRoundInfo()
 
     ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(self.tileSize)

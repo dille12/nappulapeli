@@ -31,7 +31,8 @@ from core.getCommonRoom import find_farthest_room
 import asyncio
 from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
-
+import subprocess, glob
+from extractLyrics import get_subs_for_track
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -168,27 +169,27 @@ class Game:
 
         self.font = pygame.font.Font(self.fontName, 30)
         self.fontLarge = pygame.font.Font(self.fontName, 60)  # Load a default font
+        self.notificationFont = pygame.font.Font(self.fontName, 140)
         self.fontLevel = pygame.font.Font(self.fontName, 40)  # Load a default font
         # image_path, damage, range, magSize, fireRate, fireFunction, reloadTime
         pygame.mixer.init()
         self.weapons = []
-        self.AK = Weapon(self, "AK-47", [1, 0], "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", [2, 0], "texture/energy1.png", 75, 3000, 5, 1, Weapon.Energyshoot, 2, "energy")
-        self.e2 = Weapon(self, "Rocket Launcher", [3, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
-        self.e3 = Weapon(self, "EMG", [1, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
-        self.pistol = Weapon(self, "USP-S", [0.5, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
-        self.pistol2 = Weapon(self, "Glock", [0, 0], "texture/pistol2.png", 8, 1500, 20, 5, Weapon.pistolShoot, 0.5, "normal", sizeMult=0.7)
-        self.smg = Weapon(self, "SMG", [1, 0], "texture/ump.png", 10, 1800, 45, 20, Weapon.smgShoot, 1, "normal", sizeMult=0.7)
-
-        self.famas = Weapon(self, "FAMAS", [1.5, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal")
-
-        self.shotgun = Weapon(self, "Shotgun", [2, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
-
-        self.mg = Weapon(self, "Machine Gun", [0, 1], "texture/mg.png", 15, 2500, 300, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", [2, 1], "texture/bfg.png", 20, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
+        self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
+        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 3000, 5, 1, Weapon.Energyshoot, 2, "energy")
+        self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
+        self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
+        self.pistol = Weapon(self, "USP-S", [50, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
+        self.pistol2 = Weapon(self, "Glock", [30, 0], "texture/pistol2.png", 8, 1500, 20, 5, Weapon.pistolShoot, 0.5, "normal", sizeMult=0.7)
+        self.smg = Weapon(self, "SMG", [80, 0], "texture/ump.png", 10, 1800, 45, 20, Weapon.smgShoot, 1, "normal", sizeMult=0.7)
+        self.famas = Weapon(self, "FAMAS", [200, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal")
+        self.shotgun = Weapon(self, "Shotgun", [175, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
+        self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
+        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 20, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
 
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.pistol, self.pistol2, self.smg, self.famas, self.shotgun, self.mg, self.BFG]
 
+        self.firstPacket = self.AK.getPacket()
+        print("AK PACKET:", self.firstPacket)
         self.BFGLasers = []
 
         self.skullW = Weapon(self, "Skull", [0,0], "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
@@ -213,6 +214,8 @@ class Game:
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
 
+        self.shit = pygame.image.load("texture/shit.png").convert_alpha()
+
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []
         self.tileSize = 100
@@ -236,6 +239,25 @@ class Game:
         self.pawnGenT = 0
         #self.map = ArenaGenerator(80, 60)
 
+        self.killstreaks = [
+            pygame.mixer.Sound("audio/quake/killingSpree.wav"),
+            pygame.mixer.Sound("audio/quake/dominating.wav"),
+            pygame.mixer.Sound("audio/quake/unstoppable.wav"),
+            pygame.mixer.Sound("audio/quake/godlike.wav"),
+            pygame.mixer.Sound("audio/quake/holyshit.wav"),
+        ]
+        for x in self.killstreaks:
+            x.set_volume(0.4)
+        
+        self.killStreakText = [
+            "is on a KILLING SPREE!",
+            "is DOMINATING!",
+            "is UNSTOPPABLE!",
+            "is GODLIKE!",
+            "HOLY SHIT!"
+        ]
+
+        
         # TEAM COUNT
         
         self.teamsSave = self.teams
@@ -305,7 +327,7 @@ class Game:
         self.items = getItems()
         self.cameraLock = None
 
-        self.levelUps = [round(10*(x+1) * (1.2) ** x) for x in range(100)]
+        self.levelUps = [round(5*(x+1) * (1.1) ** x) for x in range(100)]
 
         self.pendingLevelUp = None
         self.levelUpI = 5
@@ -329,6 +351,10 @@ class Game:
         
         self.skullTimes = []
         self.refreshShops()
+
+        self.subs = None
+        self.subI = 0
+        self.lastSubTime = 0
 
         
         self.ARSounds = self.loadSound("audio/assault")
@@ -377,13 +403,139 @@ class Game:
         self.meleeSound = pygame.mixer.Sound("audio/melee.wav")
         self.horn = pygame.mixer.Sound("audio/horn.wav")
         self.tripSound = pygame.mixer.Sound("audio/trip.wav")
-        for x in [self.reloadSound, self.meleeSound, self.horn, self.tripSound]:
+        self.shitSound = pygame.mixer.Sound("audio/shit.wav")
+        for x in [self.reloadSound, self.meleeSound, self.horn, self.tripSound, self.shitSound]:
             x.set_volume(0.3)
 
         createSettings(self)
+        
+        self.notification_start_time = None
+        self.currNotification = None
 
         self.gamemode_display = GlitchGamemodeDisplay(self)
+
+        self.musicQueue = []
+
+    def addToPlaylist(self, trackLink):
+
+        i = infoBar(self, f"Adding a song")
+
+        out_dir = "tracks"
+        os.makedirs(out_dir, exist_ok=True)
+
+        # Run yt-dlp
+        subprocess.run([
+            "yt-dlp",
+            "-x",
+            "--audio-format", "mp3",
+            "-o", f"{out_dir}/%(title)s.%(ext)s",
+            trackLink
+        ], check=True)
+
+        # Find the most recent file in tracks/
+        files = glob.glob(os.path.join(out_dir, "*.mp3"))
+        if not files:
+            raise RuntimeError("No mp3 downloaded.")
+        latest = max(files, key=os.path.getctime)
+        
+        i.killed = True
+        # Queue in pygame
+
+        self.musicQueue.append(latest)
+        print("QUEUE")
+        print(self.musicQueue)
+
+    def draw_notification(self, text, x, y, start_time, color=(255, 255, 255)):
+        current_time = pygame.time.get_ticks() - start_time
+        duration = 2500
+        
+        if current_time > duration:
+            return True
+        
+        # Phase timing
+        drop_time = 400
+        hold_time = 1500
+        rise_time = 600
+
+        riseAmount = 1000
+        
+        # Position calculation
+        if current_time < drop_time:
+            # Dropping phase
+            progress = current_time / drop_time
+            ease_progress = progress * progress * (3 - 2 * progress)  # Smoothstep
+            pos_y = y - riseAmount + riseAmount * ease_progress
+        elif current_time < drop_time + hold_time:
+            # Holding phase
+            pos_y = y
+        else:
+            # Rising phase
+            rise_progress = (current_time - drop_time - hold_time) / rise_time
+            ease_progress = rise_progress * rise_progress
+            pos_y = y - riseAmount * ease_progress
+        
+        # Violent vibration
+        shake_intensity = 5 if drop_time <= current_time <= drop_time + hold_time else 5
+        shake_x = random.randint(-shake_intensity, shake_intensity)
+        shake_y = random.randint(-shake_intensity, shake_intensity)
+        final_x = x + shake_x
+        final_y = pos_y + shake_y
+        
+        # Glitch effects
+        glitch_chance = 0.3 if drop_time <= current_time <= drop_time + hold_time else 0.1
+        
+        if random.random() < glitch_chance:
+            # Color corruption
+            r, g, b = color
+            glitch_color = (
+                max(0, min(255, r + random.randint(-100, 100))),
+                max(0, min(255, g + random.randint(-100, 100))),
+                max(0, min(255, b + random.randint(-100, 100)))
+            )
+        else:
+            glitch_color = color
+        
+        # Render text
+        text_surface = self.notificationFont.render(text, True, glitch_color)
+        
+        # Digital corruption effect
+        if random.random() < glitch_chance:
+            # Horizontal line displacement
+            for line in range(0, text_surface.get_height(), 2):
+                if random.random() < 0.4:
+                    line_rect = pygame.Rect(0, line, text_surface.get_width(), 1)
+                    line_surface = text_surface.subsurface(line_rect).copy()
+                    offset = random.randint(-10, 10)
+                    text_surface.blit(line_surface, (offset, line))
+        
+        # Chromatic aberration
+        if random.random() < 0.2:
+            red_surface = text_surface.copy()
+            blue_surface = text_surface.copy()
+            red_surface.fill((255, 0, 0), special_flags=pygame.BLEND_MULT)
+            blue_surface.fill((0, 0, 255), special_flags=pygame.BLEND_MULT)
             
+            text_rect = red_surface.get_rect(center=(final_x - 2, final_y))
+            self.screen.blit(red_surface, text_rect)
+            text_rect = blue_surface.get_rect(center=(final_x + 2, final_y))
+            self.screen.blit(blue_surface, text_rect)
+        
+        # Main text
+        text_rect = text_surface.get_rect(center=(final_x, final_y))
+        self.screen.blit(text_surface, text_rect)
+        
+        # Static noise overlay
+        if random.random() < 0.15:
+            noise_surface = pygame.Surface((text_surface.get_width() + 20, text_surface.get_height() + 20))
+            for i in range(100):
+                noise_x = random.randint(0, noise_surface.get_width())
+                noise_y = random.randint(0, noise_surface.get_height())
+                noise_surface.set_at((noise_x, noise_y), (255, 255, 255))
+            noise_surface.set_alpha(100)
+            self.screen.blit(noise_surface, (final_x - 10, final_y - 10))
+        
+        return False
+                    
 
     def refreshShops(self):
         self.shops = []
@@ -392,6 +544,56 @@ class Game:
             shop = Shop(self, x)
             shop.totalPrice = [0, 0]
             self.shops.append(shop)
+
+    def handleMainMusic(self):
+        if pygame.mixer.music.get_busy():
+            return
+        if self.musicQueue:
+            next_track = self.musicQueue.pop(0)
+ 
+            self.subs = get_subs_for_track(next_track)
+            
+            print("Playing from queue:", next_track)
+            pygame.mixer.music.load(next_track)
+            pygame.mixer.music.play()
+            pygame.mixer.music.set_volume(0.7)
+            self.musicStartTime = time.time()
+            self.subI = 0
+        else:
+            self.musicQueue = os.listdir("tracks")
+            self.musicQueue = ["tracks/" + track for track in self.musicQueue if track.endswith(".mp3")]
+            random.shuffle(self.musicQueue)
+    
+    def drawSubs(self):
+        if not self.subs:
+            return
+        if self.subI >= len(self.subs):
+            return
+        currentTime = time.time() - self.musicStartTime
+        start, text = self.subs[self.subI]
+        if self.subI + 1 >= len(self.subs):
+            end = start + 2
+        else:
+            end, _ = self.subs[self.subI + 1]
+        if currentTime >= start:
+            if currentTime <= end:
+                self.lastSubTime += self.deltaTimeR
+
+                if self.lastSubTime <= 0.1:
+                    y_offset = 200 - 200 * (self.lastSubTime / 0.1)  # ease in first 0.1s
+                elif self.lastSubTime <= 1.0:
+                    y_offset = 0  # fully visible
+                else:
+                    # Quadratic falloff after 1 second
+                    t = self.lastSubTime - 1.0
+                    falloff = max(0.0, 1.0 - t)  # linear decay 1 → 0
+                    y_offset = (1 - falloff ** 2) * 200  # quadratic easing for smooth drop
+                subSurf = self.fontLarge.render(text, True, (255,255,255))
+                subRect = subSurf.get_rect(center=(self.res[0]//2, self.res[1]-100 + y_offset))
+                self.screen.blit(subSurf, subRect)
+            else:
+                self.subI += 1
+                self.lastSubTime = 0
 
 
     def findCorners(self, grid):
@@ -547,6 +749,10 @@ class Game:
             self.map.generate_arena(room_count=22, min_room_size=8, max_room_size=20, corridor_width=3)
 
         self.arena = ArenaWithPathfinding(self.map)
+
+        self.shitGrid = np.zeros(self.map.grid.shape, dtype=np.uint8)
+        self.shitDict = {}
+
         connectivity = self.arena.validate_arena_connectivity()
         print(f"Arena Connectivity: {connectivity}")
         print(self.map.grid.shape)
@@ -603,6 +809,10 @@ class Game:
         i.killed = True
         self.nextMusic = 1
         self.mapCreated = True
+
+
+    def cell2Pos(self, cell):
+        return v2(cell) * self.tileSize + [self.tileSize/2, self.tileSize/2]
 
     def initiateGame(self):
 
@@ -698,11 +908,9 @@ class Game:
         
         #else:
         #    pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
-        pawn.teamColor = self.getTeamColor(pawn.team.i)
+        #pawn.teamColor = self.getTeamColor(pawn.team.i)
         self.ENTITIES.append(pawn)
-            
-
-        self.reTeamPawns()
+        #self.reTeamPawns()
 
         self.pawnGenI -= 1
 
@@ -1022,10 +1230,6 @@ class Game:
         self.endGameI -= self.deltaTimeR
         I = max(self.endGameI-4, 0)
         self.deltaTime *= 0.01 + I*0.99
-
-            
-        if self.currMusic == -1:
-            self.nextMusic = 0
         
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
@@ -1053,8 +1257,9 @@ class Game:
 
             
         for x in self.pawnHelpList:
-            x.team = x.originalTeam
+            self.allTeams[x.originalTeam].add(x)
             x.enslaved = False
+            x.killed = False
             x.reset()
             x.defaultPos()
             x.respawnI = 0
@@ -1324,8 +1529,12 @@ class Game:
                 return i
             l += x
 
-    def run(self):
 
+    def notify(self, text, color = [255,255,255]):
+        self.notificationTime = pygame.time.get_ticks()
+        self.currNotification = [text, color]
+
+    def run(self):
         while True:
             
             tickStartTime = time.time()
@@ -1352,13 +1561,20 @@ class Game:
 
             for x in self.infobars:
                 x.tick()
-            self.musicSwitch = self.handleMusic()
-            self.BPM()
-            r = pygame.Rect((0,0), self.res)
-            pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(5*(self.beatI**2)))
+            #self.musicSwitch = self.handleMusic()
+            self.handleMainMusic()
+            self.drawSubs()
+            #self.BPM()
+            #r = pygame.Rect((0,0), self.res)
+            #pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(5*(self.beatI**2)))
 
             #self.screen.fill((0, 0, 0))
             elapsed = time.time() - self.now
+
+            if self.currNotification:
+                if self.draw_notification(self.currNotification[0], self.res.x/2, self.res.y/4, 
+                                          self.notificationTime, color=self.currNotification[1]):
+                    self.currNotification = None
 
             pygame.display.update()
             self.t1 = time.time() - tickStartTime

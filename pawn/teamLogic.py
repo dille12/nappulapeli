@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
-
+    from pawn.pawn import Pawn
 
 class Team:
     def __init__(self, app: "Game", i):
@@ -9,14 +9,32 @@ class Team:
         self.i = i
         self.app = app
         self.color = self.app.getTeamColor(self.i)
-        self.gold = 0
+        self.currency = 0
 
-    def add(self, pawn):
+
+    def updateCurrency(self):
+        for x in self.pawns:
+            if not x.client:
+                continue
+
+            x.updateStats({"currency": self.currency})
+
+    def add(self, pawn: "Pawn"):
+
+        if pawn.team == self:
+            return
+
         if pawn.team:
             pawn.team.pawns.remove(pawn)
         self.pawns.append(pawn)
         pawn.team = self
         pawn.originalTeam = self.i
+        if pawn.client:
+            packet = {"type": "teamSwitch", 
+                        "newTeamColor": self.color}
+            pawn.dumpAndSend(packet)
+
+            pawn.updateStats({"currency": self.currency})
 
     def __mul__(self, other):
         return int(self) * other
