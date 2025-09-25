@@ -114,8 +114,9 @@ class Pawn(PawnBehaviour, getStat):
         self.client = client
         self.GENERATING = True
 
-        PawnBehaviour.__init__(self)
-        getStat.__init__(self)
+        super().__init__()
+        
+
 
         # pawnAvatarEncoded is encoded as base64
 
@@ -187,6 +188,9 @@ class Pawn(PawnBehaviour, getStat):
         self.levelUpImage = pygame.transform.scale_by(image, 400 / image.get_size()[1])
         info.text = f"{self.name}: Morphing"
         self.levelUpImage = self.morph(self.levelUpImage)
+
+        self.millionaireImage = pygame.transform.scale_by(self.levelUpImage.copy(), 300 / image.get_size()[1])
+        self.millionaireImage = pygame.transform.flip(self.millionaireImage, True, False)
 
         self.currentRoom = None
 
@@ -279,12 +283,20 @@ class Pawn(PawnBehaviour, getStat):
         self.app.skullW.give(self)
         self.skullWeapon = self.weapon
 
+        self.app.hammer.give(self)
+        self.hammer = self.weapon
+
         self.cameraLockI = 0
         self.onCameraTime = 0
 
         info.text = f"{self.name}: Giving a weapon"
         weapon = random.choice(self.app.weapons)
         weapon = self.app.pistol2
+
+        if self.app.giveWeapons:
+            weapon = random.choice(self.app.weapons)
+
+        #weapon = self.app.hammer
 
         weapon.give(self)  # Give the AK-47 to this pawn
         
@@ -311,6 +323,13 @@ class Pawn(PawnBehaviour, getStat):
 
         self.shopCurrWeapon = random.choice(self.app.weapons)
 
+        self.building = False
+        self.buildingTarget = None  # Building object being constructed
+        self.buildingI = 0  # Animation timer
+        self.hammerWeapon = None  # Hammer weapon instance
+        self.buildingJumpOffset = 0
+        self.buildingBounceOffset = 0
+        self.buildingRotationOffset = 0
         
 
         self.getNextItems()
@@ -335,7 +354,7 @@ class Pawn(PawnBehaviour, getStat):
         #    i = random.choice(self.app.items)
         #    i.apply(self)
 
-        #for x in range(20):
+        #for x in range(50):
         #    self.getNextItems()
         #    self.levelUp()
 
@@ -441,15 +460,16 @@ class Pawn(PawnBehaviour, getStat):
     def onScreen(self):
         r = pygame.Rect(self.app.cameraPosDelta, self.app.res)
        
-        r2 = pygame.Rect(self.app.cameraLockTarget, (0,0))
-        r2.inflate_ip(self.app.res)
+        onDualScreen = False
 
-        DUAL = False
-        if self.app.splitI > 0:
-            if self.app.cameraLockOrigin.distance_to(self.app.cameraLockTarget) > 600:
-                DUAL = True
+        if self.app.DUALVIEWACTIVE:
+            r2 = pygame.Rect(self.app.posToTargetTo2, self.app.res)
+            onDualScreen = r2.collidepoint(self.pos)
+        #r2.inflate_ip(self.app.res)
 
-        if not r.collidepoint(self.pos) and not (r2.collidepoint(self.pos) and DUAL):
+        
+
+        if not r.collidepoint(self.pos) and not onDualScreen:
             return False
         return True
 
@@ -539,7 +559,7 @@ class Pawn(PawnBehaviour, getStat):
             return
         
         if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
-            if x.team == self.team:
+            if not self.team.hostile(x):
                 return
         
         if x.respawnI > 0:
@@ -581,8 +601,7 @@ class Pawn(PawnBehaviour, getStat):
             self.health = self.getHealthCap()
             return
 
-        for x in self.app.deathSounds:
-            x.stop()
+        
 
         for x in range(random.randint(4,8)):
             self.app.bloodSplatters.append(BloodParticle(self.pos.copy(), 1.2, app = self.app))
@@ -596,9 +615,11 @@ class Pawn(PawnBehaviour, getStat):
 
         self.killed = True
         if self.itemEffects["martyrdom"]:
-            Explosion(self.app, self.pos.copy(), self)
+            Explosion(self.app, self.pos.copy(), self, damage = 200 * self.itemEffects["weaponDamage"])
 
-        random.choice(self.app.deathSounds).play()
+        
+        self.app.playPositionalAudio(self.app.deathSounds, self.pos)
+
 
         c = random.choice(self.corpses)
         self.app.MAP.blit(c, self.pos - v2(c.get_size())/2)
@@ -661,7 +682,7 @@ class Pawn(PawnBehaviour, getStat):
         if self.killed:
             return
 
-        if fromActor.itemEffects["allyProtection"] and fromActor.team == self.team:
+        if fromActor.itemEffects["allyProtection"] and not fromActor.team.hostile(self):
             return
         
         if typeD == "normal":
@@ -685,6 +706,10 @@ class Pawn(PawnBehaviour, getStat):
 
         if self.itemEffects["thorns"] > 0 and not thornDamage and fromActor:
             fromActor.takeDamage(damage * self.itemEffects["thorns"], thornDamage = True, fromActor = self)
+
+        if fromActor and fromActor.itemEffects["lifeSteal"] > 0:
+            fromActor.health += damage * fromActor.itemEffects["lifeSteal"]
+
         if self.health <= 0:
             if fromActor.team != self.team:
                 self.lastKiller = fromActor
@@ -801,7 +826,7 @@ class Pawn(PawnBehaviour, getStat):
                 self.say(f"Kosto elää {self.lastKiller.name}.", 1)
 
             self.lastKiller = None
-            print("Retribution!")
+            
 
         self.handleNemesisStats(killed)
         self.handleNemesis()
@@ -942,7 +967,7 @@ class Pawn(PawnBehaviour, getStat):
 
 
         if addItems:
-            info_lines.append(["Omistetut esineet:", [255,255,255]])
+            info_lines.append(["Owned items:", [255,255,255]])
             for pI in self.pastItems:
                 info_lines.append([pI, [255,255,255]])
 
@@ -989,7 +1014,6 @@ class Pawn(PawnBehaviour, getStat):
         self.getNextItems()
         self.healthCap += 10
         self.say(f"Jipii! Nousin tasolle {self.level}, ja sain uuden esineen!", 0.1)
-        print(self.name, "Leveled up")
         self.level += 1
 
         self.updateStats({"level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
@@ -1139,9 +1163,11 @@ class Pawn(PawnBehaviour, getStat):
 
             self.breatheIm.blit(hurtIm, (0,0))
 
-        self.breatheI += self.app.deltaTime % 2
-        self.breatheIm = pygame.transform.scale_by(self.breatheIm, [1 + 0.05 * math.sin(self.breatheI * 2 * math.pi), 1 + 0.05 * math.cos(self.breatheI * 2 * math.pi)])
-        self.breatheY = 2.5*math.sin(self.breatheI * 2 * math.pi)
+        breathingMod = 1 if not self.itemEffects["playMusic"] else 5
+
+        self.breatheI += (self.app.deltaTime * breathingMod) % 2
+        self.breatheIm = pygame.transform.scale_by(self.breatheIm, [1 + 0.05 * math.sin(self.breatheI * 2 * math.pi) * breathingMod, 1 + 0.05 * math.cos(self.breatheI * 2 * math.pi) * breathingMod])
+        self.breatheY = 2.5*math.sin(self.breatheI * 2 * math.pi) * breathingMod
 
         #if self.app.cameraLock == self and self.route:
         #    pygame.draw.rect(self.app.screen, [255,0,0], [self.route[0][0] * 70 - self.app.cameraPosDelta[0], self.route[0][1] * 70- self.app.cameraPosDelta[1], 70, 70])
@@ -1151,6 +1177,7 @@ class Pawn(PawnBehaviour, getStat):
         self.xComponent = 0
         self.rotation = 0
         yAdd = 0
+        Addrotation = 0
         if self.walkTo is not None:
             # The player should be swinging from side to side when walking
             self.yComponent = abs(math.sin(self.stepI * 2 * math.pi)) * 30
@@ -1166,7 +1193,19 @@ class Pawn(PawnBehaviour, getStat):
             yAdd += self.weapon.runOffset * 10
 
 
-            self.breatheIm = pygame.transform.rotate(self.breatheIm, self.rotation + Addrotation)
+            
+
+        if self.facingRight:
+            self.xComponent += self.buildingBounceOffset
+            self.rotation += self.buildingRotationOffset
+        else:
+            self.xComponent -= self.buildingBounceOffset
+            self.rotation -= self.buildingRotationOffset
+        self.yComponent += self.buildingJumpOffset
+
+        totalRot = self.rotation + Addrotation
+
+        self.breatheIm = pygame.transform.rotate(self.breatheIm, totalRot)
 
         newPos = self.pos - [self.xComponent, self.yComponent - yAdd]
 
@@ -1194,12 +1233,26 @@ class Pawn(PawnBehaviour, getStat):
 
         #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
         #if not self.tripped:
+
+        self.buildingJumpOffset = 0
+        self.buildingBounceOffset = 0
+        self.buildingRotationOffset = 0
+
         if self.carryingSkull():
             self.skullWeapon.tick()
             self.tryToTransferSkull()
 
+        elif self.buildingTarget and not self.target:
+            self.hammer.tick()
+
         elif self.weapon:
-            self.weapon.tick()           
+            self.weapon.tick()    
+
+
+
+        if self.itemEffects["playMusic"]:
+            d = (self.pos - self.app.cameraPosDelta - v2(self.app.res)/2).length()
+            self.app.mankkaDistance = min(self.app.mankkaDistance, d) 
 
 
         # Draw name
@@ -1303,6 +1356,10 @@ class Pawn(PawnBehaviour, getStat):
         #if not self.tripped:
         if self.app.objectiveCarriedBy == self:
             self.skullWeapon.render()
+
+        elif self.buildingTarget and not self.target:
+            self.hammer.render()
+
         elif self.weapon:
             self.weapon.render()      
 
@@ -1353,6 +1410,8 @@ class Pawn(PawnBehaviour, getStat):
         self.route = self.app.arena.pathfinder.find_path(startPos, endPos)
 
         self.advanceRoute()
+
+    
 
 
     def advanceRoute(self):

@@ -8,7 +8,7 @@ import random
 def tickShops(self: "Game"):
     if self.teamInspectIndex != -1:
         t = self.fontLarge.render(f"TIIMI {self.teamInspectIndex + 1}", True, self.getTeamColor(self.teamInspectIndex))
-        self.screen.blit(t, v2(self.res[0]/2, 100) - v2(t.get_size())/2)
+        self.screen.blit(t, v2(self.res[0]/2, 150) - v2(t.get_size())/2)
 
         FULL_NPC_TEAM = True
         for x in self.pawnHelpList:
@@ -48,11 +48,14 @@ def tickShops(self: "Game"):
                 self.shops[self.teamInspectIndex].totalPrice[0] += w.weapon.price[0]
                 self.shops[self.teamInspectIndex].totalPrice[1] += w.weapon.price[1]
     
-    if self.teamInspectIndex == -1:
-        t = threading.Thread(target=self.initiateGame)
-        t.daemon = True
-        t.start()
-        self.GAMESTATE = "loadingScreen"
+    
+        
+
+def goToGame(self: "Game"):
+    t = threading.Thread(target=self.initiateGame)
+    t.daemon = True
+    t.start()
+    self.GAMESTATE = "loadingScreen"
 
 def judgementTick(self: "Game"):
     self.judgementTime += self.deltaTime
@@ -79,7 +82,7 @@ def judgementTick(self: "Game"):
             for x in self.pawnHelpList:
                 x.pickWalkingTarget()
             self.horn.play()
-            self.judgementDrinkTime = random.uniform(5, 30)
+            self.judgementDrinkTime = random.uniform(5, 15)
 
     elif self.judgementPhase == "reveal":
         pawn, title, message = self.judgements[self.judgementIndex]
@@ -131,6 +134,12 @@ def preGameTick(self: "Game"):
     
     if self.pregametick == "shop":
         tickShops(self)
+        t = self.fontLarge.render(f"Peli alkaa: {int(self.shopTimer)}", True, [255]*3)
+        self.screen.blit(t, v2(self.res[0]/2, 35) - v2(t.get_size())/2)
+
+    if self.shopTimer <= 0 and not self.playerFilesToGen and self.pawnGenI == 0:
+        goToGame(self)
+
     
     self.particle_system.update_all()
     self.particle_system.render_all(self.DRAWTO)

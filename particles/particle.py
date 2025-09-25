@@ -582,7 +582,7 @@ class ParticleSystem:
         """
         particles = []
 
-        print("Creaing a level up particle system for", x, y)
+        
         
         # Main burst particles (large golden stars)
         for _ in range(30):

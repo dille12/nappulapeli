@@ -57,9 +57,56 @@ def melee_animation(t):
 
     return x, y, angle
 
+def hammer_animation(t):
+    if t < 0.2:
+        # Wind up - raise hammer high
+        k = ease_in_out(t / 0.2)
+        x = -10 * k
+        y = -30 * k  # Higher than normal melee
+        angle = -60 * k + 90
+    elif t < 0.7:
+        # Hold position
+        x = -10
+        y = -30
+        angle = -60 + 90
+    else:
+        # Strike down hard
+        k = ease_in_out((t - 0.7) / 0.3)
+        x = -10 + 40 * k
+        y = -30 + 80 * k  # Slam down
+        angle = -60 - 60 * k  + 90
+    
+    return x, y, angle
+
+def hammer_animation_with_jump(t):
+    # Parabolic jump physics
+    # Jump peaks at t=0.5, lands at t=1.0
+    jump_height = -80 * (4 * t * (1 - t))  # Parabola: peaks at t=0.5
+    
+    # Hammer swing animation
+    if t < 0.3:
+        # Wind up while jumping
+        k = ease_in_out(t / 0.3)
+        x = -15 * k
+        y = -40 * k  # High windup
+        angle = 70 * k
+    elif t < 0.6:
+        # Hold hammer high at peak of jump
+        x = -15
+        y = -40
+        angle = 70
+    else:
+        # Slam down as landing
+        k = ease_in_out((t - 0.6) / 0.4)
+        x = -15 + 80 * k
+        y = -40 + 90 * k  # Big slam
+        angle = 70 - 70 * k
+    
+    return x, y + jump_height, angle
+
 
 class Weapon:
-    def __init__(self, app: "Game", name: str, price: list, *args, owner: "Pawn" = None, precomputedImage=None, sizeMult = 1):
+    def __init__(self, app: "Game", name: str, price: list, *args, owner: "Pawn" = None, precomputedImage=None, sizeMult = 1, burstBullets=3, burstTime=0.1):
         """
         Initialize the Weapon object.
         :param args: Arguments for the weapon, including app, name, image_path, damage, and range.
@@ -73,11 +120,11 @@ class Weapon:
         self.owner = owner
         self.typeD = typeD
         self.price = price
+        
 
         
 
         if not precomputedImage:
-            print("Recomputing image for weapon:", name)
             self.image = pygame.image.load(image_path).convert_alpha()
             if image_path == "texture/ak47.png":
                 self.image = trim_surface(self.image)
@@ -122,10 +169,12 @@ class Weapon:
         self.wobbleRotation = 0
         self.wobbleVel = 0
 
-        self.burstRounds = 3
-        self.burstI = 0.3/3
+        self.burstRounds = burstBullets
+        self.burstI = burstTime
         self.currBurstRounds = 0
         self.currBurstI = 0
+
+        self.struck = False
 
         self.FINALROTATION = 0
         self.ROTATION = 0
@@ -178,39 +227,22 @@ class Weapon:
         """
 
         # This creates a memory leak if the weapon is given to multiple pawns?
-        pawn.weapon = Weapon(self.app, self.name, self.price, *self.args, owner=pawn, precomputedImage=self.image.copy())  # Pass the image as a precomputed image
+        pawn.weapon = Weapon(self.app, self.name, self.price, *self.args, owner=pawn, precomputedImage=self.image.copy(),
+                             sizeMult=1, burstBullets=self.burstRounds, burstTime=self.burstI)  # Pass the image as a precomputed image
 
 
     def reload(self):
         self.currReload = self.getReloadTime()
         self.magazine = self.owner.getMaxCapacity()
-        self.app.reloadSound.stop()
-        self.app.reloadSound.play()
+        if self.owner.onScreen():
+            self.app.reloadSound.stop()
+            self.app.reloadSound.play()
 
 
     
     
 
-    def RocketLauncher(self):
-        if not self.canShoot(): return
-
-        self.magazine -= 1
-
-        self.app.playSound(self.app.rocketSound)
-        
-
-        self.fireTick = self.owner.getRoundsPerSecond()
-        r = math.radians(-self.ROTATION)
-
-        gun_x, gun_y = self.getBulletSpawnPoint()
-        pierce = self.owner.itemEffects["piercing"]
-        homing = self.owner.itemEffects["homing"]
-        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
-
-        for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
-            self.addRecoil(0.4)
-        self.addRecoil(3)
+    
 
 
     def addRecoil(self, amount):
@@ -221,10 +253,85 @@ class Weapon:
         self.magazine = self.getMaxCapacity()
         return
     
+    
+
+    def getMeleeTime(self):
+        return 0.5 / max(self.owner.getHandling(), 0.1)
+    
+    
+
+    def tryToMelee(self):
+        if self.meleeing(): return
+
+        self.meleeI = self.getMeleeTime()
+        t = self.owner.target.pos.copy()
+
+        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+
+        if self.owner.itemEffects["detonation"]:
+            Explosion(self.app, t, self.owner, 100*self.owner.itemEffects["meleeDamage"])
+
+
+        self.app.playPositionalAudio("audio/melee.wav", self.owner.pos)
+        #if self.owner.onScreen():
+        #    self.app.meleeSound.stop()
+        #    self.app.meleeSound.play()
+
+    def tryToBuild(self):
+        if self.meleeing(): return
+        if not self.owner.buildingTarget: return
+        if self.owner.pos.distance_to(self.owner.buildingTarget.pos) > 150: return
+        if self.owner.buildingTarget.built(): return
+        self.owner.walkTo = None
+        self.meleeI = self.getMeleeTime()
+        self.struck = False
+
+    def hammerStrike(self):
+        if not self.canStrike(): return
+        
+        self.tryToBuild()
+        
+        # Calculate jump progress
+        jump_progress = (self.getMeleeTime() - self.meleeI) / self.getMeleeTime()
+        
+        # Parabolic jump: y = -4h*x*(x-1) where h is max height
+        max_jump_height = 100
+        self.owner.buildingJumpOffset = -max_jump_height * 4 * jump_progress * (jump_progress - 1)
+        
+        # Horizontal bounce for extra comedy
+        bounce_amplitude = 15
+        self.owner.buildingBounceOffset = bounce_amplitude * math.sin(jump_progress * math.pi * 2)
+
+        rotation_amplitude = 30
+        self.owner.buildingRotationOffset = rotation_amplitude * 4 * jump_progress * (jump_progress - 1)
+        
+        # Strike timing at landing (t ≈ 0.85)
+        if 0.8 < jump_progress < 0.9 and not self.struck:
+            self.struck = True
+            
+            # Impact effect with screen shake
+            if self.owner.buildingTarget:
+                self.owner.buildingTarget.addProgress(10)
+
+            if self.owner.buildingTarget.built():
+                self.owner.buildingTarget = None
+                
+            # Extra impact effects
+            #if self.owner.onScreen():
+            self.app.playPositionalAudio(self.app.hammerSound, self.owner.pos)
+
+    def canStrike(self):
+        #if self.meleeing(): return False
+        #if not self.owner.building: return False
+        #if not self.owner.buildingTarget: return False
+        return True
+    
+
     def Energyshoot(self):
         if not self.canShoot(): return
 
-        self.app.playSound(self.app.energySound)
+        #if self.owner.onScreen():
+        self.app.playPositionalAudio(self.app.energySound, self.owner.pos)
         self.magazine -= 1
         self.fireTick = self.owner.getRoundsPerSecond()
 
@@ -250,7 +357,7 @@ class Weapon:
                 startPos[1] + math.sin(math.radians(-self.ROTATION)) * self.range
             ]
             
-            self.app.BFGLasers.append([startPos, endPos])
+            self.app.BFGLasers.append([startPos, endPos, self.owner.teamColor])
             
             self.lazerTimer -= self.app.deltaTime
             if self.lazerTimer <= 0:
@@ -279,7 +386,7 @@ class Weapon:
                     )
                     if collides:
                         x.takeDamage(
-                            self.owner.getDamage(),  # fixed time step damage
+                            self.owner.getDamage() * self.app.deltaTime,  # fixed time step damage
                             fromActor=self.owner,
                             typeD="energy",
                             bloodAngle=-math.radians(self.ROTATION)
@@ -294,27 +401,28 @@ class Weapon:
             
             self.lazerActive = True
             self.lazerTimer = 0.04
-
-    def getMeleeTime(self):
-        return 0.5 / max(self.owner.getHandling(), 0.1)
-    
     
 
-    def tryToMelee(self):
-        if self.meleeing(): return
+    def RocketLauncher(self):
+        if not self.canShoot(): return
 
-        self.meleeI = self.getMeleeTime()
-        t = self.owner.target.pos.copy()
+        self.magazine -= 1
 
-        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+        #if self.owner.onScreen():
+        self.app.playPositionalAudio(self.app.rocketSound, self.owner.pos)
 
-        if self.owner.itemEffects["detonation"]:
-            Explosion(self.app, t, self.owner, 100)
+        self.fireTick = self.owner.getRoundsPerSecond()
+        r = math.radians(-self.ROTATION)
 
+        gun_x, gun_y = self.getBulletSpawnPoint()
+        pierce = self.owner.itemEffects["piercing"]
+        homing = self.owner.itemEffects["homing"]
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
-        if self.owner.onScreen():
-            self.app.meleeSound.stop()
-            self.app.meleeSound.play()
+        for x in range(self.owner.itemEffects["multiShot"]):
+            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+            self.addRecoil(0.4)
+        self.addRecoil(3)
 
 
     def suppressedShoot(self):
@@ -358,27 +466,21 @@ class Weapon:
                     self.createBullet(0.25)
                 self.magazine -= 1
                 self.fireTick += self.owner.getRoundsPerSecond()
-                self.app.playSound(self.app.ARSounds)
+                #if self.owner.onScreen():
+                if self.typeD == "energy":
+                    self.app.playPositionalAudio(self.app.energySound, self.owner.pos)
+                else:
+                    self.app.playPositionalAudio(self.app.ARSounds, self.owner.pos)
             
             self.currBurstI -= self.app.deltaTime
-            
-
-
-    def createBullet(self, recoil):
-        r = math.radians(-self.ROTATION)
-        pierce = self.owner.itemEffects["piercing"]
-        homing = self.owner.itemEffects["homing"]
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
-        self.addRecoil(recoil)
-
-
 
     def shotgunShoot(self):
         
 
         if not self.canShoot(): return
 
-        self.app.playSound(self.app.shotgunSound)
+        #if self.owner.onScreen():
+        self.app.playPositionalAudio(self.app.shotgunSound, self.owner.pos)
 
         
 
@@ -393,6 +495,34 @@ class Weapon:
         for x in range(10*self.owner.itemEffects["multiShot"]):
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.15)
+
+    def AKshoot(self, sounds = None):
+        
+        if not self.canShoot(): return
+        
+        if not sounds:
+            sounds = self.app.ARSounds
+
+        #if self.owner.onScreen():
+        self.app.playPositionalAudio(sounds, self.owner.pos)
+
+        self.magazine -= 1
+        self.fireTick = self.owner.getRoundsPerSecond()
+
+
+        r = math.radians(-self.ROTATION)
+        gun_x, gun_y = self.getBulletSpawnPoint()
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
+        for x in range(self.owner.itemEffects["multiShot"]):
+            self.createBullet(0.25)
+
+    def createBullet(self, recoil):
+        r = math.radians(-self.ROTATION)
+        pierce = self.owner.itemEffects["piercing"]
+        homing = self.owner.itemEffects["homing"]
+        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+        self.addRecoil(recoil)
 
 
     def checkIfCanAddFireRate(self):
@@ -422,30 +552,12 @@ class Weapon:
         return True
 
 
-    def AKshoot(self, sounds = None):
-        
-        if not self.canShoot(): return
-        
-        if not sounds:
-            sounds = self.app.ARSounds
-
-        self.app.playSound(sounds)
-
-        self.magazine -= 1
-        self.fireTick = self.owner.getRoundsPerSecond()
-
-
-        r = math.radians(-self.ROTATION)
-        gun_x, gun_y = self.getBulletSpawnPoint()
-        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
-
-        for x in range(self.owner.itemEffects["multiShot"]):
-            self.createBullet(0.25)
+    
 
     def pointingAtTarget(self):
         if self.owner.target:
             r = -math.degrees(self.app.getAngleFrom(self.owner.pos, self.owner.target.pos))
-            if abs(angle_diff(self.ROTATION, r)) > 30:
+            if abs(angle_diff(self.ROTATION, r)) > 10:
                 return False
 
         return True
@@ -488,6 +600,8 @@ class Weapon:
 
     def tick(self):
 
+        
+
         if self.meleeing():
             self.meleeI -= self.app.deltaTime
 
@@ -524,7 +638,12 @@ class Weapon:
         #    self.meleeI = 0.5
 
         xA, yA, rA = 0,0,0
-        if self.meleeing():
+
+        if self.name == "Hammer":
+            self.hammerStrike()
+            xA, yA, rA = hammer_animation_with_jump((self.getMeleeTime()-self.meleeI)/self.getMeleeTime())
+
+        elif self.meleeing():
             xA, yA, rA = melee_animation((self.getMeleeTime()-self.meleeI)/self.getMeleeTime())
 
             #r += rA #if self.owner.facingRight else -rA

@@ -69,9 +69,9 @@ class Bullet:
     def findHomingTarget(self):
         if not self.homing:
             return None
-            
-        enemies = [x for x in self.app.pawnHelpList 
-                  if x != self.owner and x.team != self.owner.team and not x.killed]
+        
+        enemies = [x for x in self.app.pawnHelpList
+                  if x != self.owner and self.owner.team.hostile(x) and not x.killed]
         
         if not enemies:
             return None
@@ -171,14 +171,13 @@ class Bullet:
             )
             if collides:
 
+                self.dodged.append(x)
+
                 if random.uniform(0, 1) < x.itemEffects["dodgeChance"]:
-                    self.dodged.append(x)
-                    x.say("Läheltä liippas!")
+                    x.say("Läheltä liippas!", 0.1)
                     continue
 
-                if self.piercing:
-                    self.dodged.append(x)
-                else:
+                if not self.piercing:
                     if self in self.app.ENTITIES:
                         self.app.ENTITIES.remove(self)
 
@@ -190,10 +189,10 @@ class Bullet:
                     Explosion(self.app, self.pos, firer = self.owner, damage = self.damage)
                 else:
                     x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
-
-                for x in self.app.hitSounds:
-                    x.stop()
-                random.choice(self.app.hitSounds).play()
+                
+                if x.onScreen():
+                    self.app.playPositionalAudio(self.app.hitSounds, self.pos)
+                    
                 if not self.piercing:
                     return
 

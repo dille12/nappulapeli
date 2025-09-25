@@ -11,7 +11,8 @@ class Shit:
 
         self.image = self.app.shit
         self.app.shitDict[self.cell[0] * 200 + self.cell[1]] = self
-        self.app.shitSound.play()
+        if self.app.onScreen(self.pos):
+            self.app.shitSound.play()
     
     def tick(self):
         pass

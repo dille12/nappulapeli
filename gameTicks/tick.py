@@ -47,7 +47,7 @@ def battleTick(self: "Game"):
                 victoryCondition[p.team.i] += p.kills
             
             for i, x in enumerate(victoryCondition):
-                if x >= 50:
+                if x >= 200:
                     announceVictory(self, i)
                     break
         
@@ -175,7 +175,11 @@ def battleTick(self: "Game"):
     CAMPANSPEED = 500000 * self.deltaTimeR
     #self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
     #self.cameraVel[1] += self.smoothRotationFactor(self.cameraVel[1], CAMPANSPEED, self.cameraPos[1] - self.cameraPosDelta[1]) * self.deltaTimeR
-    self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
+    #self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
+    #self.cameraPosDelta += self.cameraVel * self.deltaTimeR
+
+    self.CAMERA.update(self.cameraPos, self.deltaTimeR, smooth_time=0.25)
+    self.cameraPosDelta = self.CAMERA.pos
 
     self.cleanUpLevel()
 
@@ -183,6 +187,8 @@ def battleTick(self: "Game"):
     if self.splitI > 0:
         if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > 600:
             DUAL = True
+
+    self.DUALVIEWACTIVE = DUAL
 
 
     for i in range(1 if not DUAL else 2):
@@ -202,7 +208,7 @@ def battleTick(self: "Game"):
             self.cameraPosDelta = self.posToTargetTo2.copy()
 
         self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
-        self.renderParallax2()
+        #self.renderParallax2()
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
 
@@ -235,22 +241,14 @@ def battleTick(self: "Game"):
 
     #self.drawWalls()
 
-    self.debugText(f"FPS: {self.FPS:.0f}")
-    self.debugText(f"GEN: {self.pawnGenI:.0f}")
-    self.debugText(f"ENT: {len(self.ENTITIES):.0f}")
-    self.debugText(f"BENT: {len(self.particle_list):.0f}")
-    self.debugText(f"CAM: {self.cameraPosDelta}")
-    self.debugText(f"PLU: {self.pendingLevelUp}")
-    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
-    self.debugText(f"DUAL: {DUAL} {self.CREATEDUAL}")
-    self.debugText(f"BLOOD: {self.bloodClearI}")
-    self.debugText(f"SPE: {self.speeches}")
+    
+    
     
     onscreen = 0
     for x in self.pawnHelpList:
         if x.onScreen():
             onscreen += 1
-    self.debugText(f"ONSCREEN: {onscreen}")
+    
 
     for x in self.killfeed:
         x.tick()
@@ -263,7 +261,8 @@ def battleTick(self: "Game"):
             self.endGame()
             return
     else:
-        self.tickScoreBoard()
+        pass
+        #self.tickScoreBoard()
 
     if not self.VICTORY:
         self.drawRoundInfo()
@@ -295,5 +294,10 @@ def battleTick(self: "Game"):
 
     if self.ultFreeze > 0:
         self.handleUlting()
+
+    self.debugText(f"FPS: {self.FPS:.0f}")
+    self.debugText(f"GEN: {self.pawnGenI:.0f}")
+    self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
+    self.debugText(f"ONSCREEN: {onscreen}")
     
     #self.genPawns()

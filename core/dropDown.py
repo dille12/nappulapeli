@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
 class Dropdown:
-    def __init__(self, app: "Game", title, choices, pos=(100, 100), width=200, height=45):
+    def __init__(self, app: "Game", title, choices, pos=(100, 100), width=200, height=45, initialValue=0):
         self.app = app
         self.choices = choices
         self.pos = pos
         self.width = width
         self.height = height
-        self.selected_index = 0
+        self.selected_index = initialValue
         self.expanded = False
         self.font = self.app.font
         self.bg_color = (60, 60, 60)

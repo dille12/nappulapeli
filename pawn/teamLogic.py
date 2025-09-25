@@ -10,6 +10,22 @@ class Team:
         self.app = app
         self.color = self.app.getTeamColor(self.i)
         self.currency = 0
+        self.wins = 0
+        self.allied = []
+        
+    
+    def hostile(self, other: "Pawn"):
+        
+        if self.app.PEACEFUL:
+            return False
+        if self.app.TRUCE:
+            return False
+        if self.app.FFA:
+            return True
+        if other.team in self.allied:
+            return False
+        return self != other.team
+        
 
 
     def updateCurrency(self):

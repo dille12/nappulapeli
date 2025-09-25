@@ -10,17 +10,17 @@ from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
-    self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600))
+    self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600), initialValue=3)
     self.npcTeamAmount = Dropdown(self, "NPC Teams:", ["0", "1", "2", "3", "4", "5", "6", "7", "8"], (350,600))
-    self.teamFill = Dropdown(self, "Fill teams to:", ["1", "2", "3", "4", "5", "6", "7", "8"], (600,600))
+    self.teamFill = Dropdown(self, "Fill teams to:", ["1", "2", "3", "4", "5", "6", "7", "8"], (600,600), initialValue=2)
 
 
     self.loadedMusic = None
     self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (550,400))
     self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (800,400))
 
-    self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1050,400))
-    self.roundLength = Dropdown(self, "Round Length:", ["0:30", "3:00", "5:00", "10:00"], (1550,400))
+    self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1050,400), initialValue=1)
+    self.roundLength = Dropdown(self, "Round Length:", ["0:30", "3:00", "5:00", "10:00"], (1550,400), initialValue=2)
 
     self.playButton = Button(self, (1600,850), (250,120))
     self.giveRandomWeapons = Button(self, (1600,750), (200,40))
@@ -37,19 +37,8 @@ def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
 
 
-    self.reTeamPawns()
-    teamIndices = []
-    for i in range(self.teams):
-        teamIndices.append(0)
-
-    for i, pawn in enumerate(self.pawnHelpList):
-        x = 900 + pawn.team * 100
-
-        y = 550 + 30*teamIndices[pawn.team.i]
-        teamIndices[pawn.team.i] += 1
-
-        t = self.fontSmaller.render(pawn.name, True, pawn.team.color)
-        self.screen.blit(t, (x,y))
+    
+    
 
     
 
@@ -89,6 +78,33 @@ def settingsTick(self: "Game"):
     self.teamsSave = self.teams
     self.TTS_ON = self.ttsToggle.get_selected() == "On"
     self.ITEM_AUTO = self.itemToggle.get_selected() == "Auto"
+    self.reTeamPawns()
+    teamIndices = []
+    for i in range(self.teams):
+        teamIndices.append(0)
+
+
+    for i, pawn in enumerate(self.pawnHelpList):
+        x = 900 + pawn.team * 100
+
+        y = 550 + 30*teamIndices[pawn.team.i]
+        teamIndices[pawn.team.i] += 1
+
+        t = self.fontSmaller.render(pawn.name, True, pawn.team.color)
+        self.screen.blit(t, (x,y))
+
+    for team in range(len(teamIndices)):
+        for playerI in range(self.fillTeamsTo):
+            if teamIndices[team] > playerI:
+                continue
+
+            x = 900 + team * 100
+
+            y = 550 + 30*playerI
+
+            t = self.fontSmaller.render("NPC", True, self.getTeamColor(team))
+
+            self.screen.blit(t, (x,y))
 
     if self.loadedMusic != self.musicChoice.get_selected():
 
@@ -123,6 +139,7 @@ def settingsTick(self: "Game"):
 
 
     if self.giveRandomWeapons.draw(self.screen, "Anna aseita", font = self.font):
+        self.giveWeapons = True
         for pawn in self.pawnHelpList:
             w = random.choice(self.weapons)
             w.give(pawn)
@@ -159,7 +176,7 @@ import subprocess
 import sys
 import asyncio
 import websockets
-from server.test import make_handler
+from server.appServer import make_handler
 import threading
 
 def startServer(app):

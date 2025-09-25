@@ -7,10 +7,13 @@ import math
 from pygame.math import Vector2 as v2
 from levelGen.mapGen import CellType
 from utilities.shit import Shit
+from utilities.building import Building
+
+
 
 class PawnBehaviour:
     def __init__(self: "Pawn"):
-        # A super class for pawn behaviour.
+        super().__init__()
         pass
 
     def think(self):
@@ -22,16 +25,31 @@ class PawnBehaviour:
             self.thinkI = 0
             # Do some thinking logic here, e.g., print a message or change state
 
-            c = self.app.randomWeighted(0.2, 0.2)
+            c = self.app.randomWeighted(0.2, 0.2, 0)
             if c == 0:
                 if not self.target:
                     if not self.weapon.isReloading() and self.weapon.magazine < self.getMaxCapacity()/2 and not self.carryingSkull():
                         self.weapon.reload()
 
-
             if c == 1:
                 if self.walkTo is None:
                     self.pickWalkingTarget()
+
+            if c == 2:
+                self.baseBuilding()
+                if self.buildingTarget:
+                    if self.pos.distance_to(self.buildingTarget.pos) > 150:
+                        self.walkTo = self.buildingTarget.pos
+
+
+    def baseBuilding(self):
+        if self.app.PEACEFUL: return
+        if self.buildingTarget: return
+            
+        t = self.getVisibility()
+        tr = random.choice(t)
+        b = Building(self.app, "TEST", self.team, "texture/energywell.png", tr, [1,1])
+        self.buildingTarget = b
 
 
 
@@ -214,8 +232,8 @@ class PawnBehaviour:
             self.stepI += self.vel.length() * self.app.deltaTime / 300
             if self.lastStep != self.stepI // self.takeStepEvery:
                 self.lastStep = self.stepI // self.takeStepEvery
-                if self.onScreen():
-                    self.app.playSound(self.app.waddle)
+                #if self.onScreen():
+                self.app.playPositionalAudio(self.app.waddle, self.pos)
 
             # Arrival check
             if diff.length() < 1.5 and self.vel.length() < 5:
@@ -243,9 +261,12 @@ class PawnBehaviour:
         self.getUpI = 0
         self.tripRot = random.choice([-90, 90])
         self.say("Vittu kaaduin", 0.1)
-        if self.onScreen():
-            self.app.tripSound.stop()
-            self.app.tripSound.play()
+
+        self.app.playPositionalAudio("audio/trip.wav", self.pos)
+
+        #if self.onScreen():
+        #    self.app.tripSound.stop()
+        #    self.app.tripSound.play()
         self.target = None
         self.walkTo = None
         self.route = None
@@ -277,8 +298,8 @@ class PawnBehaviour:
 
                 if self.lastStep != self.stepI // self.takeStepEvery:
                     self.lastStep = self.stepI // self.takeStepEvery
-                    if self.onScreen():
-                        self.app.playSound(self.app.waddle)
+                    #if self.onScreen():
+                    self.app.playPositionalAudio(self.app.waddle, self.pos)
 
                     if not self.app.PEACEFUL and random.uniform(0, 1) < self.itemEffects["shitChance"]:
                         self.say("Nyt tuli paskat housuun", 0.1)
@@ -345,5 +366,10 @@ class PawnBehaviour:
         elif self.carryingSkull(): # Cannot shoot with the skull!
             pass
         else:
-            self.weapon.fireFunction(self.weapon)
+            if self.itemEffects["magDump"]:
+                for _ in range(self.weapon.magazine):
+                    self.weapon.fireFunction(self.weapon)
+
+            else:
+                self.weapon.fireFunction(self.weapon)
         self.loseTargetI = 1

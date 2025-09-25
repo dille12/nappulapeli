@@ -28,7 +28,7 @@ class ThickLaser:
         self.soundEnd.play()
         self.soundStart.stop()
     
-    def draw(self, screen, start_pos, end_pos):
+    def draw(self, screen, start_pos, end_pos, color, sizeMod=5):
         """Draw the thick multi-line laser beam"""
         
         # Create temporary surface for all laser lines
@@ -50,10 +50,11 @@ class ThickLaser:
         
         # Draw multiple layers for thickness
         layers = [
-            {"count": int(20), "thickness": 3, "spacing": 1.2},
-            {"count": int(10), "thickness": 3, "spacing": 2.5},
-            {"count": int(10), "thickness": 4, "spacing": 4.0}
+            {"count": int(20), "thickness": 4, "spacing": 1},
+            {"count": int(10), "thickness": 4, "spacing": 2.2},
+            {"count": int(10), "thickness": 5, "spacing": 3.5}
         ]
+        
         
         for layer_idx, layer in enumerate(layers):
             for i in range(layer["count"]):
@@ -66,37 +67,28 @@ class ThickLaser:
                     start_pos[1] + perp_y * offset - perp_x * abs(offset)
                 )
                 line_end = (
-                    end_pos[0] + perp_x * offset,
-                    end_pos[1] + perp_y * offset
+                    end_pos[0] + perp_x * offset - perp_y * abs(offset),
+                    end_pos[1] + perp_y * offset + perp_x * abs(offset)
                 )
                 
                 # Distance from center affects color
+                # Distance from center affects color
                 center_distance = abs(i - layer["count"] // 2)
                 max_distance = layer["count"] // 2
-                
                 if max_distance > 0:
                     center_factor = 1 - (center_distance / max_distance)
                 else:
                     center_factor = 1
-                
-                # Pure white to red gradient
-                if center_factor > 0.4:
-                    # Core is pure white
-                    red = 255
-                    green = 255
-                    blue = 255
-                elif center_factor > 0.1:
-                    # Transition from white to red
-                    red = 255
-                    green = int(255 * (center_factor - 0.1) / 0.3)  # Fade green
-                    blue = int(255 * (center_factor - 0.1) / 0.3)   # Fade blue
-                else:
-                    # Pure red variations
-                    red = random.randint(50, 255)
-                    green = 0
-                    blue = 0
-                
-                # Add some intensity variations for chaos
+
+                # Interpolate between white (core) and chosen color (edges)
+                r_core, g_core, b_core = (255, 255, 255)
+                r_edge, g_edge, b_edge = color
+
+                red   = int(r_edge + (r_core - r_edge) * center_factor)
+                green = int(g_edge + (g_core - g_edge) * center_factor)
+                blue  = int(b_edge + (b_core - b_edge) * center_factor)
+
+                # Add intensity variation
                 intensity_var = random.uniform(0.9, 1.0)
                 final_color = (
                     int(red * intensity_var),
@@ -212,7 +204,7 @@ class ThickLaserDemo:
         
         # Draw laser
         t = time.time()
-        self.laser.draw(self.screen, self.weapon_pos, self.target_pos)
+        self.laser.draw(self.screen, self.weapon_pos, self.target_pos, [0,255,0])
         pygame.display.set_caption(str(time.time()- t))
         # Draw instructions
         font = pygame.font.Font(None, 36)

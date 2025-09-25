@@ -12,19 +12,19 @@ import time
 from levelGen.mapGen import ArenaGenerator, CellType
 import numpy as np
 from levelGen.arenaWithPathfinding import ArenaWithPathfinding
-from core.loadAnimation import load_animation
 from utilities.item import Item
-from utilities.items import getItems
 from keypress import key_press_manager
 from utilities.skull import Skull
 import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
 from particles.particle import ParticleSystem, Particle
-from particles.laser import ThickLaser
+
 from gameTicks.settingsTick import settingsTick, createSettings
+from gameTicks.qrCodesTick import createQRS, qrCodesTick
 from gameTicks.pawnGeneration import preGameTick
 from gameTicks.tick import battleTick
+from gameTicks.millionaire import millionaireTick, initMillionaire
 from gameTicks.gameModeTick import GlitchGamemodeDisplay, loadingTick
 from core.drawRectPerimeter import draw_rect_perimeter
 from core.getCommonRoom import find_farthest_room
@@ -33,6 +33,8 @@ from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
 import subprocess, glob
 from extractLyrics import get_subs_for_track
+from utilities.camera import Camera
+
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -92,12 +94,7 @@ def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
         time.sleep(poll_interval)
     return False
 
-def generate_noise_surface(size):
-    width, height = size
-    noise_array = np.random.randint(0, 256, (height, width), dtype=np.uint8)
-    surface = pygame.Surface(size)
-    pygame.surfarray.blit_array(surface, np.stack([noise_array]*3, axis=-1))
-    return surface
+
 
 def combinedText(*args, font):
     if len(args) % 2 != 0:
@@ -123,298 +120,12 @@ def combinedText(*args, font):
 
     return combined_surface
 
+from core.valInit import valInit  # --- IGNORE ---
 
-
-class Game:
+class Game(valInit):
     def __init__(self):
-
-        self.now = time.time()
-
-        self.res = v2(1920, 1080)
-        self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
-        self.darken = []
-        d = pygame.Surface(self.res).convert_alpha()
-        for x in range(20):
-            d2 = d.copy()
-            d2.fill((0,0,0))
-            d2.set_alpha((x+1)*10)
-            self.darken.append(d2)
-
-        self.mask = pygame.Surface(self.res, pygame.SRCALPHA).convert_alpha()
-        self.infobars = []
+        super().__init__()
         
-        pygame.font.init()
-        self.ENTITIES = []
-        self.pawnHelpList = []
-        self.playerFiles = []  # List to hold player objects
-        self.particle_list = []
-        self.playerFilesToGen = [] 
-
-        self.teams = 2
-        self.allTeams = []
-        for i in range(self.teams):
-            self.allTeams.append(Team(self, i))
-
-        if True:
-            for x in os.listdir("players"):
-                playerName = os.path.splitext(x)[0]
-                file_path = os.path.join("players", x)
-                with open(file_path, "rb") as f:
-                    imageRaw = f.read()
-                self.add_player(playerName, imageRaw, "DEBUG")
-
-        self.clock = pygame.time.Clock()
-
-        self.fontName = "texture/agencyb.ttf"
-
-        self.font = pygame.font.Font(self.fontName, 30)
-        self.fontLarge = pygame.font.Font(self.fontName, 60)  # Load a default font
-        self.notificationFont = pygame.font.Font(self.fontName, 140)
-        self.fontLevel = pygame.font.Font(self.fontName, 40)  # Load a default font
-        # image_path, damage, range, magSize, fireRate, fireFunction, reloadTime
-        pygame.mixer.init()
-        self.weapons = []
-        self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 3000, 5, 1, Weapon.Energyshoot, 2, "energy")
-        self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
-        self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
-        self.pistol = Weapon(self, "USP-S", [50, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
-        self.pistol2 = Weapon(self, "Glock", [30, 0], "texture/pistol2.png", 8, 1500, 20, 5, Weapon.pistolShoot, 0.5, "normal", sizeMult=0.7)
-        self.smg = Weapon(self, "SMG", [80, 0], "texture/ump.png", 10, 1800, 45, 20, Weapon.smgShoot, 1, "normal", sizeMult=0.7)
-        self.famas = Weapon(self, "FAMAS", [200, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal")
-        self.shotgun = Weapon(self, "Shotgun", [175, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
-        self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 20, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
-
-        self.weapons = [self.AK, self.e1, self.e2, self.e3, self.pistol, self.pistol2, self.smg, self.famas, self.shotgun, self.mg, self.BFG]
-
-        self.firstPacket = self.AK.getPacket()
-        print("AK PACKET:", self.firstPacket)
-        self.BFGLasers = []
-
-        self.skullW = Weapon(self, "Skull", [0,0], "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
-
-        #self.timbs = Item("Timbsit", speedMod=["add", 300])
-
-
-        print("AK created")
-        #self.ENTITIES.append(Enemy(self))
-
-        #for x in os.listdir("players"):
-        #    self.ENTITIES.append(Pawn(self, "players/" + x))
-
-        print("Game initialized")
-
-        self.GAMEMODE = "TURF WARS"
-        self.podiumPawn = None
-        self.judgementIndex = 0
-        self.judgementTime = 0
-        self.pregametick = "shop"
-        self.judgementPhases = ["nextup", "reveal", "drink"]
-        self.judgementPhase = "nextup"
-        self.judgementDrinkTime = 0  # Will be randomized between 5–30
-
-        self.shit = pygame.image.load("texture/shit.png").convert_alpha()
-
-        self.concrete = pygame.image.load("texture/concrete.png").convert()
-        self.concretes = []
-        self.tileSize = 100
-        tile_w = 70
-        w, h = self.concrete.get_width(), self.concrete.get_height()
-
-        for i in range(w//tile_w):
-            rect = pygame.Rect(i * tile_w, 0, tile_w, h)
-            tile = self.concrete.subsurface(rect).copy()
-
-            tile = pygame.transform.scale(tile, (self.tileSize, self.tileSize))
-
-            self.concretes.append(tile)
-        
-
-        self.deltaTime = 1/60
-        self.deltaTimeR = 1/60
-        self.debugI = 0
-        self.fontSmaller = pygame.font.Font(self.fontName, 18)  # Smaller font for debug text
-        self.pawnGenI = 0
-        self.pawnGenT = 0
-        #self.map = ArenaGenerator(80, 60)
-
-        self.killstreaks = [
-            pygame.mixer.Sound("audio/quake/killingSpree.wav"),
-            pygame.mixer.Sound("audio/quake/dominating.wav"),
-            pygame.mixer.Sound("audio/quake/unstoppable.wav"),
-            pygame.mixer.Sound("audio/quake/godlike.wav"),
-            pygame.mixer.Sound("audio/quake/holyshit.wav"),
-        ]
-        for x in self.killstreaks:
-            x.set_volume(0.4)
-        
-        self.killStreakText = [
-            "is on a KILLING SPREE!",
-            "is DOMINATING!",
-            "is UNSTOPPABLE!",
-            "is GODLIKE!",
-            "HOLY SHIT!"
-        ]
-
-        
-        # TEAM COUNT
-        
-        self.teamsSave = self.teams
-        self.MINIMAPCELLSIZE = 2
-        self.round = 0
-        self.roundTime = 0
-        self.MAXROUNDLENGTH = 60
-
-        self.ultCalled = False
-        self.ultFreeze = 0
-
-        self.gameModeLineUp = ["TEAM DEATHMATCH"] # , "ODDBALL", "TURF WARS"
-
-        self.teamInspectIndex = 0
-        self.safeToUseCache = True
-        self.cacheLock = threading.Lock()
-        #self.map.generate_arena(room_count=int(self.teams*1.5)+4, min_room_size=8, max_room_size=20, corridor_width=3)
-        self.killfeed = []
-        self.keypress = []
-        self.keypress_held_down = []
-
-        self.cameraLinger = 2
-        self.TTS_ON = True
-        self.ITEM_AUTO = False
-
-        self.t1 = 1
-        self.t2 = 1
-
-        self.FPS = 0
-
-        self.splitI = 0
-        self.cameraLockTarget = v2(0,0)
-        self.cameraLockOrigin = v2(0,0)
-        self.endGameI = 5
-        self.victoryTeam = -1
-        self.musicSwitch = False
-        self.mapCreated = False
-        self.LEVELUPTIME = 10
-
-        self.topHat = pygame.image.load("texture/tophat.png").convert_alpha()
-        self.topHat = pygame.transform.scale(self.topHat, (70, 70))
-        self.noise = []
-        for x in range(10):
-            y = generate_noise_surface((200,200))
-            y.set_alpha(40)
-            self.noise.append(y)
-
-
-        self.MINIMAPTEMP = None
-        self.cameraPos = v2(0, 0)
-        self.cameraPosDelta = self.cameraPos.copy()
-        self.cameraVel = v2(0,0)
-
-        self.dualCameraPos = v2(0, 0)
-        self.dualCameraPosDelta = self.cameraPos.copy()
-        self.dualCameraVel = v2(0,0)
-
-
-        self.bulletSprite = pygame.image.load("texture/bullet.png").convert_alpha()
-        self.bulletSprite = pygame.transform.scale(self.bulletSprite, [200, 5])
-
-        self.energySprite = pygame.image.load("texture/lazer.png").convert_alpha()
-        self.energySprite = pygame.transform.scale(self.energySprite, [220, 8])
-
-        self.visualEntities = []
-        self.explosion = load_animation("texture/expl1", 0, 31, size = [500,500])
-        self.items = getItems()
-        self.cameraLock = None
-
-        self.levelUps = [round(5*(x+1) * (1.1) ** x) for x in range(100)]
-
-        self.pendingLevelUp = None
-        self.levelUpI = 5
-        self.levelUpBlink = 1
-
-        self.speeches = 0
-
-        self.GAMESTATE = "settings"
-
-        self.objectiveCarriedBy = None
-
-        self.screenCopy1 = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        self.screenCopy2 = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        self.skull = None
-        self.skullVictoryTime = 100
-
-        self.particle_system = ParticleSystem(self)
-
-        self.bloodSplatters = []
-        
-        
-        self.skullTimes = []
-        self.refreshShops()
-
-        self.subs = None
-        self.subI = 0
-        self.lastSubTime = 0
-
-        
-        self.ARSounds = self.loadSound("audio/assault")
-
-        self.deathSounds = self.loadSound("audio/death")
-
-        self.hitSounds = self.loadSound("audio/hit")
-
-        self.explosionSound = self.loadSound("audio/explosion")
-
-        self.clicks = self.loadSound("audio/menu_click")
-
-        self.music = None
-        self.currMusic = 0
-        self.nextMusic = 0
-        self.midMusicIndex = 0
-
-        self.weaponButtonClicked = None
-        self.hudChange = 1
-        self.currHud = 0
-
-
-        self.bloodClearI = 0
-        self.beatI = 0
-
-        self.energySound = self.loadSound("audio/nrg_fire")
-        self.shotgunSound = self.loadSound("audio/shotgun")
-        self.silencedSound = self.loadSound("audio/silenced")
-
-        self.waddle = self.loadSound("audio/waddle")
-
-        self.rocketSound = self.loadSound("audio/rocket_launch")
-
-        self.smgSound = self.loadSound("audio/smg")
-
-        self.pistolSound = self.loadSound("audio/weapon_fire")
-
-        if len(self.energySound) != 3:
-            raise RuntimeError
-        
-        self.LAZER = ThickLaser(self, width=20)
-        self.lastTickLaser = False
-        
-
-        self.reloadSound = pygame.mixer.Sound("audio/reload.wav")
-        self.meleeSound = pygame.mixer.Sound("audio/melee.wav")
-        self.horn = pygame.mixer.Sound("audio/horn.wav")
-        self.tripSound = pygame.mixer.Sound("audio/trip.wav")
-        self.shitSound = pygame.mixer.Sound("audio/shit.wav")
-        for x in [self.reloadSound, self.meleeSound, self.horn, self.tripSound, self.shitSound]:
-            x.set_volume(0.3)
-
-        createSettings(self)
-        
-        self.notification_start_time = None
-        self.currNotification = None
-
-        self.gamemode_display = GlitchGamemodeDisplay(self)
-
-        self.musicQueue = []
 
     def addToPlaylist(self, trackLink):
 
@@ -532,7 +243,7 @@ class Game:
                 noise_y = random.randint(0, noise_surface.get_height())
                 noise_surface.set_at((noise_x, noise_y), (255, 255, 255))
             noise_surface.set_alpha(100)
-            self.screen.blit(noise_surface, (final_x - 10, final_y - 10))
+            self.screen.blit(noise_surface, (final_x - noise_surface.get_width()/2 - 10, final_y - noise_surface.get_height()/2 - 10))
         
         return False
                     
@@ -556,7 +267,7 @@ class Game:
             print("Playing from queue:", next_track)
             pygame.mixer.music.load(next_track)
             pygame.mixer.music.play()
-            pygame.mixer.music.set_volume(0.7)
+            pygame.mixer.music.set_volume(0)
             self.musicStartTime = time.time()
             self.subI = 0
         else:
@@ -842,14 +553,16 @@ class Game:
         for x in range(self.teams):
             self.skullTimes.append(0)
 
-        self.GAMESTATE = "ODDBALL"
+        
         self.VICTORY = False
         if self.GAMEMODE == "1v1":
             self.roundTime = 60
         else:
             self.roundTime = self.MAXROUNDLENGTH
 
-        for i in range(2):
+
+        self.cameraLinger = 0
+        for i in range(1):
             for pawn in self.pawnHelpList:
                 pawn.reset()
                 pawn.kills = 0
@@ -857,10 +570,27 @@ class Game:
                 pawn.suicides = 0
                 pawn.deaths = 0
 
-            time.sleep(0.5)
+        self.GAMESTATE = "ODDBALL"
+
+            
         
+        
+        
+    def onScreen(self, pos):
+        r = pygame.Rect(self.cameraPosDelta, self.res)
+       
+        onDualScreen = False
+
+        if self.DUALVIEWACTIVE:
+            r2 = pygame.Rect(self.posToTargetTo2, self.res)
+            onDualScreen = r2.collidepoint(pos)
+        #r2.inflate_ip(self.app.res)
+
         
 
+        if not r.collidepoint(pos) and not onDualScreen:
+            return False
+        return True
         
 
 
@@ -869,13 +599,16 @@ class Game:
             x.stop()
         random.choice(l).play()
 
-    def loadSound(self, fileHint, startIndex = 1, suffix=".wav", volume = 0.3):
+    def loadSound(self, fileHint, startIndex = 1, suffix=".wav", volume = 0.3, asPygame = False):
         l = []
         while True:
             f = fileHint + str(startIndex) + suffix
             if os.path.exists(f):
-                l.append(pygame.mixer.Sound(f))
-                l[-1].set_volume(volume)
+                if asPygame:
+                    l.append(pygame.mixer.Sound(f))
+                    l[-1].set_volume(volume)
+                else:
+                    l.append(f)
                 startIndex += 1
 
             else:
@@ -964,7 +697,7 @@ class Game:
         
 
     def debugText(self, text):
-
+        
         t = self.fontSmaller.render(str(text), True, [255,255,255])
         self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], 200 + self.debugI * 22])
         self.debugI += 1
@@ -1147,20 +880,33 @@ class Game:
             if self.cameraLock.killed:
                 self.cameraLock = None
                 self.cameraLinger = 1
+                
             else:
                 self.cameraPos = self.cameraLock.pos - self.res/2
                 self.cameraLock.onCameraTime += self.deltaTime
-                if self.cameraLock.target and not self.pendingLevelUp and not self.VICTORY:
-                    self.CREATEDUAL = True
-                    self.cameraLockTarget = self.cameraLock.target.pos.copy() * 0.1 + self.cameraLockTarget * 0.9
-                    self.cameraLockOrigin = self.cameraLock.pos.copy()
+                if self.cameraLock.target:
+                    self.cameraIdleTime = 0
+                    if not self.pendingLevelUp and not self.VICTORY:
+                        self.CREATEDUAL = True
+                        self.cameraLockTarget = self.cameraLock.target.pos.copy() * 0.1 + self.cameraLockTarget * 0.9
+                        self.cameraLockOrigin = self.cameraLock.pos.copy()
+                else:
+                    self.cameraIdleTime += self.deltaTimeR
+
+                if self.cameraIdleTime > 5:
+                    self.cameraLock = None
+                    self.cameraLinger = 0
+                    self.cameraIdleTime = 3
+                    
         
         else:
             self.cameraLinger -= self.deltaTime
+            self.cameraIdleTime = 0
 
 
         if self.VICTORY:
             I = max(self.endGameI-4, 0)
+            self.SLOWMO = 1 - 0.5*(1-I)
             self.deltaTime *= 1 - 0.5*(1-I)
             self.cameraLock = max(
                 (x for x in self.pawnHelpList if (x.team == self.victoryTeam and not x.killed)),
@@ -1268,8 +1014,9 @@ class Game:
         self.refreshShops()
         self.particle_list.clear()
         self.round += 1
-        if self.round == 2 and False:
+        if self.round == 2:
             self.judgePawns()
+        self.LAZER.deactivate()
 
 
     def mapTime(self, curr, maximum, inverse = False):
@@ -1325,19 +1072,19 @@ class Game:
                 i1 = p.weapon.currReload
                 i2 = p.weapon.getReloadTime()
                 procent = int(100*(1 - i1/i2))
-                t1 = self.font.render(f"Lataa: {procent}%", True, c2)
+                t1 = self.font.render(f"RELOADING: {procent}%", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
             else:
-                t1 = self.font.render(f"Luodit: {p.weapon.magazine}/{p.getMaxCapacity()}", True, c2)
+                t1 = self.font.render(f"Bullets: {p.weapon.magazine}/{p.getMaxCapacity()}", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
 
-            t1 = self.font.render(f"Tapot: {p.kills} Kuolemat: {p.deaths} (KD:{p.kills/max(1, p.deaths):.1f})", True, c2)
+            t1 = self.font.render(f"KILLS: {p.kills} DEATHS: {p.deaths} (KD:{p.kills/max(1, p.deaths):.1f})", True, c2)
             self.screen.blit(t1, (230, yPos+70))
 
 
             xpTillnextLevel = self.levelUps[p.level-1] - p.xp
 
-            t1 = self.font.render(f"XP: {p.xp} Jäljellä: {xpTillnextLevel}", True, c2)
+            t1 = self.font.render(f"XP: {p.xp} Remaining: {xpTillnextLevel}", True, c2)
             self.screen.blit(t1, (230, yPos+105))
 
             #t1 = self.font.render(f"{p.weapon.addedFireRate}", True, c2)
@@ -1445,11 +1192,11 @@ class Game:
 
     def drawBFGLazers(self):
         currLaser = False
-        for startPos, endPos in self.BFGLasers:
+        for startPos, endPos, color in self.BFGLasers:
             s1 = startPos - self.cameraPosDelta
             e1 = endPos - self.cameraPosDelta
             #if (0 <= s1[0] <= self.res[0] and 0 <= s1[1] <= self.res[1]) or (0 <= e1[0] <= self.res[0] and 0 <= e1[1] <= self.res[1]):
-            self.LAZER.draw(self.DRAWTO, s1, e1)
+            self.LAZER.draw(self.DRAWTO, s1, e1, color)
             currLaser = True
 
         if currLaser != self.lastTickLaser:
@@ -1471,17 +1218,26 @@ class Game:
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
 
+        judges = []
+
         tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["deaths"])
+        judges.append(tempPawn)
         self.judgements.append((tempPawn, "Eniten kuolemia", f" on kuollut eniten ({tempPawn.stats['deaths']})"))
         # Most team kills
         tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["teamkills"])
-        self.judgements.append((tempPawn, "Eniten tiimitappoja", f" on tappanut eniten tiimitovereita ({tempPawn.stats['teamkills']})"))
+        if tempPawn not in judges:
+            judges.append(tempPawn)
+            self.judgements.append((tempPawn, "Eniten tiimitappoja", f" on tappanut eniten tiimitovereita ({tempPawn.stats['teamkills']})"))
         # Most suicides
         tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["suicides"])
-        self.judgements.append((tempPawn, "Eniten itsemurhia", f" on tappanut itseään eniten ({tempPawn.stats['suicides']})"))
+        if tempPawn not in judges:
+            judges.append(tempPawn)
+            self.judgements.append((tempPawn, "Eniten itsemurhia", f" on tappanut itseään eniten ({tempPawn.stats['suicides']})"))
         # Most damage taken
         tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["damageTaken"])
-        self.judgements.append((tempPawn, "Eniten vahinkoa vastaanotettu", f" on ottanut eniten vahinkoa ({int(tempPawn.stats['damageTaken'])})"))
+        if tempPawn not in judges:
+            judges.append(tempPawn)
+            self.judgements.append((tempPawn, "Eniten vahinkoa vastaanotettu", f" on ottanut eniten vahinkoa ({int(tempPawn.stats['damageTaken'])})"))
         # A random pawn
         if self.pawnHelpList:
             randomPawn = random.choice(self.pawnHelpList)
@@ -1529,6 +1285,16 @@ class Game:
                 return i
             l += x
 
+    def playPositionalAudio(self, audio, pos = None):
+
+        if not isinstance(audio, str):
+            audio = random.choice(audio)
+
+        center = self.cameraPosDelta + self.res/2
+
+        self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
+
+
 
     def notify(self, text, color = [255,255,255]):
         self.notificationTime = pygame.time.get_ticks()
@@ -1536,7 +1302,8 @@ class Game:
 
     def run(self):
         while True:
-            
+            self.SLOWMO = 1
+            self.mankkaDistance = float("inf")
             tickStartTime = time.time()
 
             key_press_manager(self)
@@ -1547,6 +1314,13 @@ class Game:
                     pygame.quit()
                     exit()  # Ensure the program exits cleanly
 
+
+            if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":
+                self.shopTimer = self.midRoundTime
+            else:
+                self.shopTimer -= self.deltaTimeR
+                self.shopTimer = max(0, self.shopTimer)
+
             if self.GAMESTATE == "settings":
                 settingsTick(self)
 
@@ -1555,16 +1329,37 @@ class Game:
 
             elif self.GAMESTATE == "loadingScreen":
                 loadingTick(self)
+            
+            elif self.GAMESTATE == "millionaire":
+                millionaireTick(self)
+
+            elif self.GAMESTATE == "qrs":
+                qrCodesTick(self)
 
             else:
                 battleTick(self)
 
+
+            if self.mankkaDistance < 2000:
+                vol = max(0, min(1, (2000 - self.mankkaDistance) / 2000))
+                self.mankkaSound.set_volume(vol)
+                if not self.mankkaSound.get_num_channels():
+                    self.mankkaSound.play()
+            else:
+                self.mankkaSound.set_volume(0)
+                self.mankkaSound.stop()
+
             for x in self.infobars:
                 x.tick()
             #self.musicSwitch = self.handleMusic()
-            self.handleMainMusic()
-            self.drawSubs()
-            #self.BPM()
+            if self.GAMESTATE in ["millionaire"]:
+                pygame.mixer.music.unload()
+                pygame.mixer.music.stop()
+            else:
+                #self.handleMainMusic()
+                #self.drawSubs()
+                pass
+                #self.BPM()
             #r = pygame.Rect((0,0), self.res)
             #pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(5*(self.beatI**2)))
 
@@ -1588,6 +1383,9 @@ class Game:
             self.deltaTimeR = min(self.deltaTimeR, 1/30)
             self.deltaTime = self.deltaTimeR
 
-if __name__ == "__main__":
+def run():
     game = Game()
     game.run()
+
+if __name__ == "__main__":
+    run()

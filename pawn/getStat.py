@@ -67,6 +67,10 @@ class getStat:
             "shitChance": 0.0,
             "extraItem": False,  
             "homing": False,
+            "playMusic": False,
+            "magDump": False,
+            "lifeSteal": 0.0,
+            "tacticalSprintSpeed": 1.0,
         }
 
         self.effect_labels_fi = {
@@ -115,6 +119,10 @@ class getStat:
             "extraItem": "Extraesine", 
             "homing": "Itseohjautuva",
             "shitChance": "Paskantamisen todennäköisyys",
+            "playMusic": "Jytä",
+            "magDump": "Lipas tyhjäksi",
+            "lifeSteal": "Elämänimeminen",
+            "tacticalSprintSpeed": "Taktinen juoksu",
         }
 
         self.effect_labels_en = {
@@ -163,12 +171,15 @@ class getStat:
             "extraItem": "Extra Item",
             "homing": "Homing",
             "shitChance": "Shitting Chance",
+            "playMusic": "Boombox",
         }
+
+        super().__init__()
 
 
     @ult_multiplier
     def getSpeed(self):
-        s = self.speed * self.itemEffects["speedMod"] * (1 + 0.5*self.weapon.runOffset)
+        s = self.speed * self.itemEffects["speedMod"] * (1 + 0.5*self.weapon.runOffset * self.itemEffects["tacticalSprintSpeed"])
         if self.revengeHunt():
             s *= 2
         return s
@@ -194,6 +205,10 @@ class getStat:
         return self.weapon.range * self.itemEffects["weaponRange"]
     
     def revengeHunt(self):
+
+        if self.lastKiller and not self.team.hostile(self.lastKiller) and "allyProtection" in self.itemEffects:
+            self.lastKiller = None
+            
         return self.itemEffects["revenge"] and self.lastKiller and not self.lastKiller.killed and not self.app.PEACEFUL
     
     @ult_multiplier
