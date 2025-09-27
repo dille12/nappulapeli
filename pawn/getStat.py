@@ -57,7 +57,7 @@ class getStat:
             "healOnKill":0,
             "knockbackMult":1.0,
             "healAllies":0,
-            "talking": False,
+            "talking": True,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,

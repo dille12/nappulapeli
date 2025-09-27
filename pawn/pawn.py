@@ -207,13 +207,7 @@ class Pawn(PawnBehaviour, getStat):
         self.encodedImage = surface_to_base64(enc)
 
         info.text = f"{self.name}: Pixel sorting"
-        self.levelUpIms = []
-        for x in range(4):
-            l = self.levelUpImage.copy()
-            b = random.randint(25,75)
-            l = pixel_sort_surface(l, b, b+random.randint(50,100))
-            l.set_alpha(random.randint(175,200))
-            self.levelUpIms.append(l)
+        
 
         self.facingRight = True
         self.app.pawnHelpList.append(self)
@@ -1066,6 +1060,8 @@ class Pawn(PawnBehaviour, getStat):
 
     def tick(self):
 
+        self.ONSCREEN = self.onScreen()
+
         if self.ULT_TIME > 0:
             self.ULT_TIME -= self.app.deltaTime
             self.ULT = True
@@ -1153,7 +1149,82 @@ class Pawn(PawnBehaviour, getStat):
             self.walkTo = None
             #self.app.cameraLock = self
 
+        if self.ONSCREEN:
+            newPos = self.handleSprite()
+        else:
+            newPos = self.pos.copy()
         
+        
+        self.deltaPos = newPos * 0.35 + self.deltaPos * 0.65
+
+        # Draw an arc to resemble a circle around the player
+
+        self.hitBox.center = self.pos.copy()
+
+        
+
+        #pygame.draw.arc(self.app.screen, (255, 255, 255), arcRect, 0, math.pi)
+
+        #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
+        #if not self.tripped:
+
+        self.buildingJumpOffset = 0
+        self.buildingBounceOffset = 0
+        self.buildingRotationOffset = 0
+
+        if self.carryingSkull():
+            self.skullWeapon.tick()
+            self.tryToTransferSkull()
+
+        elif self.buildingTarget and not self.target:
+            self.hammer.tick()
+
+        elif self.weapon:
+            self.weapon.tick()    
+
+
+
+        if self.itemEffects["playMusic"]:
+            d = (self.pos - self.app.cameraPosDelta - v2(self.app.res)/2).length()
+            self.app.mankkaDistance = min(self.app.mankkaDistance, d) 
+
+
+        # Draw name
+
+        if self.ONSCREEN:
+            if self.NPC:
+                self.npcPlate = self.app.fontSmaller.render("NPC", True, self.teamColor)
+
+            self.namePlate = combinedText(self.name, self.teamColor, " +" + str(int(self.health)).zfill(3), heat_color(1 - self.health/self.getHealthCap()), f" LVL {self.level}",[255,255,255], font=self.app.font)
+
+        #t = self.app.font.render(f"{self.name}", True, (255, 255, 255))
+        #self.app.screen.blit(t, (self.pos.x - t.get_width() / 2, self.pos.y - t.get_height() - 70) - self.app.cameraPosDelta)
+
+        self.handleTurfWar()
+
+        cx, cy = self.getOwnCell()
+
+        if not self.app.PEACEFUL and cx*200 + cy in self.app.shitDict:
+            s = self.app.shitDict[cx*200 + cy]
+            if s.owner.team != self.team and not self.tripped:
+                self.trip()
+                s.kill()
+
+        self.hurtI -= self.app.deltaTime
+        self.hurtI = max(0, self.hurtI)
+        self.cameraLockI += self.app.deltaTimeR
+        self.cameraLockI = self.cameraLockI%0.5
+        if self.app.MINIMAPTEMP:
+            pygame.draw.rect(self.app.MINIMAPTEMP, self.teamColor, [cx*self.app.MINIMAPCELLSIZE, cy*self.app.MINIMAPCELLSIZE, self.app.MINIMAPCELLSIZE,self.app.MINIMAPCELLSIZE])
+
+        if self.itemEffects["hat"]:
+            self.topHat = self.app.topHat.copy()
+            self.topHat = pygame.transform.rotate(self.topHat, self.rotation)
+
+        if self.ULT:
+            self.eyeGlow()
+
+    def handleSprite(self):
         self.breatheIm = self.imagePawn.copy() if self.facingRight else self.imagePawnR.copy()
 
         if self.hurtI > 0:
@@ -1220,73 +1291,9 @@ class Pawn(PawnBehaviour, getStat):
 
             self.breatheIm = pygame.transform.rotate(self.breatheIm, self.tripRot * rotation)
             newPos += [0, y_off]
-
-        self.deltaPos = newPos * 0.35 + self.deltaPos * 0.65
-
-        # Draw an arc to resemble a circle around the player
-
-        self.hitBox.center = self.pos.copy()
-
         
+        return newPos
 
-        #pygame.draw.arc(self.app.screen, (255, 255, 255), arcRect, 0, math.pi)
-
-        #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
-        #if not self.tripped:
-
-        self.buildingJumpOffset = 0
-        self.buildingBounceOffset = 0
-        self.buildingRotationOffset = 0
-
-        if self.carryingSkull():
-            self.skullWeapon.tick()
-            self.tryToTransferSkull()
-
-        elif self.buildingTarget and not self.target:
-            self.hammer.tick()
-
-        elif self.weapon:
-            self.weapon.tick()    
-
-
-
-        if self.itemEffects["playMusic"]:
-            d = (self.pos - self.app.cameraPosDelta - v2(self.app.res)/2).length()
-            self.app.mankkaDistance = min(self.app.mankkaDistance, d) 
-
-
-        # Draw name
-        if self.NPC:
-            self.npcPlate = self.app.fontSmaller.render("NPC", True, self.teamColor)
-
-        self.namePlate = combinedText(self.name, self.teamColor, " +" + str(int(self.health)).zfill(3), heat_color(1 - self.health/self.getHealthCap()), f" LVL {self.level}",[255,255,255], font=self.app.font)
-
-        #t = self.app.font.render(f"{self.name}", True, (255, 255, 255))
-        #self.app.screen.blit(t, (self.pos.x - t.get_width() / 2, self.pos.y - t.get_height() - 70) - self.app.cameraPosDelta)
-
-        self.handleTurfWar()
-
-        cx, cy = self.getOwnCell()
-
-        if not self.app.PEACEFUL and cx*200 + cy in self.app.shitDict:
-            s = self.app.shitDict[cx*200 + cy]
-            if s.owner.team != self.team and not self.tripped:
-                self.trip()
-                s.kill()
-
-        self.hurtI -= self.app.deltaTime
-        self.hurtI = max(0, self.hurtI)
-        self.cameraLockI += self.app.deltaTimeR
-        self.cameraLockI = self.cameraLockI%0.5
-        if self.app.MINIMAPTEMP:
-            pygame.draw.rect(self.app.MINIMAPTEMP, self.teamColor, [cx*self.app.MINIMAPCELLSIZE, cy*self.app.MINIMAPCELLSIZE, self.app.MINIMAPCELLSIZE,self.app.MINIMAPCELLSIZE])
-
-        if self.itemEffects["hat"]:
-            self.topHat = self.app.topHat.copy()
-            self.topHat = pygame.transform.rotate(self.topHat, self.rotation)
-
-        if self.ULT:
-            self.eyeGlow()
 
     def carryingSkull(self):
         return self.app.objectiveCarriedBy == self
@@ -1332,6 +1339,9 @@ class Pawn(PawnBehaviour, getStat):
     def render(self):
 
         if self.killed:
+            return
+        
+        if not self.ONSCREEN:
             return
 
         self.arcRect = pygame.Rect(self.pos.x - self.app.cameraPosDelta[0], self.pos.y + 50 - self.app.cameraPosDelta[1], 0, 0)

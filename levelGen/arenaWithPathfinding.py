@@ -4,7 +4,8 @@ from typing import List, Tuple, Set, Optional, Dict, Callable
 from enum import Enum
 from dataclasses import dataclass
 import time
-from levelGen.pathfinding import Pathfinder, MovementType
+from levelGen.numbaPathFinding import Pathfinder, MovementType
+#from levelGen.numbaPathFinding import NumbaPathfinder
 from levelGen.mapGen import ArenaGenerator, CellType
 import math
 from itertools import combinations

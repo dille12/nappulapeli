@@ -262,7 +262,7 @@ class valInit:
         self.refreshShops()
 
 
-        self.midRoundTime = 10
+        self.midRoundTime = 0
 
         self.subs = None
         self.subI = 0

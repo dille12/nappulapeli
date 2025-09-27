@@ -743,9 +743,8 @@ class Game(valInit):
 
         self.screen.blit(d, (0,0))
         lowering = I**2
-        IMS = self.pendingLevelUp.levelUpIms
-        #I = 1 - self.levelUpI/5
-        IM = random.choice(IMS)
+
+        IM = self.pendingLevelUp.levelUpImage
 
 
 
@@ -855,7 +854,6 @@ class Game(valInit):
                     self.cameraLock = pawn
                     pawn.ULT_TIME = 30
                     self.clicks[1].play()
-
 
             self.screen.blit(t, r.topleft)
             yPos += 40
@@ -1371,7 +1369,7 @@ class Game(valInit):
                                           self.notificationTime, color=self.currNotification[1]):
                     self.currNotification = None
 
-            pygame.display.update()
+            pygame.display.flip()
             self.t1 = time.time() - tickStartTime
             
 
