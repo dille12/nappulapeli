@@ -208,12 +208,13 @@ class Pawn(PawnBehaviour, getStat):
 
         info.text = f"{self.name}: Pixel sorting"
         self.levelUpIms = []
-        for x in range(4):
+        for x in range(2):
             l = self.levelUpImage.copy()
             b = random.randint(25,75)
             l = pixel_sort_surface(l, b, b+random.randint(50,100))
             l.set_alpha(random.randint(175,200))
             self.levelUpIms.append(l)
+        info.text = f"{self.name}: Pixel sorting done"
 
         self.facingRight = True
         self.app.pawnHelpList.append(self)
@@ -669,6 +670,8 @@ class Pawn(PawnBehaviour, getStat):
         self.target = None
         self.respawnI = 0
         self.tripped = False
+
+        self.weapon.lazerActive = False
         
 
         self.killsThisLife = 0
@@ -1071,6 +1074,9 @@ class Pawn(PawnBehaviour, getStat):
             self.ULT = True
         else:
             self.ULT = False
+
+        if self.weapon:
+            self.weapon.tryToDisableLazer()
 
 
         if self.itemEffects["turnCoat"]:

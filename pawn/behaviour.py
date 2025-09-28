@@ -233,7 +233,7 @@ class PawnBehaviour:
             if self.lastStep != self.stepI // self.takeStepEvery:
                 self.lastStep = self.stepI // self.takeStepEvery
                 #if self.onScreen():
-                self.app.playPositionalAudio(self.app.waddle, self.pos)
+                #self.app.playPositionalAudio(self.app.waddle, self.pos)
 
             # Arrival check
             if diff.length() < 1.5 and self.vel.length() < 5:
@@ -299,7 +299,7 @@ class PawnBehaviour:
                 if self.lastStep != self.stepI // self.takeStepEvery:
                     self.lastStep = self.stepI // self.takeStepEvery
                     #if self.onScreen():
-                    self.app.playPositionalAudio(self.app.waddle, self.pos)
+                    #self.app.playPositionalAudio(self.app.waddle, self.pos)
 
                     if not self.app.PEACEFUL and random.uniform(0, 1) < self.itemEffects["shitChance"]:
                         self.say("Nyt tuli paskat housuun", 0.1)
@@ -330,6 +330,9 @@ class PawnBehaviour:
 
 
     def shoot(self):
+
+        s = self.weapon.lazerActive
+        self.weapon.lazerActive = False
 
         if self.loseTargetI <= 0:
             if self.target:
@@ -366,6 +369,9 @@ class PawnBehaviour:
         elif self.carryingSkull(): # Cannot shoot with the skull!
             pass
         else:
+
+            self.weapon.lazerActive = s
+
             if self.itemEffects["magDump"]:
                 for _ in range(self.weapon.magazine):
                     self.weapon.fireFunction(self.weapon)

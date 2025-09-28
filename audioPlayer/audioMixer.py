@@ -5,7 +5,7 @@ import soundfile as sf  # pip install soundfile
 import pyaudio
 from pygame.math import Vector2 as v2
 import numba as nb
-
+import random
 # -----------------------
 # Numba kernels
 # -----------------------
@@ -25,6 +25,9 @@ def map_cutoff(dist, maxDist):
         return 100.0
 
 def map_volume(dist, maxDist):
+
+    return max(0, 1 - (dist/maxDist)**3)
+
     tert = maxDist / 3
     if dist < tert:
         return 1.0
@@ -210,10 +213,18 @@ class AudioSource:
         self.active = True
         self.loop = False
 
+        self.pitch = random.uniform(0.9, 1.1)
+
         # Low-pass filter state (stereo)
         self.cutoff = None   # Hz, None = bypass
         self.prev0 = np.float32(0.0)
         self.prev1 = np.float32(0.0)
+
+        # Positional audio support
+        self.positional = False      # whether this source is positional
+        self.pos = None              # expected to be a pygame.Vector2 or (x,y)
+        self.falloff_max_dist = None
+        self.base_volume = 1.0       # base volume multiplier applied before distance falloff
 
         # Optional playback length limiter (seconds)
         self.max_duration = None
@@ -245,7 +256,7 @@ class AudioSource:
 
     def get_next_chunk(self, frame_count, fs=None, slowmo=0.3):
         chunk, new_pos, self.prev0, self.prev1 = get_next_chunk_slowmo(
-            self.data, self.position, frame_count, slowmo, self.loop,
+            self.data, self.position, frame_count, slowmo * self.pitch, self.loop,
             self.prev0, self.prev1, self.cutoff, fs
         )
         self.position = new_pos
@@ -291,34 +302,32 @@ class AudioMixer:
         elif "explosion" in audio:
             audioFallOffMaxDist *= 1.5
 
-        
 
-        if pos is not None and cameraCenter is not None:
-            delta: v2 = pos - cameraCenter
-            dist = float(delta.length())
+        ## HERE, WE CAN PASS self.app to the AudioClips, so they can always calculate the cameraCenter with self.app.deltaCameraPos + self.res/2 as the cameraCenter
 
-            if dist > audioFallOffMaxDist:
-                return
+        if pos is not None:
+            # load source but DO NOT set static volume/pan/filter permanently
+            source = self.load_audio(audio)
+            source.positional = True
+            source.pos = v2(pos) if not isinstance(pos, v2) else pos
+            source.falloff_max_dist = audioFallOffMaxDist
+            source.base_volume = 0.3  # your previous scaling: volume * 0.3 (you can pass a param instead)
+            source.loop = False
+            source.position = 0
+            source.active = True
 
-            volume = map_volume(dist, audioFallOffMaxDist)
-            panning = float(np.clip(delta.x / 2000, -1.0, 1.0))
-            cutoff = map_cutoff(dist, audioFallOffMaxDist)
-
+            # add to mixer list
+            self.audio_sources.append(source)
+            return source
         else:
+            # non-positional: behave as before
             volume = 1.0
             panning = 0.0
             cutoff = None
-
-        if volume <= 0.0:
-            return
-        
-        if len(self.audio_sources) > 32:
-            self.audio_sources.pop(0)
-
-        sound = self.load_and_play(audio, volume=volume * 0.3, pan=panning)
-        if cutoff is not None:
-            sound.set_lowpass(cutoff)
-        return sound
+            sound = self.load_and_play(audio, volume=volume * 0.3, pan=panning)
+            if cutoff is not None:
+                sound.set_lowpass(cutoff)
+            return sound
 
     def load_audio(self, filename):
         if filename in self.cachedAudio:
@@ -362,9 +371,15 @@ class AudioMixer:
         except Exception:
             pass
 
+    def _get_camera_center(self):
+        return self.app.cameraPosDelta + (self.app.res / 2)
+
+
     def _audio_callback(self, in_data, frame_count, time_info, status):
         # mix into this buffer
         mixed = np.zeros((frame_count, 2), dtype=np.float32)
+
+        camera_center = self._get_camera_center()
 
         # iterate copy of list to avoid modification during iteration
         sources = list(self.audio_sources)
@@ -375,8 +390,43 @@ class AudioMixer:
                 except ValueError:
                     pass
                 continue
-            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo = self.app.SLOWMO)
-            # compiled mix
+
+            # If source is positional, update volume, pan and lowpass each callback
+            if getattr(source, "positional", False) and source.pos is not None:
+                # compute delta and distance (v2 supports length())
+                try:
+                    delta = v2(source.pos) - camera_center
+                    dist = float(delta.length())
+                except Exception:
+                    # if anything fails, fall back to not updating
+                    dist = 0.0
+                    delta = v2(0, 0)
+
+                maxDist = source.falloff_max_dist if source.falloff_max_dist is not None else 6000.0
+
+                # if out of range, optionally deactivate or skip mixing
+                if dist > maxDist:
+                    # mark inactive so it will be removed and not consume CPU
+                    source.active = False
+                    try:
+                        self.audio_sources.remove(source)
+                    except ValueError:
+                        pass
+                    continue
+
+                # compute continuous parameters
+                vol_fall = map_volume(dist, maxDist)
+                panning = float(np.clip(delta.x / 2000.0, -1.0, 1.0))
+                cutoff = map_cutoff(dist, maxDist)
+
+                # apply to source for this callback
+                source.volume = float(source.base_volume * vol_fall)
+                source.set_pan(panning)
+                source.set_lowpass(cutoff)
+
+            # get chunk with current per-source parameters
+            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo=self.app.SLOWMO)
+            # mix into master buffer
             mix_chunk_nb(mixed, chunk, np.float32(source.volume), np.float32(source.left_gain), np.float32(source.right_gain))
 
         # auto gain (in-place)
@@ -388,27 +438,59 @@ class AudioMixer:
 # Example usage
 # -----------------------
 
-if __name__ == "__main__":
-    mixer = AudioMixer()
+def testAudio():
+
+    class testApp:
+        def __init__(self):
+            self.cameraPosDelta = v2(0,0)
+            self.res = v2(1920, 1080)
+            self.SLOWMO = 1
+
+        def moveCam(self):
+            self.cameraPosDelta.x += 250
+
+    app = testApp()
+
+    mixer = AudioMixer(app)
+
     mixer.start_stream()
     print("Mixer init")
     import random
 
-    folder = "audio"
-    files = [f for f in os.listdir(folder) if f.lower().endswith(".wav")]
-    if not files:
-        raise SystemExit("No WAV files in ./audio")
+    explosion = mixer.playPositionalAudio("audio/explosion1.wav", v2(0,0))
+    time.sleep(4)
 
-    fname = os.path.join(folder, files[0])
-    explosion = mixer.playPositionalAudio("audio/explosion1.wav", v2(100, 0), v2(0, 0))
-    time.sleep(2)
+    explosion = mixer.playPositionalAudio("audio/minigun1.wav", v2(0,0))
+
     # spawn many explosions quickly to test performance
     for i in range(0, 6000, 300):
-        print("spawn", i)
-        explosion = mixer.playPositionalAudio("audio/explosion1.wav", v2(i, 0), v2(0, 0))
-        # optionally cap the duration of each spawned instance to avoid piling long samples:
-        #if explosion:
-        #    explosion.max_duration = 0.5  # seconds
-        time.sleep(0.5)
+        app.moveCam()
+        time.sleep(0.1)
 
     time.sleep(3.0)
+
+def plot_map_volume(maxDist=10.0, n_points=500):
+    import matplotlib.pyplot as plt
+
+
+
+    x = np.linspace(0, maxDist*1.2, n_points)  # go a bit beyond maxDist
+    y = [map_volume(d, maxDist) for d in x]
+
+    plt.figure(figsize=(6,4))
+    plt.plot(x, y, label=f"maxDist={maxDist}")
+    plt.axvline(maxDist/3, color='gray', linestyle='--', alpha=0.5, label="tert")
+    plt.axvline(maxDist, color='red', linestyle='--', alpha=0.5, label="maxDist")
+    plt.xlabel("Distance")
+    plt.ylabel("Volume")
+    plt.title("map_volume function")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+if __name__ == "__main__":
+    testAudio()
+    
+
+
+    

@@ -321,11 +321,11 @@ class valInit:
         
 
         self.reloadSound = pygame.mixer.Sound("audio/reload.wav")
-        self.meleeSound = pygame.mixer.Sound("audio/melee.wav")
+        self.meleeSound = self.loadSound("audio/melee") #pygame.mixer.Sound("audio/melee.wav")
         self.horn = pygame.mixer.Sound("audio/horn.wav")
         self.tripSound = pygame.mixer.Sound("audio/trip.wav")
         self.shitSound = pygame.mixer.Sound("audio/shit.wav")
-        for x in [self.reloadSound, self.meleeSound, self.horn, self.tripSound, self.shitSound]:
+        for x in [self.reloadSound, self.horn, self.tripSound, self.shitSound]:
             x.set_volume(0.3)
 
         createSettings(self)

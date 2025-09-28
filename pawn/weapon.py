@@ -183,6 +183,7 @@ class Weapon:
 
         self.lazerActive = False
         self.lazerTimer = 0
+        self.lazerSound = None
 
     def getPacket(self):
         p = {"name": self.name,
@@ -234,9 +235,12 @@ class Weapon:
     def reload(self):
         self.currReload = self.getReloadTime()
         self.magazine = self.owner.getMaxCapacity()
-        if self.owner.onScreen():
-            self.app.reloadSound.stop()
-            self.app.reloadSound.play()
+
+        self.app.playPositionalAudio("audio/reload.wav", self.owner.pos)
+
+        #if self.owner.onScreen():
+        #    self.app.reloadSound.stop()
+        #    self.app.reloadSound.play()
 
 
     
@@ -272,7 +276,7 @@ class Weapon:
             Explosion(self.app, t, self.owner, 100*self.owner.itemEffects["meleeDamage"])
 
 
-        self.app.playPositionalAudio("audio/melee.wav", self.owner.pos)
+        self.app.playPositionalAudio(self.app.meleeSound, self.owner.pos)
         #if self.owner.onScreen():
         #    self.app.meleeSound.stop()
         #    self.app.meleeSound.play()
@@ -347,7 +351,7 @@ class Weapon:
 
         if self.lazerActive:
 
-            if self.isReloading() or self.meleeing():
+            if not self.canShoot():
                 self.lazerActive = False
                 return
 
@@ -364,10 +368,6 @@ class Weapon:
                 self.lazerTimer += 0.04  # Reset timer
 
                 self.magazine -= 1
-                if self.magazine <= 0:
-                    self.lazerActive = False
-                    self.reload()
-                    return
                 
                 self.app.particle_system.create_muzzle_flash(startPos[0], startPos[1], math.radians(-self.ROTATION))
 
@@ -393,6 +393,7 @@ class Weapon:
                         )
 
         else:
+
             if not self.canShoot():
                 return
             if self.magazine <= 0:
@@ -401,6 +402,8 @@ class Weapon:
             
             self.lazerActive = True
             self.lazerTimer = 0.04
+            self.lazerSound = self.app.playPositionalAudio("audio/minigun1.wav", self.owner.pos)
+            
     
 
     def RocketLauncher(self):
@@ -597,10 +600,16 @@ class Weapon:
 
         self.addedFireRate = max(0, self.addedFireRate)
 
+    def tryToDisableLazer(self):
+        if not self.lazerActive:
+            if self.lazerSound:
+                self.lazerSound.active = False
+                self.lazerSound = None
+                self.app.playPositionalAudio("audio/minigun2.wav", self.owner.pos)
+
+
 
     def tick(self):
-
-        
 
         if self.meleeing():
             self.meleeI -= self.app.deltaTime

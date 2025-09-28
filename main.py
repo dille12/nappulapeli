@@ -1199,11 +1199,11 @@ class Game(valInit):
             self.LAZER.draw(self.DRAWTO, s1, e1, color)
             currLaser = True
 
-        if currLaser != self.lastTickLaser:
-            if currLaser:
-                self.LAZER.activate()
-            else:
-                self.LAZER.deactivate()
+        #if currLaser != self.lastTickLaser:
+        #    if currLaser:
+        #        self.LAZER.activate()
+        #    else:
+        #        self.LAZER.deactivate()
         self.lastTickLaser = currLaser
 
 
@@ -1292,7 +1292,7 @@ class Game(valInit):
 
         center = self.cameraPosDelta + self.res/2
 
-        self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
+        return self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
 
 
 
@@ -1370,6 +1370,11 @@ class Game(valInit):
                 if self.draw_notification(self.currNotification[0], self.res.x/2, self.res.y/4, 
                                           self.notificationTime, color=self.currNotification[1]):
                     self.currNotification = None
+
+
+           # for x in self.AUDIOMIXER.audio_sources:
+           #     p = x.pos - self.cameraPosDelta
+           #     pygame.draw.circle(self.screen, [255,0,0], p, 10)
 
             pygame.display.update()
             self.t1 = time.time() - tickStartTime
