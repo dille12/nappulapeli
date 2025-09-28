@@ -25,8 +25,7 @@ class getStat:
             "healthRegenMult": 1.0,
             "thorns": 0.0,
             "healthCapMult": 1.0,
-            "berserker" : False,
-            "martyrdom" : False,
+            
 
             "weaponHandling" : 1.0,
             "weaponDamage" : 1.0,
@@ -36,41 +35,45 @@ class getStat:
             "weaponRange":1.0,
             "accuracy":1.0,
             "multiShot" : 1,
-            "meleeDamage": 1.0,
             "recoilMult": 1.0,
-            
 
-            "instaHeal" : False,
+            "meleeDamage": 1.0,
+            
             "saveChance" : 0.0,
             "fireRateIncrease" : 0,
-            "allyProtection" : False,
-            "coward" : False,
-            "revenge" : False,
-            "duplicator" : False,
-
+            "lifeSteal": 0.0,
+            "tacticalSprintSpeed": 1.0,
             "defenceNormal" : 1.0,
             "defenceEnergy" : 1.0,
             "defenceExplosion" : 1.0,
-
+            "tripChance": 0.0,
+            "shitChance": 0.0,
             "dodgeChance": 0.0,
             "xpMult":1.0,
             "healOnKill":0,
             "knockbackMult":1.0,
             "healAllies":0,
-            "talking": True,
+
+            "berserker" : False,
+            "martyrdom" : False,
+            
+            "instaHeal" : False,
+            "talking": False,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,
             "piercing": False,
             "detonation": False,
-            "tripChance": 0.0,
-            "shitChance": 0.0,
+            
             "extraItem": False,  
             "homing": False,
             "playMusic": False,
             "magDump": False,
-            "lifeSteal": 0.0,
-            "tacticalSprintSpeed": 1.0,
+            "allyProtection" : False,
+            "coward" : False,
+            "revenge" : False,
+            "duplicator" : False,
+            
         }
 
         self.effect_labels_fi = {
