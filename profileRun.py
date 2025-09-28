@@ -11,4 +11,4 @@ if input("Run game?\n>").lower() == "y":
 p = pstats.Stats(name)
 
 #p.print_stats()
-p.sort_stats("tottime").print_stats(500)
+p.sort_stats("cumtime").print_stats(100)

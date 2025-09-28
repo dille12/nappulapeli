@@ -290,6 +290,8 @@ class Pawn(PawnBehaviour, getStat):
         if self.app.giveWeapons:
             weapon = random.choice(self.app.weapons)
 
+        #weapon = self.app.desert
+
         #weapon = self.app.hammer
 
         weapon.give(self)  # Give the AK-47 to this pawn

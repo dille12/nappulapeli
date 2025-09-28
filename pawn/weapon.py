@@ -402,6 +402,7 @@ class Weapon:
             self.lazerActive = True
             self.lazerTimer = 0.04
     
+    
 
     def RocketLauncher(self):
         if not self.canShoot(): return
@@ -432,7 +433,11 @@ class Weapon:
         self.AKshoot(sounds = self.app.smgSound)
 
     def pistolShoot(self):
-        self.AKshoot(sounds = self.app.pistolSound)
+        self.AKshoot(sounds = self.app.pistolSound, recoil = 0.5)
+
+    def desertShoot(self):
+        self.AKshoot(sounds = "audio/deserteagle.wav", critChance = 0.25, recoil = 1)
+
 
 
     def burstShoot(self):
@@ -496,7 +501,7 @@ class Weapon:
             Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.15)
 
-    def AKshoot(self, sounds = None):
+    def AKshoot(self, sounds = None, critChance = 0, recoil = 0.25):
         
         if not self.canShoot(): return
         
@@ -515,13 +520,14 @@ class Weapon:
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
         for x in range(self.owner.itemEffects["multiShot"]):
-            self.createBullet(0.25)
+            self.createBullet(recoil, critChance = critChance)
 
-    def createBullet(self, recoil):
+    def createBullet(self, recoil, critChance = 0):
         r = math.radians(-self.ROTATION)
         pierce = self.owner.itemEffects["piercing"]
         homing = self.owner.itemEffects["homing"]
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, 
+               piercing=pierce, homing=homing, critChance = critChance) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
 
 
@@ -622,7 +628,7 @@ class Weapon:
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
         else:
             if self.raiseWeaponWhileRunning():
-                if self.name not in ["Skull", "Glock", "USP-S"]:
+                if self.name not in ["Skull", "Glock", "USP-S", "Desert Eagle"]:
                     r = -110 if self.owner.facingRight else -70
                 else:
                     r = 135 if self.owner.facingRight else 45
@@ -704,7 +710,7 @@ class Weapon:
         # Combined recoil offset
         recoilOffset = recoilBackwardOffset + recoilUpwardOffset
 
-        if self.name not in ["Glock", "USP-S", "Skull"]:
+        if self.name not in ["Glock", "USP-S", "Skull", "Desert Eagle"]:
             yA -= self.runOffset*50
             runOffset = self.runOffset*30
         else:

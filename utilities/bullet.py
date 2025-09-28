@@ -33,7 +33,7 @@ def line_intersects_rect(x1, y1, x2, y2, rx, ry, rw, rh):
 
 
 class Bullet:
-    def __init__(self, owner, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = True):
+    def __init__(self, owner, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = False, critChance = 0):
         self.owner = owner
         self.app = owner.app
         self.pos = pos
@@ -59,6 +59,9 @@ class Bullet:
         self.turnRate = 3.0  # radians per second
         self.targetRefreshTimer = 0
         self.targetRefreshRate = 0.05  # seconds
+        self.crit = random.uniform(0,1) < critChance
+        if self.crit:
+            self.damage *= 4
 
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
@@ -195,7 +198,10 @@ class Bullet:
                     x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
                 
                 #if x.onScreen():
-                self.app.playPositionalAudio(self.app.hitSounds, self.pos)
+                if self.crit:
+                    self.app.playPositionalAudio("audio/crit.wav", self.pos)
+                else:
+                    self.app.playPositionalAudio(self.app.hitSounds, self.pos)
                     
                 if not self.piercing:
                     return

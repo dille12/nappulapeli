@@ -548,7 +548,7 @@ class ArenaGenerator:
         sin_table = np.sin(np.radians(angles))
 
         mask = get_visible_mask(self.grid, from_x, from_y, max_range, cos_table, sin_table)
-        return [tuple(xy) for xy in np.argwhere(mask == 1)]
+        return [(xy[1], xy[0]) for xy in np.argwhere(mask == 1)]
 
     def can_see(self, from_x: int, from_y: int, to_x: int, to_y: int) -> bool:
         """
