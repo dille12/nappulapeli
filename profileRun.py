@@ -1,11 +1,14 @@
 import cProfile
-import main
+#
 import pstats
 from pstats import SortKey
 
+
+name = 'restats_opt'
 if input("Run game?\n>").lower() == "y":
-    cProfile.run('main.run()', 'restats')
-p = pstats.Stats('restats')
+    import main
+    cProfile.run('main.run()', name)
+p = pstats.Stats(name)
 
 #p.print_stats()
 p.sort_stats("cumtime").print_stats(100)

@@ -88,6 +88,7 @@ class valInit:
         self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
         self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
         self.e4 = Weapon(self, "E-BR", [150, 0], "texture/energy4.png", 15, 2700, 35, 10, Weapon.burstShoot, 1, "energy", burstBullets=2, burstTime=0.03)
+        self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
         
 
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
@@ -262,7 +263,7 @@ class valInit:
         self.refreshShops()
 
 
-        self.midRoundTime = 10
+        self.midRoundTime = 0
 
         self.subs = None
         self.subI = 0

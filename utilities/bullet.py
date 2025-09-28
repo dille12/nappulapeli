@@ -33,7 +33,7 @@ def line_intersects_rect(x1, y1, x2, y2, rx, ry, rw, rh):
 
 
 class Bullet:
-    def __init__(self, owner, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = True):
+    def __init__(self, owner, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = False, critChance = 0):
         self.owner = owner
         self.app = owner.app
         self.pos = pos
@@ -59,6 +59,9 @@ class Bullet:
         self.turnRate = 3.0  # radians per second
         self.targetRefreshTimer = 0
         self.targetRefreshRate = 0.05  # seconds
+        self.crit = random.uniform(0,1) < critChance
+        if self.crit:
+            self.damage *= 4
 
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
@@ -95,6 +98,9 @@ class Bullet:
 
     def tick(self):
         # Homing behavior
+
+        self.ONSCREEN = self.app.onScreen(self.pos)
+
         if self.homing:
             self.targetRefreshTimer -= self.app.deltaTime
             if self.targetRefreshTimer <= 0 or (self.target and self.target.killed):
@@ -124,7 +130,8 @@ class Bullet:
                     newAngle = currentAngle + turnAmount
                     self.vel = v2(math.cos(newAngle), math.sin(newAngle))
                     self.angle = newAngle
-                    self.b = pygame.transform.rotate(self.bOrig, -math.degrees(self.angle))
+                    if self.ONSCREEN:
+                        self.b = pygame.transform.rotate(self.bOrig, -math.degrees(self.angle))
 
         self.pastPos.append(self.pos.copy())
         if len(self.pastPos) > 3:
@@ -190,7 +197,10 @@ class Bullet:
                 else:
                     x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
                 
-                if x.onScreen():
+                #if x.onScreen():
+                if self.crit:
+                    self.app.playPositionalAudio("audio/crit.wav", self.pos)
+                else:
                     self.app.playPositionalAudio(self.app.hitSounds, self.pos)
                     
                 if not self.piercing:
@@ -202,4 +212,5 @@ class Bullet:
                 self.app.ENTITIES.remove(self)
 
     def render(self):
-        self.app.DRAWTO.blit(self.b, self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)
+        if self.ONSCREEN:
+            self.app.DRAWTO.blit(self.b, self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)

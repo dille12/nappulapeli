@@ -14,6 +14,14 @@ def onKill(ownName, killedName: str):
         "Ja jää!",
         "Sweet dreams, perkeleen mulkku.",
         "Hurraa!",
+        "Muhaha!",
+        "Hahaa!",
+        "Jipii!",
+        f"Menisit sinäkin {killedName} töihin.",
+        f"{ownName} on paras!",
+        "Vie vittuun nuo entiset tuosta.",
+        "Vittu mun teki mieli ampua sut, saatana.",
+        
     ])
 
 
@@ -33,6 +41,7 @@ def onTeamKill(killedName):
         f"Sori {killedName}",
         f"VÄISTÄ SAATANA {killedName}",
         f"Mun moka {killedName}",
+        f"Ei kyl kiinnosta {killedName} vittuakaan."
 
     ])
 
@@ -50,6 +59,10 @@ def onTeamDamage(perpertator):
         "Älä mua!",
         f"Nyt loppu {perpertator}",
         f"Kato mihi sohit {perpertator}",
+        "Kuka siellä omia sohii?",
+        f"Opettele ampuu {perpertator}",
+        f"Raportoikaa {perpertator}!",
+
 
     ])
 
@@ -64,6 +77,9 @@ def onTarget():
         "Noni",
         "KÄÄK",
         "Gulp",
+        "Kukas toi on?",
+        "Mää oon tän mapin seksikkäin jäpä.",
+        "Katos tätä.",
 
     ])
 def onTakeDamage():
@@ -75,5 +91,7 @@ def onTakeDamage():
         "VITTU",
         "Älä ny ammu!",
         "Hei, älä sylje!",
-        "Aissaatana"
+        "Aissaatana",
+        "Sattuu!",
+        "Vituttaa.",
     ])

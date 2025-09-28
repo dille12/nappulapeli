@@ -212,6 +212,9 @@ def battleTick(self: "Game"):
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
 
+        #if self.cameraLock:
+        #    self.cameraLock.visualizeVis()
+
         for x in self.shitDict.values():
             x.render()
 

@@ -5,6 +5,30 @@ from dataclasses import dataclass
 from enum import Enum
 import matplotlib.pyplot as plt
 import pygame
+import numba as nb
+
+@nb.njit
+def get_visible_mask(grid, from_x, from_y, max_range, cos_table, sin_table):
+    height, width = grid.shape
+    visible = np.zeros((height, width), dtype=np.uint8)
+
+    for i in range(len(cos_table)):
+        dx = cos_table[i]
+        dy = sin_table[i]
+
+        for step in range(1, max_range + 1):
+            x = int(from_x + dx * step)
+            y = int(from_y + dy * step)
+
+            if x < 0 or x >= width or y < 0 or y >= height:
+                break
+
+            if grid[y, x] == 0:  # assume WALL=1
+                break
+
+            visible[y, x] = 1
+
+    return visible
 
 
 
@@ -518,45 +542,13 @@ class ArenaGenerator:
         self.grid = new_grid
 
 
-    def get_visible_cells(self, from_x: int, from_y: int, max_range: int = 10) -> List[Tuple[int, int]]:
-        """
-        Get all cells visible from a given position using raycasting.
-        
-        Args:
-            from_x, from_y: Starting position
-            max_range: Maximum vision distance
-            
-        Returns:
-            List of (x, y) coordinates that are visible
-        """
-        visible = []
-        
-        # Cast rays in all directions
-        for angle in range(0, 360, 2):  # Every 2 degrees for performance
-            rad = np.radians(angle)
-            dx = np.cos(rad)
-            dy = np.sin(rad)
-            
-            # Cast ray up to max_range
-            for step in range(1, max_range + 1):
-                x = int(from_x + dx * step)
-                y = int(from_y + dy * step)
-                
-                # Check bounds
-                if not (0 <= x < self.width and 0 <= y < self.height):
-                    break
-                    
-                
-                
-                # Stop if we hit a wall
-                if self.grid[y, x] == CellType.WALL.value:
-                    break
+    def get_visible_cells(self, from_x: int, from_y: int, max_range: int = 10):
+        angles = np.arange(0, 360, 2)
+        cos_table = np.cos(np.radians(angles))
+        sin_table = np.sin(np.radians(angles))
 
-                # Add to visible list
-                if (x, y) not in visible:
-                    visible.append((x, y))
-        
-        return visible
+        mask = get_visible_mask(self.grid, from_x, from_y, max_range, cos_table, sin_table)
+        return [(xy[1], xy[0]) for xy in np.argwhere(mask == 1)]
 
     def can_see(self, from_x: int, from_y: int, to_x: int, to_y: int) -> bool:
         """
@@ -662,27 +654,16 @@ def generate_sample_arenas():
     arena1 = gen1.generate_arena(room_count=5, min_room_size=3, max_room_size=8)
     gen1.visualize()
     
-    # Medium complex arena
-    print("Generating medium arena...")
-    gen2 = ArenaGenerator(width=60, height=45, seed=123)
-    arena2 = gen2.generate_arena(room_count=8, min_room_size=4, max_room_size=10)
-    gen2.visualize()
-    
-    # Large complex arena
-    print("Generating large arena...")
-    gen3 = ArenaGenerator(width=80, height=60, seed=456)
-    arena3 = gen3.generate_arena(room_count=20, min_room_size=4, max_room_size=14)
-    gen3.visualize()
-    
-    return arena1, arena2, arena3
+    return gen1
 
 if __name__ == "__main__":
     # Generate sample arenas
-    arenas = generate_sample_arenas()
+    arena = generate_sample_arenas()
     
-    # Print statistics
-    for i, arena in enumerate(arenas, 1):
-        floor_cells = np.sum(arena == CellType.FLOOR.value)
-        total_cells = arena.size
-        density = floor_cells / total_cells
-        print(f"Arena {i}: {floor_cells}/{total_cells} floor cells ({density:.2%} density)")
+
+    import time
+    t = time.time()
+    for i in range(5000):
+        p = (random.randint(0,40), random.randint(0,30))
+        #print(arena.get_visible_cells(p[0], p[1]))
+    print(time.time()- t)

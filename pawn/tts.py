@@ -15,7 +15,10 @@ class EspeakTTS:
     def __init__(self, owner: "Pawn", speed=175, pitch=50, voice="fi"):
         self.speed = str(speed)
         self.pitch = str(pitch)
-        self.voice = voice
+        g = random.choice(["f", "m"])
+        i = random.randint(1,5)
+        l = random.choice(["fi", "et", "sv", "fr", "en"])
+        self.voice = f"{l}+{g}{i}"
         self.owner = owner
         self.app: "Game" = owner.app
         self.current_path = None

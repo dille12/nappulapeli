@@ -9,7 +9,7 @@ from levelGen.mapGen import CellType
 from utilities.shit import Shit
 from utilities.building import Building
 
-
+import pygame
 
 class PawnBehaviour:
     def __init__(self: "Pawn"):
@@ -205,6 +205,14 @@ class PawnBehaviour:
                         self.getRouteTo(endPosGrid=random.choice(crossSection))
                     else:
                         self.getRouteTo(endPosGrid=random.choice(CELLS))
+
+    def visualizeVis(self):
+        CELLS = self.getVisibility()
+        for x,y in CELLS:
+            r = [x*self.app.tileSize - self.app.cameraPosDelta.x, y*self.app.tileSize - self.app.cameraPosDelta.y,
+                self.app.tileSize, self.app.tileSize]
+            print(r)
+            pygame.draw.rect(self.app.DRAWTO, self.teamColor, r)
 
     def walkAcc(self):
         if self.walkTo is not None:
