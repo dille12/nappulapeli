@@ -1,5 +1,5 @@
 import pygame
-import os
+import os, sys
 import pygame.gfxdraw
 from pawn.pawn import Pawn
 from pawn.weapon import Weapon
@@ -19,7 +19,7 @@ import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
 from particles.particle import ParticleSystem, Particle
-
+from core.console import runConsole, getCodeSuggestions, handleConsoleEvent
 from gameTicks.settingsTick import settingsTick, createSettings
 from gameTicks.qrCodesTick import createQRS, qrCodesTick
 from gameTicks.pawnGeneration import preGameTick
@@ -125,6 +125,7 @@ from core.valInit import valInit  # --- IGNORE ---
 class Game(valInit):
     def __init__(self):
         super().__init__()
+        getCodeSuggestions(self)
         
 
     def addToPlaylist(self, trackLink):
@@ -359,6 +360,9 @@ class Game(valInit):
                         walls.append(seg)
 
         return walls
+    
+    def resetApp(self):
+        os.execv(sys.executable, ['python'] + sys.argv)
     
     def wall_intersects_screen(self, p1, p2):
         W, H = self.res
@@ -1285,6 +1289,13 @@ class Game(valInit):
         center = self.cameraPosDelta + self.res/2
 
         return self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
+    
+
+    def setValue(self, varName, value):
+        if varName in self.__dict__:
+            self.__dict__[varName] = value
+            return True
+        return False
 
 
 
@@ -1303,10 +1314,7 @@ class Game(valInit):
             key_press_manager(self)
         
             self.debugI = 0
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()  # Ensure the program exits cleanly
+
 
 
             if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":
@@ -1370,11 +1378,17 @@ class Game(valInit):
            #     p = x.pos - self.cameraPosDelta
            #     pygame.draw.circle(self.screen, [255,0,0], p, 10)
 
+            if "f1" in self.keypress:
+               self.consoleOpen = not self.consoleOpen
+            
+            if self.consoleOpen:
+                runConsole(self)
+
             pygame.display.update()
             self.t1 = time.time() - tickStartTime
             
 
-            self.deltaTimeR = self.clock.tick(144) / 1000
+            self.deltaTimeR = self.clock.tick(self.MAXFPS) / 1000
             self.t2 = time.time() - tickStartTime
 
 
@@ -1393,6 +1407,8 @@ class Game(valInit):
 
 def run():
     game = Game()
+    #time.sleep(1)
+    #getCodeSuggestions(game)
     game.run()
 
 if __name__ == "__main__":

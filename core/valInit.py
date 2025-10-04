@@ -13,7 +13,7 @@ from gameTicks.qrCodesTick import createQRS
 from gameTicks.gameModeTick import GlitchGamemodeDisplay
 from particles.laser import ThickLaser
 from audioPlayer.audioMixer import AudioMixer, AudioSource
-
+from core.console import getCodeSuggestions
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
@@ -69,6 +69,8 @@ class valInit:
 
         self.CAMERA = Camera(self, (0,0))
 
+        self.consoleFont = pygame.font.Font("texture/terminal.ttf", 20)
+
         self.font = pygame.font.Font(self.fontName, 30)
         self.fontLarge = pygame.font.Font(self.fontName, 60)  # Load a default font
         self.notificationFont = pygame.font.Font(self.fontName, 140)
@@ -111,6 +113,8 @@ class valInit:
         self.judgementPhases = ["nextup", "reveal", "drink"]
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
+
+        self.consoleOpen = False
 
         self.cameraIdleTime = 0
 
@@ -292,6 +296,8 @@ class valInit:
 
         self.giveWeapons = False
 
+        self.MAXFPS = 144
+
 
         self.bloodClearI = 0
         self.beatI = 0
@@ -339,3 +345,5 @@ class valInit:
         self.gamemode_display = GlitchGamemodeDisplay(self)
 
         self.musicQueue = []
+
+        print("Game initialized")

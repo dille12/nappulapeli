@@ -2,14 +2,17 @@ import pygame
 import sys
 from numpy import array as v2
 import numpy
+from core.console import handleConsoleEvent
 
 def key_press_manager(obj):
 
     obj.mouse_pos = pygame.mouse.get_pos()
     obj.events = pygame.event.get()
     for event in obj.events:
+        handleConsoleEvent(obj, event)
         if event.type == pygame.QUIT:
-            sys.exit()
+            pygame.quit()
+            exit()  # Ensure the program exits cleanly
 
     keys = pygame.key.get_pressed()
 
@@ -26,16 +29,20 @@ def key_press_manager(obj):
         [pygame.K_2, "2"],
         [pygame.K_3, "3"],
         [pygame.K_4, "4"],
+        [pygame.K_TAB, "tab"],
+
         [pygame.K_RETURN, "enter"],
         [pygame.K_SPACE, "space"],
         [pygame.K_BACKSPACE, "backspace"],
         [pygame.K_ESCAPE, "esc"],
         [pygame.K_DELETE, "del"],
+        [pygame.K_LCTRL, "ctrl"],
         [pygame.K_t, "t"],
         [pygame.K_LEFT, "left"],
         [pygame.K_RIGHT, "right"],
         [pygame.K_UP, "up"],
         [pygame.K_DOWN, "down"],
+        [pygame.K_F1, "f1"],
     ]:
         if keys[key]:
             if sign in obj.keypress:

@@ -89,7 +89,7 @@ def battleTick(self: "Game"):
     self.CREATEDUAL = False
     self.handleCameraLock()
     self.handleCameraSplit()
-    self.handleUltingCall()
+    #self.handleUltingCall()
 
     self.deltaTime *= self.SLOWMO
 
