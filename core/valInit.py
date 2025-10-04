@@ -86,14 +86,15 @@ class valInit:
         self.famas = Weapon(self, "FAMAS", [200, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal", burstTime=0.1, burstBullets=3)
         self.shotgun = Weapon(self, "Shotgun", [175, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
         self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 5, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
+        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
         self.e4 = Weapon(self, "E-BR", [150, 0], "texture/energy4.png", 15, 2700, 35, 10, Weapon.burstShoot, 1, "energy", burstBullets=2, burstTime=0.03)
         self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
         
 
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
 
-        self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, self.shotgun, self.mg, self.BFG]
+        self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
+                        self.shotgun, self.mg, self.BFG, self.desert]
 
         self.firstPacket = self.AK.getPacket()
         self.BFGLasers = []
@@ -131,7 +132,7 @@ class valInit:
 
             self.concretes.append(tile)
         
-
+        self.MAXFRAMETIME = 0
         self.deltaTime = 1/60
         self.deltaTimeR = 1/60
         self.debugI = 0

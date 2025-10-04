@@ -58,7 +58,7 @@ class getStat:
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": False,
+            "talking": True,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,
@@ -73,6 +73,7 @@ class getStat:
             "coward" : False,
             "revenge" : False,
             "duplicator" : False,
+            "bossKiller" : False,
             
         }
 
@@ -126,6 +127,7 @@ class getStat:
             "magDump": "Lipas tyhjäksi",
             "lifeSteal": "Elämänimeminen",
             "tacticalSprintSpeed": "Taktinen juoksu",
+            "bossKiller" : "Koodarikilleri"
         }
 
         self.effect_labels_en = {

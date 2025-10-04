@@ -235,15 +235,7 @@ class Game(valInit):
         text_rect = text_surface.get_rect(center=(final_x, final_y))
         self.screen.blit(text_surface, text_rect)
         
-        # Static noise overlay
-        if random.random() < 0.15:
-            noise_surface = pygame.Surface((text_surface.get_width() + 20, text_surface.get_height() + 20))
-            for i in range(100):
-                noise_x = random.randint(0, noise_surface.get_width())
-                noise_y = random.randint(0, noise_surface.get_height())
-                noise_surface.set_at((noise_x, noise_y), (255, 255, 255))
-            noise_surface.set_alpha(100)
-            self.screen.blit(noise_surface, (final_x - noise_surface.get_width()/2 - 10, final_y - noise_surface.get_height()/2 - 10))
+
         
         return False
                     
@@ -699,7 +691,7 @@ class Game(valInit):
     def debugText(self, text):
         
         t = self.fontSmaller.render(str(text), True, [255,255,255])
-        self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], 200 + self.debugI * 22])
+        self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], 500 + self.debugI * 22])
         self.debugI += 1
 
     def smoothRotationFactor(self, angleVel, gainFactor, diff):
@@ -905,7 +897,7 @@ class Game(valInit):
         if self.VICTORY:
             I = max(self.endGameI-4, 0)
             self.SLOWMO = 1 - 0.5*(1-I)
-            self.deltaTime *= 1 - 0.5*(1-I)
+            
             self.cameraLock = max(
                 (x for x in self.pawnHelpList if (x.team == self.victoryTeam and not x.killed)),
                 key=lambda x: x.kills,
@@ -918,7 +910,7 @@ class Game(valInit):
 
             I = self.levelUpTimeFreeze()
 
-            self.deltaTime *= 1 - 0.99*(1-I)
+            self.SLOWMO = 1 - 0.5*(1-I)
             self.cameraLock = self.pendingLevelUp
 
     def handleCameraSplit(self):
@@ -1218,27 +1210,29 @@ class Game(valInit):
 
         judges = []
 
-        tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["deaths"])
+        nonNpcList = [x for x in self.pawnHelpList if not x.NPC]
+
+        tempPawn = max(nonNpcList, key=lambda p: p.stats["deaths"])
         judges.append(tempPawn)
         self.judgements.append((tempPawn, "Eniten kuolemia", f" on kuollut eniten ({tempPawn.stats['deaths']})"))
         # Most team kills
-        tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["teamkills"])
+        tempPawn = max(nonNpcList, key=lambda p: p.stats["teamkills"])
         if tempPawn not in judges:
             judges.append(tempPawn)
             self.judgements.append((tempPawn, "Eniten tiimitappoja", f" on tappanut eniten tiimitovereita ({tempPawn.stats['teamkills']})"))
         # Most suicides
-        tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["suicides"])
+        tempPawn = max(nonNpcList, key=lambda p: p.stats["suicides"])
         if tempPawn not in judges:
             judges.append(tempPawn)
             self.judgements.append((tempPawn, "Eniten itsemurhia", f" on tappanut itseään eniten ({tempPawn.stats['suicides']})"))
         # Most damage taken
-        tempPawn = max(self.pawnHelpList, key=lambda p: p.stats["damageTaken"])
+        tempPawn = max(nonNpcList, key=lambda p: p.stats["damageTaken"])
         if tempPawn not in judges:
             judges.append(tempPawn)
             self.judgements.append((tempPawn, "Eniten vahinkoa vastaanotettu", f" on ottanut eniten vahinkoa ({int(tempPawn.stats['damageTaken'])})"))
         # A random pawn
-        if self.pawnHelpList:
-            randomPawn = random.choice(self.pawnHelpList)
+        if nonNpcList:
+            randomPawn = random.choice(nonNpcList)
             self.judgements.append((randomPawn, "Tää äijä vaan haisee", " haisi eniten rng generaattorin mielestä!"))
         else:
             print("No pawns to judge!")
@@ -1285,7 +1279,7 @@ class Game(valInit):
 
     def playPositionalAudio(self, audio, pos = None):
 
-        if not isinstance(audio, str):
+        if isinstance(audio, list):
             audio = random.choice(audio)
 
         center = self.cameraPosDelta + self.res/2
@@ -1299,6 +1293,8 @@ class Game(valInit):
         self.currNotification = [text, color]
 
     def run(self):
+        self.frameTimeCache = []
+        timeSum = 0
         while True:
             self.SLOWMO = 1
             self.mankkaDistance = float("inf")
@@ -1381,7 +1377,16 @@ class Game(valInit):
             self.deltaTimeR = self.clock.tick(144) / 1000
             self.t2 = time.time() - tickStartTime
 
-            self.FPS = 0.05 * (1/self.t2) + 0.95 * self.FPS
+
+            self.frameTimeCache.append(self.t2)
+            timeSum += self.t2
+            if len(self.frameTimeCache) > 144:
+                tR = self.frameTimeCache.pop(0)
+                timeSum -= tR
+            
+
+            self.FPS = len(self.frameTimeCache) / sum(self.frameTimeCache)
+            self.MAXFRAMETIME = max(self.frameTimeCache)
 
             self.deltaTimeR = min(self.deltaTimeR, 1/30)
             self.deltaTime = self.deltaTimeR

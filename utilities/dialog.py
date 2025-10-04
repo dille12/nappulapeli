@@ -80,6 +80,7 @@ def onTarget():
         "Kukas toi on?",
         "Mää oon tän mapin seksikkäin jäpä.",
         "Katos tätä.",
+        "Hurjaa!",
 
     ])
 def onTakeDamage():
@@ -94,4 +95,9 @@ def onTakeDamage():
         "Aissaatana",
         "Sattuu!",
         "Vituttaa.",
+        "Mitä vittua?",
+        "Interesting.",
+        "Lopeta!",
+        "Voi veljet!",
+        "Sattuu pippeliin!",
     ])

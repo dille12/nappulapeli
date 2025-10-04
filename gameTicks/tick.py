@@ -91,6 +91,8 @@ def battleTick(self: "Game"):
     self.handleCameraSplit()
     self.handleUltingCall()
 
+    self.deltaTime *= self.SLOWMO
+
     if not self.VICTORY:
         self.roundTime -= self.deltaTime
         if self.roundTime <= 0:
@@ -265,7 +267,7 @@ def battleTick(self: "Game"):
             return
     else:
         pass
-        #self.tickScoreBoard()
+        self.tickScoreBoard()
 
     if not self.VICTORY:
         self.drawRoundInfo()
@@ -299,8 +301,10 @@ def battleTick(self: "Game"):
         self.handleUlting()
 
     self.debugText(f"FPS: {self.FPS:.0f}")
+    self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
     self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
+    self.debugText(f"SOUND TIME: {self.AUDIOMIXER.callBackTime*1000:.1f}ms")
     self.debugText(f"ONSCREEN: {onscreen}")
     
     #self.genPawns()

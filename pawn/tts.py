@@ -11,6 +11,10 @@ import tempfile
 from _thread import start_new_thread
 import os
 import pygame
+import io
+import soundfile as sf
+import time
+from audioPlayer.audioMixer import AudioSource
 class EspeakTTS:
     def __init__(self, owner: "Pawn", speed=175, pitch=50, voice="fi"):
         self.speed = str(speed)
@@ -31,8 +35,6 @@ class EspeakTTS:
             return
         if self.generating:
             return
-        if self.app.speeches > 1:
-            return
         if self.owner.textBubble or self.sound:
             return
         
@@ -47,31 +49,33 @@ class EspeakTTS:
         self.owner.textBubble = text
         
         try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                wav_path = tmp.name
-            subprocess.run([
+            #with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            #    wav_path = tmp.name
+            proc = subprocess.run([
                 "espeak",
                 "-s", self.speed,
                 "-p", self.pitch,
                 "-v", self.voice,
-                "-w", wav_path,
+                "--stdout",
                 text
-            ], check=True)
+            ], check=True, stdout=subprocess.PIPE)
+            wav_bytes = proc.stdout
+            data, sample_rate = sf.read(io.BytesIO(wav_bytes), dtype="float32")
+            source = AudioSource(data, sample_rate, 44100)
 
-            self.sound = pygame.mixer.Sound(wav_path)
+            self.sound = self.owner.app.playPositionalAudio(source, pos=self.owner.pos)
+
             self.generating = False
-            self.sound.play()
+
             while True:
                 if not self.sound:
                     break
-                if self.sound.get_num_channels():
-                    pygame.time.wait(100)
-                else:
+                if not self.sound.active:
                     break
+                time.sleep(0.1)
+
 
         finally:
-            if os.path.exists(wav_path):
-                os.remove(wav_path)
             self.owner.textBubble = None
             self.app.speeches -= 1
             self.sound = None
@@ -81,5 +85,5 @@ class EspeakTTS:
             return
 
         if self.sound:
-            self.sound.stop()
+            self.sound.active = False
             self.owner.textBubble = None

@@ -280,6 +280,9 @@ class AudioMixer:
         self.output_stream = None
         self.cachedAudio = {}
 
+        self.callBackTime = 0
+        self.minVolume = 1
+
         # Prime Numba kernels to avoid runtime JIT pause
         dummy_len = max(8, chunk_size)
         dummy_chunk = np.zeros((dummy_len, 2), dtype=np.float32)
@@ -297,17 +300,21 @@ class AudioMixer:
 
     def playPositionalAudio(self, audio, pos = None, cameraCenter = None):
         audioFallOffMaxDist = 6000.0
-        if "waddle" in audio:
-            audioFallOffMaxDist *= 0.5
-        elif "explosion" in audio:
-            audioFallOffMaxDist *= 1.5
+        if isinstance(audio, str):
+            if "waddle" in audio:
+                audioFallOffMaxDist *= 0.5
+            elif "explosion" in audio:
+                audioFallOffMaxDist *= 1.5
 
 
         ## HERE, WE CAN PASS self.app to the AudioClips, so they can always calculate the cameraCenter with self.app.deltaCameraPos + self.res/2 as the cameraCenter
 
         if pos is not None:
             # load source but DO NOT set static volume/pan/filter permanently
-            source = self.load_audio(audio)
+            if not isinstance(audio, AudioSource):
+                source = self.load_audio(audio)
+            else:
+                source = audio
             source.positional = True
             source.pos = v2(pos) if not isinstance(pos, v2) else pos
             source.falloff_max_dist = audioFallOffMaxDist
@@ -376,6 +383,9 @@ class AudioMixer:
 
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
+
+        t = time.perf_counter()
+
         # mix into this buffer
         mixed = np.zeros((frame_count, 2), dtype=np.float32)
 
@@ -383,6 +393,7 @@ class AudioMixer:
 
         # iterate copy of list to avoid modification during iteration
         sources = list(self.audio_sources)
+        self.minVolume = 1
         for source in sources:
             if not source.active:
                 try:
@@ -390,7 +401,7 @@ class AudioMixer:
                 except ValueError:
                     pass
                 continue
-
+            self.minVolume = min(self.minVolume, source.volume)
             # If source is positional, update volume, pan and lowpass each callback
             if getattr(source, "positional", False) and source.pos is not None:
                 # compute delta and distance (v2 supports length())
@@ -431,6 +442,8 @@ class AudioMixer:
 
         # auto gain (in-place)
         auto_gain_nb(mixed, np.float32(0.7))
+
+        self.callBackTime = 0.01 * (time.perf_counter() - t) + 0.99 * self.callBackTime
 
         return (mixed.tobytes(), pyaudio.paContinue)
 

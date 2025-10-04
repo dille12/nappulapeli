@@ -350,7 +350,7 @@ class Pawn(PawnBehaviour, getStat):
         #    i = random.choice(self.app.items)
         #    i.apply(self)
 
-        #for x in range(50):
+        #for x in range(random.randint(1,25)):
         #    self.getNextItems()
         #    self.levelUp()
 
@@ -473,8 +473,8 @@ class Pawn(PawnBehaviour, getStat):
         if not self.itemEffects["talking"]:
             return
         
-        if not self.onScreen():
-            return
+        #if not self.onScreen():
+        #    return
         
         if random.uniform(0,1) >= chanceToSay:
             return
@@ -689,6 +689,9 @@ class Pawn(PawnBehaviour, getStat):
             damage /= self.defenceEnergy()
         elif typeD == "explosion":
             damage /= self.defenceExplosion()
+
+        if fromActor and fromActor.itemEffects["bossKiller"]:
+            damage *= max(1, self.level - fromActor.level)
 
         self.stats["damageTaken"] += damage
         if fromActor:

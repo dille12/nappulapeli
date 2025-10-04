@@ -357,15 +357,17 @@ class Weapon:
 
             startPos = self.getBulletSpawnPoint()
             endPos = [
-                startPos[0] + math.cos(math.radians(-self.ROTATION)) * self.range,
-                startPos[1] + math.sin(math.radians(-self.ROTATION)) * self.range
+                startPos[0] + math.cos(math.radians(-self.ROTATION)) * self.owner.getRange(),
+                startPos[1] + math.sin(math.radians(-self.ROTATION)) * self.owner.getRange()
             ]
             
             self.app.BFGLasers.append([startPos, endPos, self.owner.teamColor])
             
             self.lazerTimer -= self.app.deltaTime
             if self.lazerTimer <= 0:
-                self.lazerTimer += 0.04  # Reset timer
+                self.lazerTimer += self.owner.getRoundsPerSecond()
+
+                
 
                 self.magazine -= 1
                 
@@ -386,7 +388,7 @@ class Weapon:
                     )
                     if collides:
                         x.takeDamage(
-                            self.owner.getDamage() * self.app.deltaTime,  # fixed time step damage
+                            self.owner.getDamage() * self.owner.getRoundsPerSecond(),  # fixed time step damage
                             fromActor=self.owner,
                             typeD="energy",
                             bloodAngle=-math.radians(self.ROTATION)
