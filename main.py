@@ -332,6 +332,26 @@ class Game(valInit):
 
         return corners, wallMidPoints
     
+    def testEspeak(self):
+
+        g = random.choice(["f", "m"])
+        i = random.randint(1,5)
+        l = random.choice(["fi", "et", "sv", "fr", "en"])
+        voice = f"{l}+{g}{i}"
+        self.consoleLog.append(voice)
+
+        proc = subprocess.run([
+                "espeak",
+                "-s", "175",
+                "-p", "50",
+                "-v", voice,
+                "Makke painaa nappulaa."
+            ], check=True)
+        
+    def quit(self):
+        pygame.quit()
+        sys.exit()
+    
     def findWalls(self, corners, wallMidPoints):
         wallMidSet = set(wallMidPoints)
         cornerSet  = set(corners)
