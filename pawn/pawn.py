@@ -9,7 +9,7 @@ import math
 import numpy as np
 from imageprocessing.imageProcessing import gaussian_blur, trim_surface, remove_background, remove_background_bytes, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood, get_or_remove_background
 from particles.blood import BloodParticle
-from killfeed import KillFeed
+from utilities.killfeed import KillFeed
 from utilities.explosion import Explosion
 from particles.bloodSplatter import BloodSplatter
 from imageprocessing.pixelSort import pixel_sort_surface
@@ -126,7 +126,7 @@ class Pawn(PawnBehaviour, getStat):
         #image_bytes = base64.b64decode(pawnAvatarEncoded)
 
         # remove background in memory
-        bg_removed_bytes = get_or_remove_background(self.app, pawnAvatarEncoded)
+        bg_removed_bytes = get_or_remove_background(self.app, pawnAvatarEncoded, "cache/background_cache.json")
 
         # convert to pygame.Surface
         img = Image.open(io.BytesIO(bg_removed_bytes)).convert("RGBA")
@@ -485,7 +485,7 @@ class Pawn(PawnBehaviour, getStat):
         rgb = pygame.surfarray.array3d(image).swapaxes(0, 1)
         alpha = pygame.surfarray.array_alpha(image)
 
-        landMarks = get_or_load_landmarks(self.app, rgb)
+        landMarks = get_or_load_landmarks(self.app, rgb, "cache/landmarks_cache.json")
         if landMarks.dtype == object and landMarks.size == 1 and landMarks[()] is None:
             self.morphed = False
             return image

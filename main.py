@@ -13,13 +13,13 @@ from levelGen.mapGen import ArenaGenerator, CellType
 import numpy as np
 from levelGen.arenaWithPathfinding import ArenaWithPathfinding
 from utilities.item import Item
-from keypress import key_press_manager
+from core.keypress import key_press_manager
 from utilities.skull import Skull
 import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
 from particles.particle import ParticleSystem, Particle
-from core.console import runConsole, getCodeSuggestions, handleConsoleEvent
+from core.console import runConsole, handleConsoleEvent
 from gameTicks.settingsTick import settingsTick, createSettings
 from gameTicks.qrCodesTick import createQRS, qrCodesTick
 from gameTicks.pawnGeneration import preGameTick
@@ -32,9 +32,9 @@ import asyncio
 from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
 import subprocess, glob
-from extractLyrics import get_subs_for_track
+from utilities.extractLyrics import get_subs_for_track
 from utilities.camera import Camera
-
+import inspect
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -125,7 +125,7 @@ from core.valInit import valInit  # --- IGNORE ---
 class Game(valInit):
     def __init__(self):
         super().__init__()
-        getCodeSuggestions(self)
+        self.getCodeSuggestions()
         
 
     def addToPlaylist(self, trackLink):
@@ -156,6 +156,20 @@ class Game(valInit):
         self.musicQueue.append(latest)
         print("QUEUE")
         print(self.musicQueue)
+
+    def getCodeSuggestions(self):
+        self.object_methods = {
+            name: str(inspect.signature(member))
+            for name, member in inspect.getmembers(self, predicate=inspect.ismethod)
+            if member.__self__.__class__ is self.__class__ and not name.startswith("__")
+        }
+        self.object_variables = {
+            name: None
+            for name in vars(self).keys()
+            if not name.startswith("__") and not callable(getattr(self, name))
+        }
+
+        
 
     def draw_notification(self, text, x, y, start_time, color=(255, 255, 255)):
         current_time = pygame.time.get_ticks() - start_time

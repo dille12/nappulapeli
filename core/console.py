@@ -4,24 +4,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
 import ast
+import threading
 
-def getCodeSuggestions(self: "Game"):
-    self.object_methods = {
-        name: str(inspect.signature(member))
-        for name, member in inspect.getmembers(self, predicate=inspect.ismethod)
-        if member.__self__.__class__ is self.__class__ and not name.startswith("__")
-    }
-    self.object_variables = {
-        name: None
-        for name in vars(self).keys()
-        if not name.startswith("__") and not callable(getattr(self, name))
-    }
-
-    self.console_input = ""
-    self.consoleOpen = False
-    self.consoleSuggestionI = 0
-    self.consoleLog = []
-    self.lastCommands = []
 
 def execute(self: "Game", command: str):
 
@@ -59,10 +43,16 @@ def handleConsoleEvent(self: "Game", event: pygame.event.Event):
                 self.console_input = self.console_input[:-1]
         elif event.key == pygame.K_RETURN:
             if self.console_input.strip():
-                execute(self, self.console_input)
+                initExecution(self, self.console_input)
                 self.console_input = ""
         else:
             self.console_input += event.unicode
+
+
+def initExecution(self, command):
+    t = threading.Thread(target=execute, args=(self, command))
+    t.daemon = True
+    t.start()
 
 
 def runConsole(self: "Game"):
