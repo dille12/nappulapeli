@@ -13,7 +13,6 @@ from gameTicks.qrCodesTick import createQRS
 from gameTicks.gameModeTick import GlitchGamemodeDisplay
 from particles.laser import ThickLaser
 from audioPlayer.audioMixer import AudioMixer, AudioSource
-from core.console import getCodeSuggestions
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
@@ -349,5 +348,11 @@ class valInit:
         self.gamemode_display = GlitchGamemodeDisplay(self)
 
         self.musicQueue = []
+
+        self.console_input = ""
+        self.consoleOpen = False
+        self.consoleSuggestionI = 0
+        self.consoleLog = []
+        self.lastCommands = []
 
         print("Game initialized")
