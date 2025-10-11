@@ -50,8 +50,10 @@ class valInit:
         self.particle_list = []
         self.playerFilesToGen = [] 
 
+        self.SCALE = 1
+
         self.teams = 2
-        self.allTeams = []
+        self.allTeams: list[Team] = []
         for i in range(self.teams):
             self.allTeams.append(Team(self, i))
 
@@ -171,11 +173,12 @@ class valInit:
         self.round = 0
         self.roundTime = 0
         self.MAXROUNDLENGTH = 60
+        self.AUDIOORIGIN = v2(0, 0)
 
         self.ultCalled = False
         self.ultFreeze = 0
 
-        self.gameModeLineUp = ["TEAM DEATHMATCH"] # , "ODDBALL", "TURF WARS"
+        self.gameModeLineUp = ["TURF WARS"] # "TEAM DEATHMATCH", "ODDBALL", "TURF WARS"
 
         self.teamInspectIndex = 0
         self.safeToUseCache = True
@@ -297,6 +300,7 @@ class valInit:
         self.giveWeapons = False
 
         self.MAXFPS = 144
+        self.TIMESCALE = 1
 
 
         self.bloodClearI = 0

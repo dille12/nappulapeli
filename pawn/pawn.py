@@ -50,12 +50,6 @@ def debug_draw_alpha(surface):
     return debug_surface
 
 
-
-
-
-
-
-
 def combinedText(*args, font):
     if len(args) % 2 != 0:
         raise ValueError("Arguments must be in (string, color) pairs")
@@ -327,6 +321,7 @@ class Pawn(PawnBehaviour, getStat):
         self.buildingBounceOffset = 0
         self.buildingRotationOffset = 0
         
+        
 
         self.getNextItems()
         
@@ -555,7 +550,7 @@ class Pawn(PawnBehaviour, getStat):
             return
         
         if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
-            if not self.team.hostile(x):
+            if not self.team.hostile(self, x):
                 return
         
         if x.respawnI > 0:
@@ -650,7 +645,7 @@ class Pawn(PawnBehaviour, getStat):
     def reset(self):
         
         if self.app.GAMEMODE == "TURF WARS" and not self.app.PEACEFUL:
-            self.enslaved = self.app.teamSpawnRooms[self.originalTeam].turfWarTeam != self.originalTeam
+            self.enslaved = self.team.enslavedTo != self.team.i
         else:
             self.enslaved = False
 
@@ -666,6 +661,8 @@ class Pawn(PawnBehaviour, getStat):
         self.respawnI = 0
         self.tripped = False
 
+        self.teamColor = self.team.getColor(self.enslaved)
+
         self.weapon.lazerActive = False
         
 
@@ -680,7 +677,7 @@ class Pawn(PawnBehaviour, getStat):
         if self.killed:
             return
 
-        if fromActor.itemEffects["allyProtection"] and not fromActor.team.hostile(self):
+        if fromActor.itemEffects["allyProtection"] and not fromActor.team.hostile(fromActor, self):
             return
         
         if typeD == "normal":
@@ -739,8 +736,6 @@ class Pawn(PawnBehaviour, getStat):
         if self.app.VICTORY or self.ULT:
             return
         self.xp += amount * self.itemEffects["xpMult"]
-
-        
         self.updateStats({"xp": self.xp})
 
     def updateStats(self, stats: dict):
@@ -1067,6 +1062,9 @@ class Pawn(PawnBehaviour, getStat):
 
     def tick(self):
 
+        #DELTATIMESAVE = self.app.deltaTime
+        #self.app.deltaTime *= self.itemEffects["timeScale"]
+
         self.ONSCREEN = self.onScreen()
 
         if self.ULT_TIME > 0:
@@ -1082,7 +1080,7 @@ class Pawn(PawnBehaviour, getStat):
         if self.itemEffects["turnCoat"]:
             self.handleTurnCoat()
 
-        self.teamColor = self.team.color
+        
 
         if self.respawnI > 0:
 
@@ -1234,6 +1232,8 @@ class Pawn(PawnBehaviour, getStat):
         if self.ULT:
             self.eyeGlow()
 
+        #self.app.deltaTime = DELTATIMESAVE
+
     def handleSprite(self):
         self.breatheIm = self.imagePawn.copy() if self.facingRight else self.imagePawnR.copy()
 
@@ -1318,7 +1318,7 @@ class Pawn(PawnBehaviour, getStat):
         x, y = self.getOwnCell()
         for r in self.app.map.rooms:
             if r.contains(x, y):
-                r.pawnsPresent.append(self.team.i)
+                r.pawnsPresent.append(self.team.getI())
                 self.currentRoom = r
                 return
 
@@ -1403,7 +1403,7 @@ class Pawn(PawnBehaviour, getStat):
 
         elif self.enslaved:
             
-            t2 = self.app.fontSmaller.render(f"Orja", True, self.app.getTeamColor(self.originalTeam))
+            t2 = self.app.fontSmaller.render(f"Orja", True, self.app.getTeamColor(self.team.i))
             self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
 
         #if not self.app.PEACEFUL and self.app.cameraLock == self:

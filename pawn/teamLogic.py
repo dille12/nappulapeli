@@ -12,9 +12,19 @@ class Team:
         self.currency = 0
         self.wins = 0
         self.allied = []
+        self.enslavedTo = self.i
+
+    def getI(self):
+        return self.enslavedTo
+
+    def getColor(self, enslaved = False):
+        if enslaved:
+            return self.app.getTeamColor(self.getI())
+        
+        return self.app.getTeamColor(self.i)
         
     
-    def hostile(self, other: "Pawn"):
+    def hostile(self, P: "Pawn", other: "Pawn"):
         
         if self.app.PEACEFUL:
             return False
@@ -22,10 +32,21 @@ class Team:
             return False
         if self.app.FFA:
             return True
+        
+        if P.enslaved and self.enslavedTo == other.team.i:
+                return False
+        if other.enslaved and other.team.enslavedTo == self.i:
+            return False
+
         if other.team in self.allied:
             return False
         return self != other.team
         
+    def slaveTo(self, other: "Team"):
+        self.enslavedTo = other.i
+    
+    def emancipate(self):
+        self.enslavedTo = self.i
 
 
     def updateCurrency(self):

@@ -92,6 +92,7 @@ def battleTick(self: "Game"):
     #self.handleUltingCall()
 
     self.deltaTime *= self.SLOWMO
+    self.deltaTime *= self.TIMESCALE
 
     if not self.VICTORY:
         self.roundTime -= self.deltaTime
@@ -135,34 +136,7 @@ def battleTick(self: "Game"):
     for x in self.bloodSplatters:
         x.tick()
 
-    if self.GAMEMODE == "TURF WARS":
-        for r in self.map.rooms:
-            CONTESTED = False
-            if len(r.pawnsPresent) > 0:
-                unique_teams = set(r.pawnsPresent)
-                if len(unique_teams) == 1:
-                    teamOccupied = unique_teams.pop()
-                    if r.turfWarTeam != teamOccupied:
-                        CONTESTED = True
-                        
-                    
-                    #print("Room occupied by:", r.turfWarTeam)
-            
-            if not CONTESTED:
-                r.occupyI += self.deltaTime
-                r.occupyI = min(5, r.occupyI)
-            else:
-                r.occupyI -= self.deltaTime * min(1, len(r.pawnsPresent))
-                if r.occupyI <= 0:
-                    #if r in self.teamSpawnRooms:
-                    #    spawnTeam = self.teamSpawnRooms.index(r)
-                    #    for p in self.pawnHelpList:
-                    #        if p.originalTeam == spawnTeam:
-                    #            p.team = teamOccupied
-                    #            p.enslaved = spawnTeam != teamOccupied
-                    #    print("Teams spawn point captured")
-                    
-                    r.turfWarTeam = teamOccupied
+    self.handleTurfWar()
 
 
     if self.objectiveCarriedBy:
@@ -181,7 +155,8 @@ def battleTick(self: "Game"):
     #self.cameraPosDelta += self.cameraVel * self.deltaTimeR
 
     self.CAMERA.update(self.cameraPos, self.deltaTimeR, smooth_time=0.25)
-    self.cameraPosDelta = self.CAMERA.pos
+    self.cameraPosDelta = self.CAMERA.pos.copy()
+    self.AUDIOORIGIN = self.cameraPosDelta.copy() + self.res/2
 
     self.cleanUpLevel()
 
@@ -304,7 +279,7 @@ def battleTick(self: "Game"):
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
     self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
-    self.debugText(f"SOUND TIME: {self.AUDIOMIXER.callBackTime*1000:.1f}ms")
+    self.debugText(f"SOUND TIME: {self.AUDIOMIXER.callBackTime*1000:.1f}ms, ({self.AUDIOMIXER.callBackTime/(self.AUDIOMIXER.chunk_size/self.AUDIOMIXER.sample_rate)*100:.1f}%)")
     self.debugText(f"ONSCREEN: {onscreen}")
     
     #self.genPawns()

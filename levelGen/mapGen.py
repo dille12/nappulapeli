@@ -407,7 +407,7 @@ class ArenaGenerator:
                         connection_count[available_rooms[i]] += 1
         
         # Add some extra connections for interesting layouts (optional)
-        extra_connections = min(2, len(self.rooms) // 4)
+        extra_connections = min(0, len(self.rooms) // 4)
         for _ in range(extra_connections):
             room1 = random.choice(self.rooms)
             room2 = random.choice(self.rooms)

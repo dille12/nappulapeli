@@ -282,6 +282,7 @@ class AudioMixer:
 
         self.callBackTime = 0
         self.minVolume = 1
+        
 
         # Prime Numba kernels to avoid runtime JIT pause
         dummy_len = max(8, chunk_size)
@@ -361,6 +362,12 @@ class AudioMixer:
         source.loop = bool(loop)
         self.play_audio(source)
         return source
+    
+    def changeChunkSize(self, newChunkSize):
+        self.app.log(f"Changing audio chunk size from {self.chunk_size} to {newChunkSize}")
+        self.chunk_size = newChunkSize
+        self.output_stream.close()
+        self.start_stream()
 
     def start_stream(self):
         pa = pyaudio.PyAudio()
@@ -436,7 +443,7 @@ class AudioMixer:
                 source.set_lowpass(cutoff)
 
             # get chunk with current per-source parameters
-            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo=self.app.SLOWMO)
+            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo=self.app.SLOWMO * self.app.TIMESCALE)
             # mix into master buffer
             mix_chunk_nb(mixed, chunk, np.float32(source.volume), np.float32(source.left_gain), np.float32(source.right_gain))
 

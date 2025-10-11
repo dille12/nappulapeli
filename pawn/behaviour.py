@@ -74,21 +74,23 @@ class PawnBehaviour:
 
     def turfWarWalkingTarget(self):
 
-        if self.app.teamSpawnRooms[self.team.i].turfWarTeam != self.team.i:
-            self.getRouteTo(endPosGrid=self.app.teamSpawnRooms[self.team.i].randomCell())
+        teamI = self.team.getI()
+
+        if self.app.teamSpawnRooms[teamI].turfWarTeam != teamI:
+            self.getRouteTo(endPosGrid=self.app.teamSpawnRooms[teamI].randomCell())
             return
         
         if self.currentRoom:
-            if self.currentRoom.turfWarTeam != self.team.i:
+            if self.currentRoom.turfWarTeam != teamI:
                 self.getRouteTo(endPosGrid=self.currentRoom.randomCell())
                 return
         
         preferableChoices = []
         choices = []
         for x in self.app.map.rooms:
-            if x.turfWarTeam == self.team.i:
+            if x.turfWarTeam == teamI:
                 for y in x.connections:
-                    if y.turfWarTeam != self.team.i:
+                    if y.turfWarTeam != teamI:
                         choices.append(y)
                         if x == self.currentRoom:
                             preferableChoices.append(y)

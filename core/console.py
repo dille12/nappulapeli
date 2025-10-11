@@ -22,6 +22,8 @@ def getCodeSuggestions(self: "Game"):
     self.consoleSuggestionI = 0
     self.consoleLog = []
     self.lastCommands = []
+    self.consoleIndicatorI = 0
+    self.consoleIndicator = True
 
 def execute(self: "Game", command: str):
 
@@ -47,6 +49,8 @@ def handleConsoleEvent(self: "Game", event: pygame.event.Event):
     if not self.consoleOpen:
         return
     
+    
+    
     if event.type == pygame.KEYDOWN:
 
         if event.key in [pygame.K_TAB, pygame.K_LCTRL, pygame.K_RCTRL]:
@@ -68,6 +72,11 @@ def handleConsoleEvent(self: "Game", event: pygame.event.Event):
 def runConsole(self: "Game"):
     if not self.consoleOpen:
         return
+    
+    self.consoleIndicatorI += self.deltaTimeR
+    if self.consoleIndicatorI > 1:
+        self.consoleIndicatorI = 0
+        self.consoleIndicator = not self.consoleIndicator
     
     rect = pygame.Rect(100, 100, 600, 400)
     panel = pygame.Surface(rect.size)
@@ -91,13 +100,15 @@ def runConsole(self: "Game"):
     
     if inside_setValue:
         suggestions = [f'"{v}"' for v in self.object_variables.keys() if partial_var.lower() in v.lower()]
-        suggestions = suggestions[:5]
+        suggestions = suggestions[:15]
     else:
         candidates = list(self.object_methods.keys()) + list(self.object_variables.keys())
         suggestions = [s for s in candidates if input_text.lower() in s.lower()] if input_text else []
-        suggestions = suggestions[:5]
+        suggestions = suggestions[:15]
     
     panel.fill((20, 20, 20))
+    if self.consoleIndicator:
+        input_text += "_"
     text_surface = font.render("> " + input_text, True, (200, 200, 200))
     panel.blit(text_surface, (5, 5))
 

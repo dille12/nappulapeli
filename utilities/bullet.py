@@ -74,7 +74,7 @@ class Bullet:
             return None
         
         enemies = [x for x in self.app.pawnHelpList
-                  if x != self.owner and self.owner.team.hostile(x) and not x.killed]
+                  if x != self.owner and self.owner.team.hostile(self.owner, x) and not x.killed]
         
         if not enemies:
             return None

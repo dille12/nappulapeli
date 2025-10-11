@@ -34,7 +34,7 @@ from pawn.teamLogic import Team
 import subprocess, glob
 from extractLyrics import get_subs_for_track
 from utilities.camera import Camera
-
+from core.modularSurface import modularSurface as MSurf
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -260,7 +260,7 @@ class Game(valInit):
             print("Playing from queue:", next_track)
             pygame.mixer.music.load(next_track)
             pygame.mixer.music.play()
-            pygame.mixer.music.set_volume(0)
+            pygame.mixer.music.set_volume(0.4)
             self.musicStartTime = time.time()
             self.subI = 0
         else:
@@ -298,6 +298,50 @@ class Game(valInit):
             else:
                 self.subI += 1
                 self.lastSubTime = 0
+
+
+    def handleTurfWar(self):
+        if self.GAMEMODE == "TURF WARS":
+            for r in self.map.rooms:
+                if len(r.pawnsPresent) == 0:
+                    r.occupyI += self.deltaTime
+                    r.occupyI = min(5, r.occupyI)
+                    continue
+                
+                team_counts = {}
+                for pawn in r.pawnsPresent:
+                    team_counts[pawn] = team_counts.get(pawn, 0) + 1
+                
+                max_count = max(team_counts.values())
+                teams_with_max = [team for team, count in team_counts.items() if count == max_count]
+                
+                if len(teams_with_max) == 1:
+                    majority_team = teams_with_max[0]
+                    
+                    if r.turfWarTeam != majority_team:
+                        r.occupyI -= self.deltaTime * max_count
+                        if r.occupyI <= 0:
+                            self.switchRoomOwnership(r, majority_team)
+                    else:
+                        r.occupyI += self.deltaTime
+                        r.occupyI = min(5, r.occupyI)
+                else:
+                    r.occupyI = max(0, r.occupyI - self.deltaTime * 0.5)
+
+    def switchRoomOwnership(self, r, majority_team):
+        if r in self.teamSpawnRooms:
+            teamI = r.turfWarTeam
+            originalTeam = self.teamSpawnRooms.index(r)
+            team = self.allTeams[teamI]
+            if originalTeam != majority_team:
+                self.notify(f"Team {originalTeam+1} was captured!", self.getTeamColor(originalTeam))
+                team.slaveTo(self.allTeams[majority_team])
+            else:
+                self.notify(f"Team {originalTeam+1} emancipated!", self.getTeamColor(originalTeam))
+                team.emancipate()
+        
+        r.turfWarTeam = majority_team
+        r.occupyI = 0
 
 
     def findCorners(self, grid):
@@ -477,6 +521,9 @@ class Game(valInit):
             self.spawn_points.append(x.center())
             x.turfWarTeam = team
 
+            for y in x.connections:
+                y.turfWarTeam = team
+
         print(f"Spawn points: {self.spawn_points}")
 
         print("Spawn Rooms")
@@ -493,6 +540,9 @@ class Game(valInit):
         self.map.get_spawn_points()
         i.text ="Drawing the map"
         self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes)
+
+        
+
         #for p1, p2 in self.walls:
         #    pygame.draw.line(self.MAP, [255,255,255], p1, p2, 3)
 
@@ -503,6 +553,8 @@ class Game(valInit):
             print("Drawing", team, "spawn room")
             pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize, r.y*self.tileSize, 
                                                                                       r.width*self.tileSize, r.height*self.tileSize))
+            
+        #self.MAP = MSurf(self, self.MAP)
 
         self.MINIMAPTEMP = self.MINIMAP.copy()
         #entrance = self.map.get_entrance_position()
@@ -666,6 +718,15 @@ class Game(valInit):
         self.musicStart = time.time()
         self.musicLength = self.music[self.nextMusic].get_length()
         return True
+    
+    def debugEnslavement(self):
+        r = random.choice(self.teamSpawnRooms)
+        t = self.teamSpawnRooms.index(r)
+        team = self.allTeams[t]
+        #for x in team.pawns:
+        #    x.die()
+        self.log(f"Killed all pawns of team {t+1}")
+        self.switchRoomOwnership(r, random.randint(0, self.teams-1))
     
     def BPM(self):
         tempo = 150 if self.loadedMusic == "HH" else 123
@@ -995,6 +1056,8 @@ class Game(valInit):
         if self.skull:
             self.skull.kill()
 
+        for x in self.allTeams:
+            x.emancipate()
             
         for x in self.pawnHelpList:
             self.allTeams[x.originalTeam].add(x)
@@ -1286,7 +1349,7 @@ class Game(valInit):
         if isinstance(audio, list):
             audio = random.choice(audio)
 
-        center = self.cameraPosDelta + self.res/2
+        center = self.AUDIOORIGIN.copy()
 
         return self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
     
@@ -1296,8 +1359,23 @@ class Game(valInit):
             self.__dict__[varName] = value
             return True
         return False
+    
+    def getPawn(self, name):
+        for x in self.pawnHelpList:
+            if x.name == name:
+                return x
+        return None
+    
+    def log(self, text):
+        self.consoleLog.append(str(text))
 
+    def changeChunkSize(self, newSize):
+        self.AUDIOMIXER.changeChunkSize(newSize)
 
+    def initAudioEngine(self):
+        self.log("Initializing audio engine...")
+        self.playPositionalAudio("audio/shit.wav", v2(random.uniform(-3000, 3000), random.uniform(-3000, 3000)))
+        self.log("Audio engine initialized.")
 
     def notify(self, text, color = [255,255,255]):
         self.notificationTime = pygame.time.get_ticks()

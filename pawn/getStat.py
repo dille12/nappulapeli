@@ -53,12 +53,13 @@ class getStat:
             "healOnKill":0,
             "knockbackMult":1.0,
             "healAllies":0,
+            "timeScale": 1.5,
 
             "berserker" : False,
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": True,
+            "talking": False,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,
@@ -74,6 +75,7 @@ class getStat:
             "revenge" : False,
             "duplicator" : False,
             "bossKiller" : False,
+            
             
         }
 
@@ -198,7 +200,7 @@ class getStat:
     
     def getHealthCap(self):
         if self.enslaved:
-            return 25
+            return self.healthCap * 0.5 * self.itemEffects["healthCapMult"]
         return self.healthCap * self.itemEffects["healthCapMult"]
     
     @ult_multiplier
@@ -211,7 +213,7 @@ class getStat:
     
     def revengeHunt(self):
 
-        if self.lastKiller and not self.team.hostile(self.lastKiller) and "allyProtection" in self.itemEffects:
+        if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
             self.lastKiller = None
             
         return self.itemEffects["revenge"] and self.lastKiller and not self.lastKiller.killed and not self.app.PEACEFUL
