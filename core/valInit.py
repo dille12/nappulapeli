@@ -177,7 +177,7 @@ class valInit:
         self.ultCalled = False
         self.ultFreeze = 0
 
-        self.gameModeLineUp = ["TURF WARS"] # "TEAM DEATHMATCH", "ODDBALL", "TURF WARS"
+        self.gameModeLineUp = ["TEAM DEATHMATCH"] # "", "ODDBALL", "TURF WARS"
 
         self.teamInspectIndex = 0
         self.safeToUseCache = True
@@ -354,5 +354,6 @@ class valInit:
         self.consoleSuggestionI = 0
         self.consoleLog = []
         self.lastCommands = []
-
+        self.consoleIndicatorI = 0
+        self.consoleIndicator = False
         print("Game initialized")

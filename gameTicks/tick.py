@@ -275,11 +275,12 @@ def battleTick(self: "Game"):
     if self.ultFreeze > 0:
         self.handleUlting()
 
-    self.debugText(f"FPS: {self.FPS:.0f}")
+    self.debugText(f"FPS: {self.FPS:.0f} (+/-{self.STD*1000:.1f}ms)")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
     self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
     self.debugText(f"SOUND TIME: {self.AUDIOMIXER.callBackTime*1000:.1f}ms, ({self.AUDIOMIXER.callBackTime/(self.AUDIOMIXER.chunk_size/self.AUDIOMIXER.sample_rate)*100:.1f}%)")
     self.debugText(f"ONSCREEN: {onscreen}")
+    self.drawFPS()
     
     #self.genPawns()
