@@ -1,3 +1,4 @@
+print("Starting")
 import pygame
 import os, sys
 import pygame.gfxdraw
@@ -38,6 +39,8 @@ from utilities.camera import Camera
 import inspect
 from utilities.dialog import babloBreak
 import tkinter
+from statistics import stdev
+print("Imports complete")
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -1619,6 +1622,21 @@ class Game(valInit):
         self.notificationTime = pygame.time.get_ticks()
         self.currNotification = [text, color]
 
+    def drawFPS(self):
+        lastTime = 0
+        m = max(self.frameTimeCache)
+
+        minT = min(self.frameTimeCache)
+
+        tf = self.fontSmaller.render(f"{minT*1000:.2f} / {m*1000:.2f} ms", True, [255,255,255])
+        self.screen.blit(tf, (self.res.x - tf.get_width(), 830))
+
+        for i, x in enumerate(self.frameTimeCache):
+            t = 50 * ((x-minT)/(m-minT))
+            if i:
+                pygame.draw.line(self.screen, [0,255,0], (self.res.x - i-1, 850 - lastTime), (self.res.x - i, 850 - t), 1)
+            lastTime = t
+
     def run(self):
         self.frameTimeCache = []
         timeSum = 0
@@ -1766,6 +1784,7 @@ class Game(valInit):
 
             self.FPS = len(self.frameTimeCache) / sum(self.frameTimeCache)
             self.MAXFRAMETIME = max(self.frameTimeCache)
+            self.STD = stdev(self.frameTimeCache) if len(self.frameTimeCache) > 1 else 0
 
             self.deltaTimeR = min(self.deltaTimeR, 1/30)
             self.deltaTime = self.deltaTimeR

@@ -326,13 +326,7 @@ def battleTick(self: "Game"):
     if self.ultFreeze > 0:
         self.handleUlting()
 
-
-    #drawGridMiniMap(self, self.teamVisibility[0], "topleft")
-    #drawGridMiniMap(self, self.teamHostileVisibility[0], "topright")
-
-
-
-    self.debugText(f"FPS: {self.FPS:.0f}")
+    self.debugText(f"FPS: {self.FPS:.0f} (+/-{self.STD*1000:.1f}ms)")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
     self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
@@ -340,5 +334,6 @@ def battleTick(self: "Game"):
     self.debugText(f"ONSCREEN: {onscreen}")
     self.debugText(f"MUSIC: {self.currMusic} -> {self.nextMusic}")
     self.debugText(f"CAM: {self.CAMERA.vibration_amp}")
+    self.drawFPS()
     
     #self.genPawns()

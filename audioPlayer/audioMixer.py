@@ -386,7 +386,7 @@ class AudioMixer:
             pass
 
     def _get_camera_center(self):
-        return self.app.cameraPosDelta + (self.app.res / 2)
+        return self.app.AUDIOORIGIN + (self.app.res / 2)
 
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
