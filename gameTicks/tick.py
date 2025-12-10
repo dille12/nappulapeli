@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
+    from pawn.pawn import Pawn
 from pygame.math import Vector2 as v2
 import pygame
 import time
-
+from core.AI import constructTeamVisibility, drawGridMiniMap
 
 def announceVictory(self: "Game", victoryTeam):
     #print(f"Team {i+1} WON")
@@ -87,15 +88,24 @@ def battleTick(self: "Game"):
 
 
     self.CREATEDUAL = False
-    self.handleCameraLock()
-    self.handleCameraSplit()
+    if self.AUTOCAMERA:
+        self.handleCameraLock()
+        self.handleCameraSplit()
+    
+
     #self.handleUltingCall()
 
     self.deltaTime *= self.SLOWMO
     self.deltaTime *= self.TIMESCALE
 
     if not self.VICTORY:
-        self.roundTime -= self.deltaTime
+
+        if self.GAMEMODE == "FINAL SHOWDOWN":
+            if self.currMusic == 1:
+                self.roundTime -= self.deltaTime
+        else:
+
+            self.roundTime -= self.deltaTime
         if self.roundTime <= 0:
             # Pick out from the victoryCondition the highest index
             max_index = victoryCondition.index(max(victoryCondition))
@@ -125,10 +135,17 @@ def battleTick(self: "Game"):
                 pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(i, 1), (r2.x*self.MINIMAPCELLSIZE, r2.y*self.MINIMAPCELLSIZE, 
                                                                                       r2.width*self.MINIMAPCELLSIZE, r2.height*self.MINIMAPCELLSIZE), width=1)
 
-    
+    #constructTeamVisibility(self)
+        
+
+    self.FireSystem.update()
 
     for x in entities_temp:
+        if hasattr(x, "itemEffects"):
+            self.deltaTime *= x.itemEffects["timeScale"]
         x.tick()
+        if hasattr(x, "itemEffects"):
+            self.deltaTime /= x.itemEffects["timeScale"]
 
     for x in self.visualEntities:
         x.tick()
@@ -139,14 +156,38 @@ def battleTick(self: "Game"):
     self.handleTurfWar()
 
 
+    if self.GAMEMODE == "TEAM DEATHMATCH":
+        self.commonRoomSwitchI += self.deltaTime
+        if self.commonRoomSwitchI >= 10:
+            self.commonRoomSwitchI = 0
+            r2 = self.commonRoom
+            self.commonRoom = max(self.map.rooms, key=lambda r: r.kills)
+            if self.commonRoom != r2:
+                print("COMMON ROOM SWITCHED!", self.commonRoom.kills)
+
+
+
+    self.doBabloCracks()
+
+
     if self.objectiveCarriedBy:
         self.skullTimes[self.objectiveCarriedBy.team.i] += self.deltaTime
-
-    if self.splitI > 0:
-        self.cameraPos = self.posToTargetTo.copy()
-        self.dualCameraPos = self.posToTargetTo2.copy()
+    if self.AUTOCAMERA:
+        if self.splitI > 0:
+            self.cameraPos = self.posToTargetTo.copy()
+            self.dualCameraPos = self.posToTargetTo2.copy()
+        else:
+            self.dualCameraPos = self.cameraPos.copy()
     else:
-        self.dualCameraPos = self.cameraPos.copy()
+        if "w" in self.keypress_held_down:
+            self.cameraPos.y -= 10
+        elif "s" in self.keypress_held_down:
+            self.cameraPos.y += 10
+
+        if "a" in self.keypress_held_down:
+            self.cameraPos.x -= 10
+        elif "d" in self.keypress_held_down:
+            self.cameraPos.x += 10
 
     CAMPANSPEED = 500000 * self.deltaTimeR
     #self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
@@ -185,6 +226,13 @@ def battleTick(self: "Game"):
             self.cameraPosDelta = self.posToTargetTo2.copy()
 
         self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
+
+        if self.SLOWMO_FOR > 0 and not self.BABLO.killed:
+            alpha = int(255 * min(max(self.SLOWMO_FOR * 2, 0.5), 1.0))
+            self.speedLinesSurf.fill((0, 0, 0, alpha))
+            self.speedlines.draw(self.speedLinesSurf, self.BABLO.pos - self.cameraPosDelta)
+            self.DRAWTO.blit(self.speedLinesSurf, (0,0))
+
         #self.renderParallax2()
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
@@ -194,6 +242,8 @@ def battleTick(self: "Game"):
 
         for x in self.shitDict.values():
             x.render()
+
+        self.FireSystem.draw(self.DRAWTO)
 
         for x in entities_temp:
             x.render()
@@ -221,8 +271,7 @@ def battleTick(self: "Game"):
 
     #self.drawWalls()
 
-    
-    
+
     
     onscreen = 0
     for x in self.pawnHelpList:
@@ -238,11 +287,13 @@ def battleTick(self: "Game"):
         if self.endGameI >= 0:
             self.tickEndGame()
         else:
-            self.endGame()
-            return
+            if not self.TRANSITION:
+                self.transition(lambda: self.endGame())
+            #self.endGame()
+            
     else:
-        pass
-        self.tickScoreBoard()
+        if self.GAMEMODE != "FINAL SHOWDOWN":
+            self.tickScoreBoard()
 
     if not self.VICTORY:
         self.drawRoundInfo()
@@ -275,11 +326,19 @@ def battleTick(self: "Game"):
     if self.ultFreeze > 0:
         self.handleUlting()
 
+
+    #drawGridMiniMap(self, self.teamVisibility[0], "topleft")
+    #drawGridMiniMap(self, self.teamHostileVisibility[0], "topright")
+
+
+
     self.debugText(f"FPS: {self.FPS:.0f}")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
     self.debugText(f"SOUNDS: {len(self.AUDIOMIXER.audio_sources):.0f}")
     self.debugText(f"SOUND TIME: {self.AUDIOMIXER.callBackTime*1000:.1f}ms, ({self.AUDIOMIXER.callBackTime/(self.AUDIOMIXER.chunk_size/self.AUDIOMIXER.sample_rate)*100:.1f}%)")
     self.debugText(f"ONSCREEN: {onscreen}")
+    self.debugText(f"MUSIC: {self.currMusic} -> {self.nextMusic}")
+    self.debugText(f"CAM: {self.CAMERA.vibration_amp}")
     
     #self.genPawns()

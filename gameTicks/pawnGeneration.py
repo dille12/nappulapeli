@@ -48,14 +48,15 @@ def tickShops(self: "Game"):
                 self.shops[self.teamInspectIndex].totalPrice[0] += w.weapon.price[0]
                 self.shops[self.teamInspectIndex].totalPrice[1] += w.weapon.price[1]
     
-    
-        
+
+
 
 def goToGame(self: "Game"):
     t = threading.Thread(target=self.initiateGame)
     t.daemon = True
     t.start()
     self.GAMESTATE = "loadingScreen"
+    #self.initiatePawnExplostion()
 
 def judgementTick(self: "Game"):
     self.judgementTime += self.deltaTime
@@ -137,8 +138,8 @@ def preGameTick(self: "Game"):
         t = self.fontLarge.render(f"Peli alkaa: {int(self.shopTimer)}", True, [255]*3)
         self.screen.blit(t, v2(self.res[0]/2, 35) - v2(t.get_size())/2)
 
-    if self.shopTimer <= 0 and not self.playerFilesToGen and self.pawnGenI == 0:
-        goToGame(self)
+    if self.shopTimer <= 0 and not self.playerFilesToGen and self.pawnGenI == 0 and self.TRANSITION == False:
+        self.transition(lambda: goToGame(self))
 
     
     self.particle_system.update_all()

@@ -319,7 +319,7 @@ class AudioMixer:
             source.positional = True
             source.pos = v2(pos) if not isinstance(pos, v2) else pos
             source.falloff_max_dist = audioFallOffMaxDist
-            source.base_volume = 0.3  # your previous scaling: volume * 0.3 (you can pass a param instead)
+            source.base_volume = self.app.AUDIOVOLUME # your previous scaling: volume * 0.3 (you can pass a param instead)
             source.loop = False
             source.position = 0
             source.active = True

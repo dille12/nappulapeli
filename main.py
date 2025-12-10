@@ -28,6 +28,7 @@ from gameTicks.millionaire import millionaireTick, initMillionaire
 from gameTicks.gameModeTick import GlitchGamemodeDisplay, loadingTick
 from core.drawRectPerimeter import draw_rect_perimeter
 from core.getCommonRoom import find_farthest_room
+from gameTicks.showcaseTick import showcaseTick
 import asyncio
 from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
@@ -35,6 +36,8 @@ import subprocess, glob
 from utilities.extractLyrics import get_subs_for_track
 from utilities.camera import Camera
 import inspect
+from utilities.dialog import babloBreak
+import tkinter
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
 # Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
@@ -93,7 +96,6 @@ def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
             pass
         time.sleep(poll_interval)
     return False
-
 
 
 def combinedText(*args, font):
@@ -168,8 +170,6 @@ class Game(valInit):
             for name in vars(self).keys()
             if not name.startswith("__") and not callable(getattr(self, name))
         }
-
-        
 
     def draw_notification(self, text, x, y, start_time, color=(255, 255, 255)):
         current_time = pygame.time.get_ticks() - start_time
@@ -253,7 +253,42 @@ class Game(valInit):
 
         
         return False
-                    
+
+    def resetPawnParticles(self):
+        for particle in self.PAWNPARTICLES:
+            particle.reset()
+        random.choice(self.PAWNPARTICLES).setAsMainPiece()
+        # Sort the pawns list by particle xvel by absolute ascending
+        self.PAWNPARTICLES.sort(key=lambda p: abs(p.xvel), reverse=True)
+
+    def initiatePawnExplostion(self):
+        self.TRANSITION = True
+        self.transIndex = 0
+        self.RAWR.play()
+        self.resetPawnParticles()
+
+    def transition(self, target):
+        self.initiatePawnExplostion()
+        self.TARGETGAMESTATE = target
+
+    def drawExplosion(self):
+
+        FRAME = int(self.transIndex*144)
+
+        for particle in self.PAWNPARTICLES:
+            if FRAME < len(particle.images):
+                particle.update(self.screen, FRAME)
+
+        if FRAME > 144 - len(self.FADEOUT):
+            f_i = - 144 + len(self.FADEOUT) + FRAME
+            f = self.FADEOUT[f_i]
+            self.screen.blit(f, (0,0))
+        self.transIndex += self.deltaTimeR
+        if self.transIndex >= 1:
+            self.TRANSITION = False
+            self.FADEIN = len(self.FADEOUT) - 1
+        
+    
 
     def refreshShops(self):
         self.shops = []
@@ -536,6 +571,9 @@ class Game(valInit):
         self.arena = ArenaWithPathfinding(self.map)
 
         self.shitGrid = np.zeros(self.map.grid.shape, dtype=np.uint8)
+
+        self.FLOORMATRIX = (self.map.grid == 1)
+
         self.shitDict = {}
 
         connectivity = self.arena.validate_arena_connectivity()
@@ -558,10 +596,16 @@ class Game(valInit):
             for y in x.connections:
                 y.turfWarTeam = team
 
+            #self.allTeams[team].spawnBase()
+
         print(f"Spawn points: {self.spawn_points}")
 
         print("Spawn Rooms")
-        self.commonRoom = find_farthest_room(self.map.rooms, self.teamSpawnRooms, mode="min")
+        if self.GAMEMODE != "FINAL SHOWDOWN":
+            self.commonRoom = find_farthest_room(self.map.rooms, self.teamSpawnRooms, mode="min")
+        else:
+            self.commonRoom = max(self.map.rooms, key=lambda room: room.area)
+
 
         self.corners, midpoints = self.findCorners(self.map.grid)
         walls = self.findWalls(self.corners, midpoints)
@@ -600,7 +644,7 @@ class Game(valInit):
         print("SKULL CREATED!")
         i.text ="Map done!"
         i.killed = True
-        self.nextMusic = 1
+        
         self.mapCreated = True
 
 
@@ -613,6 +657,8 @@ class Game(valInit):
         
         self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
         self.gamemode_display.set_gamemode(self.GAMEMODE)
+
+        
 
         if self.GAMEMODE == "1v1":
 
@@ -652,10 +698,81 @@ class Game(valInit):
                 pawn.suicides = 0
                 pawn.deaths = 0
 
-        self.GAMESTATE = "ODDBALL"
+        self.nextMusic = 1
+
+        self.AUDIOVOLUME = 0.3
+
+        if self.GAMEMODE == "FINAL SHOWDOWN":
+
+            self.BLOCKMUSIC = True
+
+            babloPath = "boss/bablo.png"
+            with open(babloPath, "rb") as f:
+                imageRaw = f.read()
+
+            Pawn(self, "BABLO", imageRaw, None, boss=True)
+            self.ENTITIES.append(self.BABLO)
+            self.alwaysHostileTeam.add(self.BABLO)
+
+            for x in self.music:
+                x.stop()
+
+            self.music = self.babloMusic
+            self.loadedMusic = "Bablo >:)"
+            self.nextMusic = 0
+            for x in self.music:
+                x.stop()
+            self.handleMusic()
+            self.nextMusic = 1
+            self.BABLO.respawnI = 1
+            P = self.commonRoom.center()
+            self.BABLO.pos = v2(P) * self.tileSize + [self.tileSize/2, self.tileSize/2] 
+            self.AUDIOVOLUME = 0.2
+            self.crackIndex = 0
+            self.BLOCKMUSIC = False
+
+
+        self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
+
+        time.sleep(max(0, 5 - (time.time() - self.now)))
+
+        self.transition(lambda: self.exitLoadingScreen())
 
             
-        
+    def exitLoadingScreen(self):
+        self.GAMESTATE = "ODDBALL"
+
+    def doBabloCracks(self):
+        if not (self.GAMEMODE == "FINAL SHOWDOWN" and self.GAMESTATE == "ODDBALL" and self.currMusic == 0):
+            return
+        timeIntoMusic = time.time() - self.musicStart
+
+        if self.crackIndex >= len(self.crackAppearTimes):
+            return
+
+        if self.crackAppearTimes[self.crackIndex] < timeIntoMusic:
+            print("CRACK!")
+            P = self.commonRoom.center()
+            POS = v2(P) * self.tileSize + [random.uniform(-1 * self.tileSize, 1*self.tileSize), random.uniform(-1 * self.tileSize, 1*self.tileSize)]
+            for i in range(random.randint(1,6)):
+                I = self.crackIndex - i
+                if I >= 0:
+                    C = self.cracks[I]
+                    self.MAP.blit(C, POS - v2(C.get_size())/2)
+            self.crackIndex += 1
+            if self.crackIndex == len(self.crackAppearTimes):
+                self.notify("NEW OBJECTIVE")
+
+            self.particle_system.create_explosion(POS.x, POS.y, count = 100, start_size = random.randint(50,100), speed = 15)
+
+            for i in self.pawnHelpList:
+                i.say("Ö", 1)
+            #random.choice(self.pawnHelpList).say(babloBreak(), 0.5)
+
+            self.cameraLinger = 2
+            self.cameraLock = None
+            self.cameraPos = POS.copy() - self.res/2
+            self.CAMERA.vibrate(25)
         
         
     def onScreen(self, pos):
@@ -704,40 +821,70 @@ class Game(valInit):
             pygame.draw.rect(self.screen, [0,0,0], x2)
 
     def reTeamPawns(self):
+        index = 0
         
         for pawn in self.pawnHelpList:
-            i = self.pawnHelpList.index(pawn)%self.playerTeams
-            self.allTeams[i].add(pawn)
+            if pawn.BOSS:
+                print("Setting", pawn.name, "to always hostile")
+                self.alwaysHostileTeam.add(pawn)
+                continue
+            #i = self.pawnHelpList.index(pawn)
+            self.allTeams[index%self.playerTeams].add(pawn)
+            index += 1
 
 
     def add_player(self, name, image, client):
         self.playerFilesToGen.append((name, image, client))
 
-    def threadedGeneration(self, name, image, client):
+    def threadedGeneration(self, name, image, client, boss = False):
         self.pawnGenI += 1
         
         print("File ready!")
         
-        pawn = Pawn(self, name, image, client)
+        pawn = Pawn(self, name, image, client, boss = boss)
         #if client:
         
         #else:
         #    pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
         #pawn.teamColor = self.getTeamColor(pawn.team.i)
         self.ENTITIES.append(pawn)
-        #self.reTeamPawns()
+        self.reTeamPawns()
 
         self.pawnGenI -= 1
+
+    def toggleCam(self):
+        self.AUTOCAMERA = not self.AUTOCAMERA
+
+
+    def announceVictory(self: "Game", victoryTeam):
+        #print(f"Team {i+1} WON")
+        self.victoryTeam = victoryTeam
+        self.VICTORY = True 
+        self.points = []
+
+        self.nextMusic = -1
+
+        for x in self.pawnHelpList:
+            points, reason_str = x.evaluatePawn()
+            self.points.append((x, points, reason_str))
+
+        self.points.sort(key=lambda x: x[1], reverse=True)
 
 
     def handleMusic(self):
 
         if not self.music:
             return
-
-        for x in self.music:
-            if x.get_num_channels():
-                return False
+        
+        if isinstance(self.music, str):
+            return
+        try:
+            for x in self.music:
+                if x.get_num_channels():
+                    return False
+        except:
+            print(self.music)
+            return
         self.music[self.currMusic].stop()
 
         nextTrack = self.nextMusic
@@ -751,7 +898,45 @@ class Game(valInit):
 
         self.musicStart = time.time()
         self.musicLength = self.music[self.nextMusic].get_length()
+
+        self.babloLyricIndex = 0
+
         return True
+    
+    def handleBabloLyrics(self):
+        if not self.babloLyrics:
+            return 
+        
+        current_time = time.time() - self.musicStart
+        lyrics = self.babloLyrics
+        n = len(lyrics)
+        i = self.babloLyricIndex % n
+
+        t_curr, lyric_curr = lyrics[i]
+        t_next = lyrics[(i + 1) % n][0]
+
+        # Handle loop wrap (if timestamps reset after track restart)
+        if t_next <= t_curr:
+            # estimate total song duration using last timestamp
+            song_duration = lyrics[-1][0]
+            t_next += song_duration
+
+        # Advance lyric when we pass the next timestamp
+        if current_time >= t_next:
+            self.babloLyricIndex = (i + 1) % n
+            self.babloLyricCurrent = lyrics[self.babloLyricIndex][1]
+            
+
+        # Normalized progress between current and next lyric
+        span = t_next - t_curr
+        norm = (current_time - t_curr) / span
+        norm = max(0.0, min(1.0, norm))
+
+        self.babloLyricNorm = norm
+        #self.babloLyricCurrent = lyric
+        
+        
+
     
     def debugEnslavement(self):
         r = random.choice(self.teamSpawnRooms)
@@ -763,13 +948,18 @@ class Game(valInit):
         self.switchRoomOwnership(r, random.randint(0, self.teams-1))
     
     def BPM(self):
-        tempo = 150 if self.loadedMusic == "HH" else 123
+        if not self.loadedMusic:
+            return
+        tempo = {"HH": 150, "Bablo": 123, "Bablo >:)": 125}[self.loadedMusic]
+        #tempo = 150 if self.loadedMusic == "HH" else 123
         musicPlayedFor = time.time() - self.musicStart
         self.beatI = 1-((musicPlayedFor%(60/tempo))/(60/tempo))
 
-    def getTeamColor(self, team, intensity = 1):
+    def getTeamColor(self, team, intensity = 1, maxTeams = None):
+        if not maxTeams:
+            maxTeams = self.teams
 
-        hue = (team * 1/self.teams) % 1.0  # Cycle hue every ~6 teams
+        hue = (team * 1/maxTeams) % 1.0  # Cycle hue every ~6 teams
         r, g, b = colorsys.hsv_to_rgb(hue, 1, 1)
         return [int(r * 255 * intensity), int(g * 255 * intensity), int(b * 255 * intensity)]
 
@@ -956,7 +1146,10 @@ class Game(valInit):
             #if self.objectiveCarriedBy:
             #    self.cameraLock = self.objectiveCarriedBy
 
-            if self.pawnHelpList:
+            if self.BABLO and not self.BABLO.killed:
+                self.cameraLock = self.BABLO
+
+            elif self.pawnHelpList:
                 e = sorted(self.pawnHelpList.copy(), key=lambda p: p.onCameraTime)
                 
                 for x in e:
@@ -1028,7 +1221,6 @@ class Game(valInit):
 
             maxX = 1000 * shiftI
 
-
             if self.cameraLock and not self.cameraLock.killed:
                 self.cameraLockOrigin = self.cameraLock.pos.copy()
 
@@ -1036,7 +1228,10 @@ class Game(valInit):
 
             shift = v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-maxX)
 
-            shiftAmount = min(600, self.cameraLockOrigin.distance_to(self.cameraLockTarget))/2
+            raw_dist = self.cameraLockOrigin.distance_to(self.cameraLockTarget)
+            max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
+
+            shiftAmount = min(max_dist, raw_dist) / 2
 
             self.line1 = v2(math.cos(angle), math.sin(angle))*1920 + self.res/2 + shift
             self.line2 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*1920 + self.res/2 + shift
@@ -1101,11 +1296,15 @@ class Game(valInit):
             x.defaultPos()
             x.respawnI = 0
 
+        if self.BABLO:
+            self.BABLO.killed = True
+            self.BABLO.respawnI = 1
+
 
         self.refreshShops()
         self.particle_list.clear()
         self.round += 1
-        if self.round == 2:
+        if self.round == 2 and False:
             self.judgePawns()
         self.LAZER.deactivate()
 
@@ -1209,6 +1408,11 @@ class Game(valInit):
                                    r.width*self.tileSize, r.height*self.tileSize)
                 rect.topleft -= self.cameraPosDelta
                 draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, self.getTeamColor(r.turfWarTeam), width=5)
+
+    def giveAllWeapons(self):
+        for x in self.pawnHelpList:
+            w = random.choice(self.weapons)
+            w.give(x)
 
     def tickScoreBoard(self):
         y = 200
@@ -1420,6 +1624,17 @@ class Game(valInit):
         timeSum = 0
         while True:
             self.SLOWMO = 1
+
+            if self.SLOWMO_FOR > 0:
+
+                self.SLOWMO = 1 - 0.9 * min(1, self.SLOWMO_FOR * 2)
+
+                self.SLOWMO_FOR -= self.deltaTimeR
+                self.SLOWMO_FOR = max(0, self.SLOWMO_FOR)
+
+            #elif self.BABLO and not self.BABLO.killed and self.GAMEMODE == "FINAL SHOWDOWN":
+            #    self.SLOWMO = 0.2 + 5*(self.beatI**2)
+
             self.mankkaDistance = float("inf")
             tickStartTime = time.time()
 
@@ -1432,8 +1647,9 @@ class Game(valInit):
             if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":
                 self.shopTimer = self.midRoundTime
             else:
-                self.shopTimer -= self.deltaTimeR
-                self.shopTimer = max(0, self.shopTimer)
+                if not self.playerFilesToGen and self.pawnGenI == 0 and self.TRANSITION == False:
+                    self.shopTimer -= self.deltaTimeR
+                    self.shopTimer = max(0, self.shopTimer)
 
             if self.GAMESTATE == "settings":
                 settingsTick(self)
@@ -1446,6 +1662,9 @@ class Game(valInit):
             
             elif self.GAMESTATE == "millionaire":
                 millionaireTick(self)
+
+            elif self.GAMESTATE == "showcase":
+                showcaseTick(self)
 
             elif self.GAMESTATE == "qrs":
                 qrCodesTick(self)
@@ -1465,7 +1684,32 @@ class Game(valInit):
 
             for x in self.infobars:
                 x.tick()
-            #self.musicSwitch = self.handleMusic()
+
+            SPAWNBABLO = self.GAMEMODE == "FINAL SHOWDOWN" and self.GAMESTATE == "ODDBALL" and self.currMusic == 0
+
+            if not self.BLOCKMUSIC:
+                self.musicSwitch = self.handleMusic()
+            else:
+                self.musicSwitch = False
+            
+
+            if SPAWNBABLO and self.musicSwitch and self.currMusic == 1:
+                print("Bablo spawned!")
+                self.BABLO.respawnI = 0
+                P = self.commonRoom.center()
+                self.BABLO.pos = v2(P) * self.tileSize + [self.tileSize/2, self.tileSize/2] 
+                self.BABLO.killed = False
+                self.notify("SURVIVE")
+                self.cameraLock = self.BABLO
+                self.BABLO.damageTakenPerTeam = {}
+                self.SLOWMO_FOR = 3.36
+                self.particle_system.create_explosion(self.BABLO.pos.x, self.BABLO.pos.y, count = 100)
+
+            if self.GAMEMODE == "FINAL SHOWDOWN" and self.GAMESTATE == "ODDBALL" and self.currMusic == 1:
+                self.handleBabloLyrics()
+                self.debugText(f"{self.babloLyricCurrent}")
+                self.debugText(f"{self.babloLyricNorm:.2f}")
+
             if self.GAMESTATE in ["millionaire"]:
                 pygame.mixer.music.unload()
                 pygame.mixer.music.stop()
@@ -1473,9 +1717,9 @@ class Game(valInit):
                 #self.handleMainMusic()
                 #self.drawSubs()
                 pass
-                #self.BPM()
-            #r = pygame.Rect((0,0), self.res)
-            #pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(5*(self.beatI**2)))
+                self.BPM()
+            r = pygame.Rect((0,0), self.res)
+            pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
 
             #self.screen.fill((0, 0, 0))
             elapsed = time.time() - self.now
@@ -1485,6 +1729,15 @@ class Game(valInit):
                                           self.notificationTime, color=self.currNotification[1]):
                     self.currNotification = None
 
+            if self.TRANSITION:
+                self.drawExplosion()
+            elif self.FADEIN > 0:
+                self.screen.blit(self.FADEOUT[self.FADEIN], (0,0))
+                self.FADEIN -= 1
+
+            if not self.TRANSITION and self.TARGETGAMESTATE:
+                self.TARGETGAMESTATE()
+                self.TARGETGAMESTATE = None
 
            # for x in self.AUDIOMIXER.audio_sources:
            #     p = x.pos - self.cameraPosDelta

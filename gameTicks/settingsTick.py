@@ -16,7 +16,7 @@ def createSettings(self: "Game"):
 
 
     self.loadedMusic = None
-    self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH"], (550,400))
+    self.musicChoice = Dropdown(self, "Music:", ["Bablo", "HH" , "Bablo >:)"], (550,400))
     self.ttsToggle = Dropdown(self, "TTS:", ["On", "Off"], (800,400))
 
     self.itemToggle = Dropdown(self, "Items:", ["Manual", "Auto"], (1050,400), initialValue=1)
@@ -107,10 +107,16 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar", volume=0)
+            self.music = self.loadSound("audio/bar", volume=0.4, asPygame=True)
+            print("Loaded")
+
+        elif self.musicChoice.get_selected() == "Bablo >:)":
+            self.music = self.loadSound("audio/taikakeinu/bar", volume=0.4, asPygame=True)
+            print("Loaded")
             
         elif self.musicChoice.get_selected() == "HH":
-            self.music = self.loadSound("audio/hh/bar", volume=0)
+            self.music = self.loadSound("audio/hh/bar", volume=0.4, asPygame=True)
+            print("Loaded")
 
     self.loadedMusic = self.musicChoice.get_selected()
 
@@ -140,6 +146,12 @@ def settingsTick(self: "Game"):
 
     if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
+
+        
+
+        #t = threading.Thread(target=self.threadedGeneration, args=("BABLO", imageRaw, None), kwargs={"boss": True})
+        #t.daemon = True
+        #t.start()
 
         npcsToAdd =  self.playerTeams * self.fillTeamsTo - len(self.pawnHelpList)
         for _ in range(npcsToAdd):

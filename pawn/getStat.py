@@ -53,7 +53,7 @@ class getStat:
             "healOnKill":0,
             "knockbackMult":1.0,
             "healAllies":0,
-            "timeScale": 1.5,
+            "timeScale": 1.0,
 
             "berserker" : False,
             "martyrdom" : False,

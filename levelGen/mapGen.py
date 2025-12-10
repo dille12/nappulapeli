@@ -42,9 +42,10 @@ class CellType(Enum):
     EXIT = 6
 
 class Room:
-    def __init__(self, x, y, width, height, room_type):
+    def __init__(self, arena, x, y, width, height, room_type):
         self.x = x
         self.y = y
+        self.arena = arena
         self.width = width
         self.height = height
         self.room_type = room_type
@@ -53,12 +54,16 @@ class Room:
         self.pawnsPresent = []
         self.connections = []
         self.occupyI = 5
+        self.kills = 0
 
     def center(self) -> Tuple[int, int]:
         return (self.x + self.width // 2, self.y + self.height // 2)
     
     def randomCell(self) -> Tuple[int, int]:
-        return (random.randint(self.x, self.x + self.width - 1), random.randint(self.y, self.y + self.height - 1))
+        while True:
+            x,y = (random.randint(self.x, self.x + self.width - 1), random.randint(self.y, self.y + self.height - 1))
+            if self.arena.grid[y,x]:
+                return (x,y)
     
     def contains(self, x: int, y: int) -> bool:
         return self.x <= x < self.x + self.width and self.y <= y < self.y + self.height
@@ -273,7 +278,7 @@ class ArenaGenerator:
             x, y = self._find_room_placement(width, height)
             
             if x is not None and y is not None:
-                room = Room(x, y, width, height, room_type)
+                room = Room(self, x, y, width, height, room_type)
                 self.rooms.append(room)
                 self._carve_room(room)
     

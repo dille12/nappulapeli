@@ -8,6 +8,8 @@ import random
 import os
 from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
+import tkinter as tk
+from tkinter import simpledialog
 
 def createQRS(self: "Game"):
     ip = get_local_ip()
@@ -17,6 +19,8 @@ def createQRS(self: "Game"):
     self.QRtoAPP = make_qr_surface(f"https://github.com/dille12/nappulapeli-app/releases", 4)
 
     self.WIFIQR = make_qr_surface(f"WIFI:S:nappulapeli;T:WPA;P:nappulapeli1234;;", 4)
+
+    self.addTeamButton = Button(self, (400,850), (250,120))
 
     self.goToSettingsButton = Button(self, (1600,850), (250,120))
 
@@ -49,8 +53,22 @@ def qrCodesTick(self: "Game"):
     t = self.font.render(PASSWORD, True, [255]*3)
     self.screen.blit(t, (x-t.get_width()/2, 550))
 
+    for i, x in enumerate(self.preConfiguredTeamNames):
+        color = self.getTeamColor(i, maxTeams=len(self.preConfiguredTeamNames))
+        t = self.font.render(x, True, color)
+        self.screen.blit(t, [20, 300 + i*40])
+
+
     #self.screen.blit(t, (x-t.get_width()/2, 400))
     #self.screen.blit(self.WIFIQR, (x-self.WIFIQR.get_width()/2, 500))
+
+    if self.addTeamButton.draw(self.screen, "Add Team", font = self.fontLarge):
+        root = tk.Tk()
+        root.withdraw()
+        name = simpledialog.askstring("Input", "Team name")
+        root.destroy()
+        self.preConfiguredTeamNames.append(name)
+
     #self.genPawns()
     if self.goToSettingsButton.draw(self.screen, "Settings", font = self.fontLarge):
         self.GAMESTATE = "settings"

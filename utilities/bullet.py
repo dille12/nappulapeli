@@ -147,7 +147,7 @@ class Bullet:
                 self.app.ENTITIES.remove(self)
 
                 if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.owner)
+                    Explosion(self.app, self.pos, firer = self.owner, doFire=True)
 
                 return
         except:
@@ -193,7 +193,7 @@ class Bullet:
                 damage = self.damage 
 
                 if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.owner, damage = self.damage)
+                    Explosion(self.app, self.pos, firer = self.owner, damage = self.damage, doFire=True)
                 else:
                     x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
                 

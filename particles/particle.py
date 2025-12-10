@@ -524,7 +524,10 @@ class ParticleSystem:
         particles = []
         for _ in range(count):
             angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(2, 8)
+            if "speed" in kwargs:
+                speed = kwargs["speed"] * random.uniform(0.9, 1.1)
+            else:
+                speed = random.uniform(2, 8)
             
             particle_kwargs = {
                 'vel_x': speed * math.cos(angle),

@@ -8,7 +8,7 @@ from pygame.math import Vector2 as v2
 from levelGen.mapGen import CellType
 from utilities.shit import Shit
 from utilities.building import Building
-
+from core.AI import runAI
 import pygame
 
 class PawnBehaviour:
@@ -24,22 +24,23 @@ class PawnBehaviour:
         if self.thinkI >= self.thinkEvery:
             self.thinkI = 0
             # Do some thinking logic here, e.g., print a message or change state
+            
 
             c = self.app.randomWeighted(0.2, 0.2, 0)
             if c == 0:
-                if not self.target:
+                if not self.target and not self.buildingTarget:
                     if not self.weapon.isReloading() and self.weapon.magazine < self.getMaxCapacity()/2 and not self.carryingSkull():
                         self.weapon.reload()
 
             if c == 1:
-                if self.walkTo is None:
+                if self.walkTo is None and not self.buildingTarget:
                     self.pickWalkingTarget()
 
             if c == 2:
                 self.baseBuilding()
                 if self.buildingTarget:
                     if self.pos.distance_to(self.buildingTarget.pos) > 150:
-                        self.walkTo = self.buildingTarget.pos
+                        self.getRouteTo(endPosGrid=self.buildingTarget.tile)
 
 
     def baseBuilding(self):
@@ -104,6 +105,32 @@ class PawnBehaviour:
             g = random.choice(choices).randomCell()
             self.getRouteTo(endPosGrid=g)
             return
+        
+
+    def gatherRoundBablo(self):
+        pawnIndex = self.app.pawnHelpList.index(self)
+        totalPawns = len(self.app.pawnHelpList)
+        targetCell = self.app.commonRoom.center()
+
+        radius = 5
+        angle = 2 * math.pi * pawnIndex / totalPawns
+
+        x = int(targetCell[0] + radius * math.cos(angle))
+        y = int(targetCell[1] + radius * math.sin(angle))
+        if self.getOwnCell() == (x,y):
+            return
+        self.getRouteTo(endPosGrid=(x,y))
+
+        
+    def bossWalkingTarget(self):
+        if self.app.BABLO.killed:
+            self.gatherRoundBablo()
+        else:
+            if self.BOSS:
+                self.getRouteTo(endPosGrid=random.choice(self.app.map.rooms).randomCell())
+            else:
+                self.getRouteTo(endPosGrid=self.app.BABLO.getOwnCell())
+
 
     def deathMatchWalkingTarget(self):
         self.getRouteTo(endPosGrid=self.app.commonRoom.randomCell()) # Just go to a random spawn point
@@ -168,8 +195,17 @@ class PawnBehaviour:
             else:
                 self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
             return
+        
+        if self.app.USE_AI:
+            tile = runAI(self)
+            print(tile)
+            
+            if self.app.map.grid[tile[0], tile[1]] == 1:
+                self.getRouteTo(endPosGrid=(int(tile[1]), int(tile[0])))
 
-        if not self.target:
+            
+
+        elif not self.target:
         #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
             if self.revengeHunt():
                 self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
@@ -181,6 +217,8 @@ class PawnBehaviour:
                     self.turfWarWalkingTarget()
                 elif self.app.GAMEMODE == "TEAM DEATHMATCH":
                     self.deathMatchWalkingTarget()
+                elif self.app.GAMEMODE == "FINAL SHOWDOWN":
+                    self.bossWalkingTarget()
                 elif self.app.GAMEMODE == "1v1":
                     i = self.app.duelPawns.index(self)
                     endPos = self.app.duelPawns[(i+1)%2].getOwnCell()
@@ -341,51 +379,58 @@ class PawnBehaviour:
 
     def shoot(self):
 
-        s = self.weapon.lazerActive
-        self.weapon.lazerActive = False
-
-        if self.loseTargetI <= 0:
-            if self.target:
-                self.say("Karkas saatana", 0.1)
-            self.target = None
-            self.loseTargetI = 1
-
-        
-        if not self.target:
-            self.searchEnemies()
-        if not self.target:
-            return
-        
-        if self.target.killed:
-            self.target = None
-            return
-        dist = self.pos.distance_to(self.target.pos)
-        if dist > self.getRange():
-            self.loseTargetI -= self.app.deltaTime
-            self.searchEnemies()
-            return
-        
-        if not self.sees(self.target):
-            self.loseTargetI -= self.app.deltaTime
-            self.searchEnemies()
-            return
-        
-        self.facingRight = self.target.pos[0] <= self.pos[0]
-        if dist < 250:
-            if self.carryingSkull():
-                self.skullWeapon.tryToMelee()
-            else:
-                self.weapon.tryToMelee()
-        elif self.carryingSkull(): # Cannot shoot with the skull!
-            pass
+        if self.dualwield:
+            l = [self.weapon, self.dualWieldWeapon]
         else:
+            l = [self.weapon]
 
-            self.weapon.lazerActive = s
+        for WEAPON in l:
 
-            if self.itemEffects["magDump"]:
-                for _ in range(self.weapon.magazine):
-                    self.weapon.fireFunction(self.weapon)
+            s = WEAPON.lazerActive
+            WEAPON.lazerActive = False
 
+            if self.loseTargetI <= 0:
+                if self.target:
+                    self.say("Karkas saatana", 0.1)
+                self.target = None
+                self.loseTargetI = 1
+
+            
+            if not self.target:
+                self.searchEnemies()
+            if not self.target:
+                return
+            
+            if self.target.killed:
+                self.target = None
+                return
+            dist = self.pos.distance_to(self.target.pos)
+            if dist > self.getRange():
+                self.loseTargetI -= self.app.deltaTime
+                self.searchEnemies()
+                return
+            
+            if not self.sees(self.target):
+                self.loseTargetI -= self.app.deltaTime
+                self.searchEnemies()
+                return
+            
+            self.facingRight = self.target.pos[0] <= self.pos[0]
+            if dist < 250:
+                if self.carryingSkull():
+                    self.skullWeapon.tryToMelee()
+                else:
+                    WEAPON.tryToMelee()
+            elif self.carryingSkull(): # Cannot shoot with the skull!
+                pass
             else:
-                self.weapon.fireFunction(self.weapon)
-        self.loseTargetI = 1
+
+                WEAPON.lazerActive = s
+
+                if self.itemEffects["magDump"]:
+                    for _ in range(WEAPON.magazine):
+                        WEAPON.fireFunction(WEAPON)
+
+                else:
+                    WEAPON.fireFunction(WEAPON)
+            self.loseTargetI = 1

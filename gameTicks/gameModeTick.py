@@ -236,7 +236,8 @@ class GlitchGamemodeDisplay:
             'TURF WARS': 'Valtaa 2/3 huoneista ja voita :D',
             '1v1': 'Tapa vihu ja voita :D',
             'RACING': 'Calibrating Track Systems',
-            'PUZZLE': 'Loading Brain Teasers'
+            'PUZZLE': 'Loading Brain Teasers',
+            'FINAL SHOWDOWN': "Voi paska :D"
         }
         
         self.subtitle = subtitles.get(self.current_gamemode, 'Initializing Game')

@@ -63,8 +63,11 @@ class EspeakTTS:
             data, sample_rate = sf.read(io.BytesIO(wav_bytes), dtype="float32")
             source = AudioSource(data, sample_rate, 44100)
 
-            self.sound = self.owner.app.playPositionalAudio(source, pos=self.owner.pos)
+            time.sleep(random.uniform(0.1,0.5))
 
+            self.sound = self.owner.app.playPositionalAudio(source, pos=self.owner.pos)
+            self.sound.base_volume = 1
+            
             self.generating = False
 
             while True:

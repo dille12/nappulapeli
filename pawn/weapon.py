@@ -184,6 +184,10 @@ class Weapon:
         self.lazerActive = False
         self.lazerTimer = 0
         self.lazerSound = None
+        if self.owner:
+            self.defaultPos = self.owner.pos
+        else:
+            self.defaultPos = v2(0,0)
 
     def getPacket(self):
         p = {"name": self.name,
@@ -203,7 +207,7 @@ class Weapon:
         # Get the weapon's world position (same calculation as in tick method)
         ownerBreathe2 = math.sin(self.owner.breatheI * math.pi)
         
-        weaponWorldPos = (self.owner.deltaPos + 
+        weaponWorldPos = (self.defaultPos + 
                          v2(0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5) + 
                          v2(0, 40) + 
                          self.getSwiwel())
@@ -228,7 +232,10 @@ class Weapon:
         """
 
         # This creates a memory leak if the weapon is given to multiple pawns?
-        pawn.weapon = Weapon(self.app, self.name, self.price, *self.args, owner=pawn, precomputedImage=self.image.copy(),
+        pawn.weapon = self.duplicate(pawn)
+        
+    def duplicate(self, pawn):
+        return Weapon(self.app, self.name, self.price, *self.args, owner=pawn, precomputedImage=self.image.copy(),
                              sizeMult=1, burstBullets=self.burstRounds, burstTime=self.burstI)  # Pass the image as a precomputed image
 
 
@@ -567,7 +574,7 @@ class Weapon:
 
     def pointingAtTarget(self):
         if self.owner.target:
-            r = -math.degrees(self.app.getAngleFrom(self.owner.pos, self.owner.target.pos))
+            r = -math.degrees(self.app.getAngleFrom(self.defaultPos, self.owner.target.pos))
             if abs(angle_diff(self.ROTATION, r)) > 10:
                 return False
 
@@ -619,6 +626,13 @@ class Weapon:
 
     def tick(self):
 
+        self.defaultPos = self.owner.deltaPos.copy()
+        if self.owner.dualwield:
+            if self == self.owner.weapon:
+                self.defaultPos = self.owner.deltaPos.copy() + [-90, -40]
+            else:
+                self.defaultPos = self.owner.deltaPos.copy() + [90, -40]
+
         if self.meleeing():
             self.meleeI -= self.app.deltaTime
 
@@ -635,7 +649,7 @@ class Weapon:
         rotationMod = ownerBreathe*5 - self.owner.rotation*0.5
 
         if self.owner.target and not self.isReloading():
-            r = math.degrees(self.app.getAngleFrom(self.owner.pos, self.owner.target.pos))
+            r = math.degrees(self.app.getAngleFrom(self.defaultPos, self.owner.target.pos))
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
         else:
             if self.raiseWeaponWhileRunning():
@@ -735,7 +749,14 @@ class Weapon:
         
         swiwelOffset = self.getSwiwel()
 
-        self.BLITPOS = self.owner.deltaPos - v2(self.rotatedImage.get_size()) / 2 + [0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5] + [0, 40] + recoilOffset + swiwelOffset + meleeOffset
+        DUALWIELDOFFSET = self.defaultPos - self.owner.deltaPos.copy()
+
+        TOTALOFFSET = DUALWIELDOFFSET + v2([0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5]) + v2([0, 40]) + recoilOffset + swiwelOffset + meleeOffset
+        
+        TOTALOFFSET = TOTALOFFSET.rotate(-self.owner.rotation)
+
+
+        self.BLITPOS = - v2(self.rotatedImage.get_size()) / 2 + TOTALOFFSET + self.owner.deltaPos
         
     def render(self):
         if not hasattr(self, "rotatedImage"):

@@ -458,10 +458,8 @@ def get_or_remove_background(app, input_bytes, cache_path="background_cache.json
     initial_cache = load_bg_cache(app, cache_path)
 
     if key in initial_cache:
-        print("Loading background-removed image from cache")
         return base64.b64decode(initial_cache[key]) if initial_cache[key] is not None else None
 
-    print("Removing background")
     try:
         output_bytes = remove(input_bytes)
         new_data = base64.b64encode(output_bytes).decode("utf-8")

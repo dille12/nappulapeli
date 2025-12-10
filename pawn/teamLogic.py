@@ -2,22 +2,48 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
     from pawn.pawn import Pawn
-
+    from levelGen.mapGen import Room
+from utilities.building import Building
+import numpy as np
 class Team:
     def __init__(self, app: "Game", i):
         self.pawns = []
         self.i = i
         self.app = app
-        self.color = self.app.getTeamColor(self.i)
+        self.color = self.getColor()
         self.currency = 0
         self.wins = 0
         self.allied = []
         self.enslavedTo = self.i
+        self.buildingsToBuild = 5
+
+        self.sightGrid = None
+
+    def resetSightGrid(self):
+        self.sightGrid = np.zeros(self.app.map.grid.shape, dtype=np.float32)
+
+    def addVisToGrid(self, vis):
+        if not isinstance(self.sightGrid, np.ndarray):
+            self.sightGrid = np.zeros(self.app.map.grid.shape, dtype=np.float32)
+        
+        for x,y in vis:
+            self.sightGrid[y,x] += 1
+
+    def spawnBase(self):
+        r = self.getSpawnRoom()
+        x,y = r.center()
+        Building(self.app, "BASE", self, "texture/base.png", (x,y), (2,2), 1, 500)
+        
+    def getSpawnRoom(self) -> "Room":
+        if hasattr(self.app, "teamSpawnRooms"):
+            return self.app.teamSpawnRooms[self.i]
 
     def getI(self):
         return self.enslavedTo
 
     def getColor(self, enslaved = False):
+        if self.i == -1:
+            return [255,255,255]
         if enslaved:
             return self.app.getTeamColor(self.getI())
         
@@ -28,6 +54,8 @@ class Team:
         
         if self.app.PEACEFUL:
             return False
+        if other.BOSS or P.BOSS:
+            return True
         if self.app.TRUCE:
             return False
         if self.app.FFA:

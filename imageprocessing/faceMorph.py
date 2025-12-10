@@ -32,10 +32,8 @@ def get_or_load_landmarks(app, rgb, cache_path="landmarks_cache.json"):
     initial_cache = load_landmarks_cache(app, cache_path)
 
     if key in initial_cache:
-        print(f"Loading landmarks from cache")
         return np.array(initial_cache[key]) if initial_cache[key] is not None else np.array(None)
 
-    print(f"Detecting landmarks")
     try:
         landmarks = getFaceLandMarks(rgb)
         new_data = landmarks.tolist()

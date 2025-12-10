@@ -21,9 +21,34 @@ def onKill(ownName, killedName: str):
         f"{ownName} on paras!",
         "Vie vittuun nuo entiset tuosta.",
         "Vittu mun teki mieli ampua sut, saatana.",
+        "One tappi.",
+        "Yykeri!",
+        "Kaakeri!",
+        "Kookeri!",
+        "JumanTSUIKKELI ku osuu!",
+        "Ja TOSTA!",
+        "Ilmanen",
+        "Yritätsä ees?",
+
         
     ])
 
+
+def babloBreak():
+    return random.choice([
+        "Oho!",
+        "Mitä vittua?",
+        "Perse kutiaa",
+        "Kuka siellä?",
+        "Mä haluisin kyllä kihloihin sepän pojan kanssa.",
+        "Vituttaa",
+        "Pitäskö sitä mennä ihan pöytään istuu?",
+        "Onks kellää heittää akuuttii nippii",
+        "Tää mun ase on kyl ihan vitun paska",
+        "Maken pöytä belike ku monsteri loppuu",
+        "Mikäs läski sieltä tulee.",
+        "Joko saa ruveta ryyppää?"
+    ])
 
 def onDeath():
     return random.choice([
@@ -51,7 +76,8 @@ def onOwnDamage():
         "Hups",
         "Vittu on vaikee vehje",
         "No voi helvetti",
-        "Vitun paska peli"
+        "Vitun paska peli",
+        "No voi sun saatana"
     ])
 
 def onTeamDamage(perpertator):
@@ -73,7 +99,7 @@ def onTarget():
         "Tuu TÄNNE",
         "Täältä pesee",
         "Naissoot tykkää kun ompi aseita",
-        "Ookko pillua saana?",
+        "RÄYYYH",
         "Noni",
         "KÄÄK",
         "Gulp",
@@ -81,6 +107,8 @@ def onTarget():
         "Mää oon tän mapin seksikkäin jäpä.",
         "Katos tätä.",
         "Hurjaa!",
+        "Nyt sää jäät",
+        "Kattokaa! Servun paskin pelaaja!",
 
     ])
 def onTakeDamage():
@@ -100,4 +128,6 @@ def onTakeDamage():
         "Lopeta!",
         "Voi veljet!",
         "Sattuu pippeliin!",
+        "Tää muistetaan",
+        "Kamalaa! Minua ammutaan!"
     ])

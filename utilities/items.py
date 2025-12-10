@@ -61,7 +61,9 @@ def getItems():
         Item("Mankka", "Bulgarian pop idol", playMusic=["set", True], dodgeChance=["add", 0.3]),
         Item("Mersun merkki", "Visva. Saatana.", speedMod=["mult", 1.25]),
         Item("Taktinen juoksu", "Hvarin poliisi belike", tacticalSprintSpeed=["mult", 3]),
-        Item("VAC", "Rupee koodarit jäämää.", bossKiller=["set", True])
+        Item("VAC", "Rupee koodarit jäämää.", bossKiller=["set", True]),
+        Item("Joku bugi", "Servu lagaa", timeScale=["add", 0.1]),
+        Item("Piri", "Johan rupee sujuu", timeScale=["add", 0.25]),
         #Item("Mag dump", "Mikä vitun firerate", magDump=["set", True]),
     ]
 

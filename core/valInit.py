@@ -13,11 +13,15 @@ from gameTicks.qrCodesTick import createQRS
 from gameTicks.gameModeTick import GlitchGamemodeDisplay
 from particles.laser import ThickLaser
 from audioPlayer.audioMixer import AudioMixer, AudioSource
+import random
+from utilities.babloBG import SpeedLines
+from utilities.bosslyrics import getLyricTimes
 from typing import TYPE_CHECKING
+from utilities.fireSystem import FireSystem
 if TYPE_CHECKING:
     from main import Game
     from pawn.pawn import Pawn
-
+from gameTicks.pawnExplosion import getFade
 def generate_noise_surface(size):
     width, height = size
     noise_array = np.random.randint(0, 256, (height, width), dtype=np.uint8)
@@ -30,7 +34,7 @@ class valInit:
         self.now = time.time()
 
         self.res = v2(1920, 1080)
-        self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
+        self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
         self.darken = []
         d = pygame.Surface(self.res).convert_alpha()
         for x in range(20):
@@ -48,6 +52,9 @@ class valInit:
         self.playerFiles = []  # List to hold player objects
         self.particle_list = []
         self.playerFilesToGen = [] 
+
+
+        self.preConfiguredTeamNames = []
 
         self.SCALE = 1
 
@@ -92,6 +99,9 @@ class valInit:
         self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
         self.e4 = Weapon(self, "E-BR", [150, 0], "texture/energy4.png", 15, 2700, 35, 10, Weapon.burstShoot, 1, "energy", burstBullets=2, burstTime=0.03)
         self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
+
+
+        self.BIGASSAK = Weapon(self, "BABLON AK-47", [150, 0], "texture/goldenAk.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal", sizeMult=2.2)
         
 
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
@@ -115,6 +125,8 @@ class valInit:
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
 
+        
+
         self.consoleOpen = False
 
         self.cameraIdleTime = 0
@@ -122,6 +134,14 @@ class valInit:
         self.DUALVIEWACTIVE = False
 
         self.shit = pygame.image.load("texture/shit.png").convert_alpha()
+
+
+        self.babloLyricIndex = 0
+        self.babloLyrics = getLyricTimes()
+        self.babloLyricNorm = 0
+        self.babloLyricCurrent = ""
+
+        self.BLOCKMUSIC = False
 
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []
@@ -173,11 +193,20 @@ class valInit:
         self.roundTime = 0
         self.MAXROUNDLENGTH = 60
         self.AUDIOORIGIN = v2(0, 0)
+        self.AUDIOVOLUME = 0.3
 
         self.ultCalled = False
         self.ultFreeze = 0
+        self.commonRoomSwitchI = 0
 
-        self.gameModeLineUp = ["TURF WARS"] # "TEAM DEATHMATCH", "ODDBALL", "TURF WARS"
+        self.gameModeLineUp = ["TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN", 
+
+        self.babloMusic = self.loadSound("audio/taikakeinu/bar", volume=0.75, asPygame=True)
+        self.BABLO = None
+
+
+        self.speedlines = SpeedLines(num_lines=120, length=2000, width=10, speed=3)
+        self.speedLinesSurf = pygame.Surface(self.res, pygame.SRCALPHA)
 
         self.teamInspectIndex = 0
         self.safeToUseCache = True
@@ -186,6 +215,32 @@ class valInit:
         self.killfeed = []
         self.keypress = []
         self.keypress_held_down = []
+
+        self.crack = pygame.image.load("texture/crack.png").convert_alpha()
+        self.crack = pygame.transform.scale_by(self.crack, 400 / self.crack.get_width())
+        
+        
+        self.crackAppearTimes = []
+        beatsPerSec = 60/125
+        start = 8 * 4 * beatsPerSec
+        for bar in range(4):
+            at = [0, 3.5, 4]
+            for a in at:
+                self.crackAppearTimes.append(start + (bar*8 + a)*beatsPerSec) 
+        self.crackAppearTimes.append(start + (8*4)*beatsPerSec) 
+        print(self.crackAppearTimes)
+        self.crackIndex = 0
+
+        self.SLOWMO_FOR = 0
+
+        self.cracks = []
+        for i in range(len(self.crackAppearTimes)):
+            c = self.crack.copy()
+            s = 0.5 + i/len(self.crackAppearTimes) * 4
+            r = random.uniform(0, 360)
+            c = pygame.transform.rotozoom(c, r, s)
+            self.cracks.append(c)
+
 
         self.cameraLinger = 2
         self.TTS_ON = True
@@ -242,9 +297,12 @@ class valInit:
         self.levelUpBlink = 1
 
         self.speeches = 0
-
+        
         self.GAMESTATE = "qrs"
         initMillionaire(self)
+
+        self.onFireCells = []
+        self.FireSystem = FireSystem(self)
 
         self.TRUCE = False
         self.FFA = False
@@ -269,8 +327,26 @@ class valInit:
         self.skullTimes = []
         self.refreshShops()
 
+        self.FADEOUT = getFade(30)
+        self.FADEIN = 0
+
+        self.RAWR = pygame.mixer.Sound("audio/rawr.wav")
+        self.RAWR.set_volume(0.2)
+
+        self.TARGETGAMESTATE = None
+        self.TRANSITION = False
+        self.transIndex = 0
 
         self.midRoundTime = 0
+
+        self.USE_AI = False
+        if self.USE_AI:
+            from core.rl_agent import LocalGoalAgent
+            self.AGENT = LocalGoalAgent(80, 120)
+
+        self.AUTOCAMERA = True
+
+        self.alwaysHostileTeam = Team(self, -1)
 
         self.subs = None
         self.subI = 0
@@ -295,6 +371,8 @@ class valInit:
         self.weaponButtonClicked = None
         self.hudChange = 1
         self.currHud = 0
+
+        self.PAWNPARTICLES = []
 
         self.giveWeapons = False
 
@@ -354,5 +432,9 @@ class valInit:
         self.consoleSuggestionI = 0
         self.consoleLog = []
         self.lastCommands = []
+        self.consoleIndicatorI = 0
+        self.consoleIndicator = False
+
+        self.initAudioEngine()
 
         print("Game initialized")
