@@ -6,7 +6,7 @@ from pygame.math import Vector2 as v2
 import pygame
 import time
 from core.AI import constructTeamVisibility, drawGridMiniMap
-
+import math
 def announceVictory(self: "Game", victoryTeam):
     #print(f"Team {i+1} WON")
     self.victoryTeam = victoryTeam
@@ -114,7 +114,7 @@ def battleTick(self: "Game"):
     
     
 
-
+    #self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
     self.MINIMAPTEMP = self.MINIMAP.copy()
 
     
@@ -134,11 +134,24 @@ def battleTick(self: "Game"):
                 r2 = self.teamSpawnRooms[i]
                 pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(i, 1), (r2.x*self.MINIMAPCELLSIZE, r2.y*self.MINIMAPCELLSIZE, 
                                                                                       r2.width*self.MINIMAPCELLSIZE, r2.height*self.MINIMAPCELLSIZE), width=1)
-
+                
+    if self.GAMEMODE == "DETONATION" and False:
+        for site in self.SITES:
+            color = [51,42,13] if site.controlledByT() else [15, 26, 51]
+            r = site.room
+            pygame.draw.rect(self.MINIMAPTEMP, color, (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
+                                                                                      r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
     #constructTeamVisibility(self)
         
 
     self.FireSystem.update()
+
+    if self.GAMEMODE == "DETONATION":
+        for x in self.SITES:
+            x.tickSite()
+
+        self.allTeams[0].tickDetonation()
+        self.allTeams[-1].tickDetonation()
 
     for x in entities_temp:
         if hasattr(x, "itemEffects"):
@@ -170,8 +183,9 @@ def battleTick(self: "Game"):
     self.doBabloCracks()
 
 
-    if self.objectiveCarriedBy:
+    if self.objectiveCarriedBy and self.GAMEMODE == "ODDBALL":
         self.skullTimes[self.objectiveCarriedBy.team.i] += self.deltaTime
+
     if self.AUTOCAMERA:
         if self.splitI > 0:
             self.cameraPos = self.posToTargetTo.copy()
@@ -203,7 +217,12 @@ def battleTick(self: "Game"):
 
     DUAL = False
     if self.splitI > 0:
-        if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > 600:
+        
+        angle = self.getAngleFrom(self.cameraLockOrigin, self.cameraLockTarget) + math.pi/2
+
+        max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
+
+        if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist:
             DUAL = True
 
     self.DUALVIEWACTIVE = DUAL
@@ -236,6 +255,7 @@ def battleTick(self: "Game"):
         #self.renderParallax2()
         #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
         self.drawTurfs()
+        self.drawDetonation()
 
         #if self.cameraLock:
         #    self.cameraLock.visualizeVis()
@@ -334,6 +354,12 @@ def battleTick(self: "Game"):
     self.debugText(f"ONSCREEN: {onscreen}")
     self.debugText(f"MUSIC: {self.currMusic} -> {self.nextMusic}")
     self.debugText(f"CAM: {self.CAMERA.vibration_amp}")
+
+    if self.GAMEMODE == "DETONATION":
+        self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].planTimer:.1f}")
+        self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].planTimer:.1f}")
+
+
     self.drawFPS()
     
     #self.genPawns()

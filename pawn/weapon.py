@@ -137,7 +137,7 @@ class Weapon:
         self.shopIcon = trim_surface(self.shopIcon)
 
 
-        if image_path == "texture/skull.png":
+        if image_path == "texture/skull.png" or image_path == "texture/bomb.png":
             self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
 
         self.imageR = pygame.transform.flip(self.image.copy(), True, False)
@@ -595,7 +595,7 @@ class Weapon:
         if self.owner.target:
             return False
 
-        if self.isReloading() or self.meleeing():
+        if self.name != "SKULL" and (self.isReloading() or self.meleeing()):
             return False
         
         if self.owner.pos.distance_to(self.owner.walkTo) < 500 and not self.owner.route:
@@ -694,6 +694,7 @@ class Weapon:
         rotation = self.app.rangeDegree(rotation)
 
         RGAIN = 1000 * self.owner.getHandling()
+        RGAIN = max(1, RGAIN)
 
         DIFF = angle_diff(self.ROTATION, rotation)
         if self.owner.itemEffects["noscoping"] and DIFF < -20:

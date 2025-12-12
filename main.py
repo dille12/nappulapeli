@@ -10,12 +10,12 @@ from utilities.enemy import Enemy
 import math
 from pygame.math import Vector2 as v2
 import time
-from levelGen.mapGen import ArenaGenerator, CellType
+from levelGen.mapGen import ArenaGenerator, CellType, Room
 import numpy as np
 from levelGen.arenaWithPathfinding import ArenaWithPathfinding
 from utilities.item import Item
 from core.keypress import key_press_manager
-from utilities.skull import Skull
+from utilities.skull import Skull, Bomb
 import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
@@ -40,6 +40,8 @@ import inspect
 from utilities.dialog import babloBreak
 import tkinter
 from statistics import stdev
+from collections import deque
+from pawn.site import Site
 print("Imports complete")
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
@@ -258,6 +260,10 @@ class Game(valInit):
         return False
 
     def resetPawnParticles(self):
+
+        if not self.PAWNPARTICLES:
+            return
+
         for particle in self.PAWNPARTICLES:
             particle.reset()
         random.choice(self.PAWNPARTICLES).setAsMainPiece()
@@ -571,7 +577,7 @@ class Game(valInit):
             self.map = ArenaGenerator(120, 80)
             self.map.generate_arena(room_count=22, min_room_size=8, max_room_size=20, corridor_width=3)
 
-        self.arena = ArenaWithPathfinding(self.map)
+        self.arena = ArenaWithPathfinding(self, self.map)
 
         self.shitGrid = np.zeros(self.map.grid.shape, dtype=np.uint8)
 
@@ -579,13 +585,16 @@ class Game(valInit):
 
         self.shitDict = {}
 
-        connectivity = self.arena.validate_arena_connectivity()
-        print(f"Arena Connectivity: {connectivity}")
+        #connectivity = self.arena.validate_arena_connectivity()
+        #print(f"Arena Connectivity: {connectivity}")
         print(self.map.grid.shape)
 
         print("Rooms", len(self.map.rooms))
         i.text ="Finding spawn points"
-        self.teamSpawnRooms = self.arena.find_spawn_rooms(self.teams)
+        if self.GAMEMODE == "DETONATION":
+            self.teamSpawnRooms = self.arena.find_spawn_rooms(2)
+        else:
+            self.teamSpawnRooms = self.arena.find_spawn_rooms(self.teams)
         if not self.teamSpawnRooms:
             self.teamSpawnRooms = []
             for x in range(self.teams):
@@ -593,7 +602,7 @@ class Game(valInit):
                 print(f"Spawn room for team {x} not found, using random room instead.")
         self.spawn_points = []
         for team, x in enumerate(self.teamSpawnRooms):
-            self.spawn_points.append(x.center())
+            self.spawn_points.append(x.randomCell())
             x.turfWarTeam = team
 
             for y in x.connections:
@@ -620,7 +629,7 @@ class Game(valInit):
 
         self.map.get_spawn_points()
         i.text ="Drawing the map"
-        self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes)
+        
 
         
 
@@ -628,14 +637,38 @@ class Game(valInit):
         #    pygame.draw.line(self.MAP, [255,255,255], p1, p2, 3)
 
         
+        
+        self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes) #
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
         
+        self.SITES = []
+        if self.GAMEMODE == "DETONATION":
+
+            self.originalGrid = self.map.grid.copy()
+
+            #self.compute_spawnroom_distances()
+            print("Making sites")
+            self.makeDetonationSites()
+            print(self.SITES)
+
+            self.getSites()
+
+            #for site in self.SITES:
+            #    for x,y in site.visibilityCT:
+            #        pygame.draw.rect(self.MINIMAP, [15, 26, 51], (x*self.MINIMAPCELLSIZE, y*self.tileSize, 
+            #                                                                          self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE))
+            
+            #for r in self.SITES:
+            #    pygame.draw.rect(self.MAP, [200,200,200], (r.x*self.tileSize, r.y*self.tileSize, 
+            #                                                                          r.width*self.tileSize, r.height*self.tileSize))
+            
+        #self.MAP = MSurf(self, self.MAP)
+        
+
         for team, r in enumerate(self.teamSpawnRooms):
             print("Drawing", team, "spawn room")
             pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize, r.y*self.tileSize, 
                                                                                       r.width*self.tileSize, r.height*self.tileSize))
-            
-        #self.MAP = MSurf(self, self.MAP)
 
         self.MINIMAPTEMP = self.MINIMAP.copy()
         #entrance = self.map.get_entrance_position()
@@ -644,11 +677,81 @@ class Game(valInit):
         #if entrance:
         if self.GAMEMODE == "ODDBALL":
             self.skull = Skull(self, midPoint)
-        print("SKULL CREATED!")
+            print("SKULL CREATED!")
+        elif self.GAMEMODE == "DETONATION":
+            self.skull = Bomb(self, self.allTeams[-1].getDetonationSpawnRoom().randomCell())
         i.text ="Map done!"
         i.killed = True
         
         self.mapCreated = True
+
+    
+    @staticmethod
+    def bfs_dists(start_room):
+        dist = {start_room: 0}
+        q = deque([start_room])
+
+        while q:
+            r = q.popleft()
+            for nxt in r.connections:
+                if nxt not in dist:
+                    dist[nxt] = dist[r] + 1
+                    q.append(nxt)
+        return dist
+    
+
+    def getSites(self):
+
+        self.map.grid = self.originalGrid.copy()
+
+        self.refreshSites()
+        self.allTeams[-1].getViableSites()
+        self.allTeams[-1].planTimer = 0
+        #self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes) #
+        self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
+        for site in self.SITES:
+            for x,y in site.attackPositionsT:
+                pygame.draw.rect(self.MINIMAP, [255,0,0], [x*self.MINIMAPCELLSIZE,y*self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE])
+
+
+    def pickDetonationSites(self):
+        # identify CT and T spawn
+        ct_spawn = self.teamSpawnRooms[1]
+        t_spawn  = self.teamSpawnRooms[0]
+
+        dist_ct = self.bfs_dists(ct_spawn)
+        dist_t  = self.bfs_dists(t_spawn)
+
+        candidates = []
+
+        for room in self.map.rooms:
+            dct = dist_ct.get(room, 9999)
+            dt  = dist_t.get(room, 9999)
+
+            if dct >= 2 and dt >= 3:
+                # combine distance metrics for fairness
+                score = dct + dt
+                candidates.append((score, room))
+
+        # sort by "best site" score (largest distances)
+        candidates.sort(reverse=True, key=lambda x: x[0])
+
+        # pick top 3
+        sites = [room for _, room in candidates[:3]]
+        return sites
+    
+    def makeDetonationSites(self):
+        sites = self.arena.find_detonation_sites(self.teamSpawnRooms[1], self.teamSpawnRooms[0])
+        for x in sites:
+            self.SITES.append(Site(self,x))
+
+
+    def refreshSites(self):
+        for x in self.SITES:
+            x.processSite()
+        for x in self.SITES:
+            x.makePositions()
+
 
 
     def cell2Pos(self, cell):
@@ -673,9 +776,22 @@ class Game(valInit):
 
             #self.duelPawns = [max(self.pawnHelpList, key=lambda x: x.stats["kills"]), self.pawnHelpList[1]]
 
+        elif self.GAMEMODE == "DETONATION":
+            for x in self.allTeams:
+                x.detonationTeam = x.i < len(self.allTeams)/2
+            
+                for y in self.allTeams:
+                    if y == x:
+                        continue
+                    
+                    if (y.i < len(self.allTeams)/2) == x.detonationTeam:
+                        x.allied.append(y)
+                        print(x.i, "allied with", y.i)
+
 
         self.genLevel()
         self.resetLevelUpScreen()
+    
         
             
 
@@ -702,6 +818,7 @@ class Game(valInit):
                 pawn.deaths = 0
 
         self.nextMusic = 1
+        self.midMusicIndex = 0
 
         self.AUDIOVOLUME = 0.3
 
@@ -734,6 +851,13 @@ class Game(valInit):
             self.crackIndex = 0
             self.BLOCKMUSIC = False
 
+        
+
+        
+
+        for x in self.allTeams:
+            x.refreshColor()
+
 
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
 
@@ -741,7 +865,29 @@ class Game(valInit):
 
         self.transition(lambda: self.exitLoadingScreen())
 
-            
+    def compute_spawnroom_distances(self):
+        rooms = self.teamSpawnRooms
+        n = len(rooms)
+
+        # distance matrix (Euclidean grid distance)
+        D = np.zeros((n, n), dtype=np.float32)
+
+        centers = [r.center() for r in rooms]
+
+        for i in range(n):
+            x1, y1 = centers[i]
+            for j in range(n):
+                if i == j:
+                    continue
+                x2, y2 = centers[j]
+                dx = x2 - x1
+                dy = y2 - y1
+                D[i, j] = (dx*dx + dy*dy) ** 0.5
+
+        self.spawn_dist_matrix = D
+        print(D)
+
+
     def exitLoadingScreen(self):
         self.GAMESTATE = "ODDBALL"
 
@@ -1153,10 +1299,15 @@ class Game(valInit):
                 self.cameraLock = self.BABLO
 
             elif self.pawnHelpList:
-                e = sorted(self.pawnHelpList.copy(), key=lambda p: p.onCameraTime)
+                if self.GAMEMODE == "DETONATION":
+                    l = [x for x in self.pawnHelpList.copy() if not x.team.detonationTeam]
+                    e = sorted(l, key=lambda p: p.onCameraTime)
+                else:
+                    l = [x for x in self.pawnHelpList.copy() if not x.NPC]
+                    e = sorted(l, key=lambda p: p.onCameraTime)
                 
                 for x in e:
-                    if not x.killed and not x.NPC:
+                    if not x.killed:
                         self.cameraLock = x
                         break
 
@@ -1403,8 +1554,22 @@ class Game(valInit):
         
             pygame.draw.rect(self.MAP, (0,0,0), (x*self.tileSize,y*self.tileSize, 
                                                  self.tileSize, self.tileSize))
+            
+    def drawDetonation(self):
+        if self.GAMEMODE != "DETONATION":
+            return
+        
+        for site in self.SITES:
+            r = site.room
+            rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
+                                r.width*self.tileSize, r.height*self.tileSize)
+            rect.topleft -= self.cameraPosDelta
+            draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, [255,0,0], width=5)
+        
 
     def drawTurfs(self):
+        if self.GAMEMODE != "TURF WARS":
+            return
         for r in self.map.rooms:
             if r.turfWarTeam is not None:
                 rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 

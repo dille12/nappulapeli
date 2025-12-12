@@ -10,6 +10,7 @@ from utilities.shit import Shit
 from utilities.building import Building
 from core.AI import runAI
 import pygame
+from levelGen.numbaPathFinding import MovementType
 
 class PawnBehaviour:
     def __init__(self: "Pawn"):
@@ -26,7 +27,7 @@ class PawnBehaviour:
             # Do some thinking logic here, e.g., print a message or change state
             
 
-            c = self.app.randomWeighted(0.2, 0.2, 0)
+            c = self.app.randomWeighted(0.2, 1, 0)
             if c == 0:
                 if not self.target and not self.buildingTarget:
                     if not self.weapon.isReloading() and self.weapon.magazine < self.getMaxCapacity()/2 and not self.carryingSkull():
@@ -184,6 +185,73 @@ class PawnBehaviour:
 
         self.walkTo = [x, y]
 
+    def detonationTarget(self):
+
+        t = self.team.getGodTeam()
+
+        if not t.detonationTeam:
+            if not t.plan["viableSites"]:
+                return
+            
+            x,y = self.app.skull.cell
+
+            if not self.app.objectiveCarriedBy and not self.app.skull.planted:
+
+                if self.app.map.grid[y,x] in [2,4]:
+                    self.getRouteTo(endPosGrid=self.app.skull.cell, movement_type = MovementType.GROUND)
+                    return
+
+                if self == t.bombCarrier and not self.carryingSkull() and not self.app.skull.planted and (not self.app.map.grid[y,x] in [2,4] or self.team.terroristsInControlOfSite()): # FETCH SKULL
+                    self.getRouteTo(endPosGrid=self.app.skull.cell, movement_type = MovementType.GROUND)
+                    return
+
+
+        if self.carryingSkull() and t.terroristsInControlOfSite():
+            self.getRouteTo(endPosGrid=t.plan["site"].plantingSite, movement_type = MovementType.GROUND)
+
+        elif t.plan["currentAction"] == "probe":
+
+            for x in self.app.SITES:
+                if x.inhabited[0] > x.inhabited[1]:
+                    self.getRouteTo(endPosGrid=x.room.randomCell())
+                    return
+
+            ownSite = self.team.getSite(self)
+            self.getRouteTo(endPosGrid=ownSite.room.randomCell()) # Just go to a random spawn point
+        elif t.plan["currentAction"] == "prepare":
+
+            if t.detonationTeam:
+                self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.COUNTERTERRORIST)
+            else:
+                self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
+            if not self.route:
+                #print("NO ROUTE!?")
+                self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.GROUND)
+
+
+        elif t.plan["currentAction"] == "execute":
+
+            if self.carryingSkull():
+                self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
+            else:
+
+                site = t.plan["site"]
+                self.getRouteTo(endPosGrid=site.room.randomCell())
+
+    def getAttackPosition(self):
+        t = self.team.getGodTeam()
+        site = t.plan["site"]
+        l = self.team.getDetonationPawns()
+
+        index = l.index(self)
+
+        if t.detonationTeam:
+            return site.attackPositionsCT[index % len(site.attackPositionsCT)]
+        else:
+            return site.attackPositionsT[index % len(site.attackPositionsT)]
+    
+    def attackInPosition(self):
+        return self.getOwnCell()[0] == self.getAttackPosition()[0] and self.getOwnCell()[1] == self.getAttackPosition()[1]
 
     def pickWalkingTarget(self):
 
@@ -211,7 +279,7 @@ class PawnBehaviour:
                 self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
                 self.say(f"Tuu tänne {self.lastKiller.name}!")
             else:
-                if self.app.skull:
+                if self.app.GAMEMODE == "ODDBALL":
                     self.oddballWalkingTarget()
                 elif self.app.GAMEMODE == "TURF WARS":
                     self.turfWarWalkingTarget()
@@ -219,6 +287,8 @@ class PawnBehaviour:
                     self.deathMatchWalkingTarget()
                 elif self.app.GAMEMODE == "FINAL SHOWDOWN":
                     self.bossWalkingTarget()
+                elif self.app.GAMEMODE == "DETONATION":
+                    self.detonationTarget()
                 elif self.app.GAMEMODE == "1v1":
                     i = self.app.duelPawns.index(self)
                     endPos = self.app.duelPawns[(i+1)%2].getOwnCell()
@@ -231,7 +301,7 @@ class PawnBehaviour:
 
             elif self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
                 self.say("APUA")
-                self.getRouteTo(endPosGrid=self.app.spawn_points[self.team.i])
+                self.getRouteTo(endPosGrid=self.getCellInSpawnRoom())
 
             else:
                 CELLS = self.getVisibility()
@@ -365,7 +435,7 @@ class PawnBehaviour:
                     self.walkTo = None
                     self.stepI = 0  # Reset step index when reaching the target
 
-            if self.route and len(self.route) > 5:
+            if (self.route and len(self.route) > 5) and self.app.GAMEMODE != "DETONATION":
                 c = self.getOwnCell()
                 r1x, r1y = self.route[0]
                 r2x, r2y = self.route[1]
@@ -418,7 +488,10 @@ class PawnBehaviour:
             self.facingRight = self.target.pos[0] <= self.pos[0]
             if dist < 250:
                 if self.carryingSkull():
-                    self.skullWeapon.tryToMelee()
+                    if self.app.GAMEMODE == "DETONATION":
+                        self.bombWeapon.tryToMelee()
+                    else:
+                        self.skullWeapon.tryToMelee()
                 else:
                     WEAPON.tryToMelee()
             elif self.carryingSkull(): # Cannot shoot with the skull!

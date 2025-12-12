@@ -113,6 +113,7 @@ class valInit:
         self.BFGLasers = []
 
         self.skullW = Weapon(self, "Skull", [0,0], "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
+        self.bombW = Weapon(self, "Skull", [0,0], "texture/bomb.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
 
@@ -199,7 +200,7 @@ class valInit:
         self.ultFreeze = 0
         self.commonRoomSwitchI = 0
 
-        self.gameModeLineUp = ["TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN", 
+        self.gameModeLineUp = ["DETONATION", "TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN", 
 
         self.babloMusic = self.loadSound("audio/taikakeinu/bar", volume=0.75, asPygame=True)
         self.BABLO = None

@@ -35,7 +35,7 @@ from particles.particle import Particle
 import asyncio
 if TYPE_CHECKING:
     from main import Game
-
+from levelGen.numbaPathFinding import MovementType
 from pawn.behaviour import PawnBehaviour
 from pawn.getStat import getStat
 from pawn.tts import EspeakTTS
@@ -223,6 +223,8 @@ class Pawn(PawnBehaviour, getStat):
         else:
             self.app.alwaysHostileTeam.add(self)
 
+        
+
         self.teamColor = self.team.color
 
         self.reconnectJson = None
@@ -283,6 +285,9 @@ class Pawn(PawnBehaviour, getStat):
         
         self.app.skullW.give(self)
         self.skullWeapon = self.weapon
+        self.app.bombW.give(self)
+        self.bombWeapon = self.weapon
+        
 
         self.app.hammer.give(self)
         self.hammer = self.weapon
@@ -343,7 +348,7 @@ class Pawn(PawnBehaviour, getStat):
         # self.client is the WebSocket
 
         self.app.clientPawns[self.client] = self
-        if not self.BOSS:
+        if not self.BOSS and False:
             PawnParticle(self)
             
         if self.client:
@@ -415,10 +420,10 @@ class Pawn(PawnBehaviour, getStat):
             self.imagePawnR.fill((0, 0, 0, 0), self.head_rect)
 
 
-        #else:
-        #    for x in range(random.randint(1,25)):
-        #        self.getNextItems()
-        #        self.levelUp()
+        else:
+            for x in range(random.randint(1,25)):
+                self.getNextItems()
+                self.levelUp()
         
         print(self.name, "created.")
         self.GENERATING = False
@@ -707,7 +712,7 @@ class Pawn(PawnBehaviour, getStat):
             self.respawnI = 1
             self.xp = self.app.levelUps[self.level-1]
 
-        elif self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
+        elif self.app.GAMEMODE == "ODDBALL" and self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
             self.respawnI = 15
         else:
             self.respawnI = 10
@@ -726,7 +731,11 @@ class Pawn(PawnBehaviour, getStat):
 
 
     def getCellInSpawnRoom(self):
-        SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
+
+        if self.app.GAMEMODE == "DETONATION":
+            SPAWNROOM = self.team.getDetonationSpawnRoom()
+        else:
+            SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
         if SPAWNROOM:
             P = SPAWNROOM.randomCell()
         else:
@@ -1161,6 +1170,8 @@ class Pawn(PawnBehaviour, getStat):
 
         self.ONSCREEN = False
 
+        self.teamColor = self.team.color
+
         if self.BOSS:
             if self.app.GAMEMODE != "FINAL SHOWDOWN":
                 self.respawnI = 2
@@ -1255,13 +1266,19 @@ class Pawn(PawnBehaviour, getStat):
         
         
 
-        if self.app.skull and self.getOwnCell() == self.app.skull.cell and not self.app.objectiveCarriedBy and not self.ULT:
-            self.app.objectiveCarriedBy = self
-            self.say("Meikäläisen kallopallo!", 1)
-            self.app.notify(f"TEAM {self.team.i + 1} PICKED UP SKULL", self.team.getColor())
-            self.route = None
-            self.walkTo = None
-            #self.app.cameraLock = self
+        if self.app.skull and self.getOwnCell() == self.app.skull.cell and not self.app.objectiveCarriedBy and not self.ULT: # Pick up skull
+
+            if self.app.GAMEMODE == "ODDBALL" or (self.app.GAMEMODE == "DETONATION" and not self.team.detonationTeam and not self.app.skull.planted):
+
+                self.app.objectiveCarriedBy = self
+                self.say("Meikäläisen kallopallo!", 1)
+                if self.app.GAMEMODE == "ODDBALL":
+                    self.app.notify(f"TEAM {self.team.i + 1} PICKED UP SKULL", self.team.getColor())
+                else:
+                    self.team.getGodTeam().bombCarrier = self
+                self.route = None
+                self.walkTo = None
+                #self.app.cameraLock = self
         
         if self.ONSCREEN:
             newPos = self.handleSprite()
@@ -1289,7 +1306,10 @@ class Pawn(PawnBehaviour, getStat):
         self.buildingRotationOffset = 0
 
         if self.carryingSkull():
-            self.skullWeapon.tick()
+            if self.app.skull.name == "SKULL":
+                self.skullWeapon.tick()
+            else:
+                self.bombWeapon.tick()
             self.tryToTransferSkull()
 
         elif self.buildingTarget and not self.target:
@@ -1331,7 +1351,7 @@ class Pawn(PawnBehaviour, getStat):
         if cell_pos in self.app.FireSystem.cells:
             cell_data = self.app.FireSystem.cells[cell_pos]
             firer = cell_data["firer"]    # extract the firer for this fire
-            self.takeDamage(100 * self.app.deltaTime, firer, False, "fire")
+            self.takeDamage(30 * self.app.deltaTime, firer, False, "fire")
         
 
         if not self.app.PEACEFUL and cx*200 + cy in self.app.shitDict:
@@ -1528,7 +1548,10 @@ class Pawn(PawnBehaviour, getStat):
 
         #if not self.tripped:
         if self.app.objectiveCarriedBy == self:
-            self.skullWeapon.render()
+            if self.app.skull.name == "SKULL":
+                self.skullWeapon.render()
+            else:
+                self.bombWeapon.render()
 
         elif self.buildingTarget and not self.target:
             self.hammer.render()
@@ -1580,7 +1603,7 @@ class Pawn(PawnBehaviour, getStat):
         return self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team
 
 
-    def getRouteTo(self, endPos = None, endPosGrid = None):
+    def getRouteTo(self, endPos = None, endPosGrid = None, movement_type = MovementType.GROUND):
         if endPos:
             endPos = (int(endPos[0]/self.app.tileSize), int(endPos[1]/self.app.tileSize))
 
@@ -1589,7 +1612,10 @@ class Pawn(PawnBehaviour, getStat):
 
         startPos = (int(self.pos[0]/self.app.tileSize), int(self.pos[1]/self.app.tileSize))
 
-        self.route = self.app.arena.pathfinder.find_path(startPos, endPos)
+        if startPos == endPos:
+            return
+
+        self.route = self.app.arena.pathfinder.find_path(startPos, endPos, movement_type=movement_type)
 
         self.advanceRoute()
 

@@ -6,7 +6,7 @@ from enum import Enum
 import matplotlib.pyplot as plt
 import pygame
 import numba as nb
-
+from collections import deque
 @nb.njit
 def get_visible_mask(grid, from_x, from_y, max_range, cos_table, sin_table):
     height, width = grid.shape
@@ -35,14 +35,86 @@ def get_visible_mask(grid, from_x, from_y, max_range, cos_table, sin_table):
 class CellType(Enum):
     WALL = 0
     FLOOR = 1
-    DOOR = 2
-    STAIRS_UP = 3
-    STAIRS_DOWN = 4
-    ENTRANCE = 5
-    EXIT = 6
+    CTVIS = 2
+    TVIS = 3
+    VIS = 4
+
+
+OBSTACLE_SHAPES = [
+    np.array([[1,0],
+              [1,0],
+              [1,1]], dtype=np.uint8),
+
+    np.array([[0,1,0],
+              [1,1,1],
+              [0,1,0]], dtype=np.uint8),
+
+    np.array([[1,1]], dtype=np.uint8),
+
+]
+def rotate_shape(shape, k):
+    return np.rot90(shape, k)
+
+def can_place(grid, shape, ox, oy):
+    h, w = shape.shape
+    H, W = grid.shape
+
+    for sy in range(h):
+        for sx in range(w):
+            if shape[sy, sx] == 0:
+                continue
+
+            gx, gy = ox + sx, oy + sy
+
+            # Bounds
+            if not (0 <= gx < W and 0 <= gy < H):
+                return False
+
+            # Overlap with wall
+            if grid[gy, gx] == 0:
+                return False
+
+            # Touch check
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    ng_x = gx + dx
+                    ng_y = gy + dy
+                    if 0 <= ng_x < W and 0 <= ng_y < H:
+                        if grid[ng_y, ng_x] == 0:
+                            return False
+
+    return True
+
+
+def place_obstacle(room, max_tries=5):
+    grid = room.arena.grid
+
+    # choose shape + rotation
+    shape = random.choice(OBSTACLE_SHAPES)
+    shape = rotate_shape(shape, random.randint(0, 3))
+
+    h, w = shape.shape
+    x0, y0 = room.x, room.y
+    x1, y1 = x0 + room.width, y0 + room.height
+
+    for _ in range(max_tries):
+        ox = random.randint(x0, x1 - w)
+        oy = random.randint(y0, y1 - h)
+
+        if can_place(grid, shape, ox, oy):
+            # apply: write 0 into shape positions
+            for sy in range(h):
+                for sx in range(w):
+                    if shape[sy, sx] == 1:
+                        grid[oy + sy, ox + sx] = 0
+            return True
+
+    return False
+
+
 
 class Room:
-    def __init__(self, arena, x, y, width, height, room_type):
+    def __init__(self, arena: "ArenaGenerator", x, y, width, height, room_type):
         self.x = x
         self.y = y
         self.arena = arena
@@ -55,9 +127,48 @@ class Room:
         self.connections = []
         self.occupyI = 5
         self.kills = 0
+        self.CENTER = (self.x + self.width // 2, self.y + self.height // 2)
+        
+        
+    def getCenter(self):
+        cx = self.x + self.width // 2
+        cy = self.y + self.height // 2
+        grid = self.arena.grid
+        H, W = grid.shape
 
-    def center(self) -> Tuple[int, int]:
-        return (self.x + self.width // 2, self.y + self.height // 2)
+        # starting point may be non-walkable
+        q = deque([(cx, cy)])
+        seen = {(cx, cy)}
+
+        # 8 directions to avoid missing diagonally adjacent free cells
+        dirs = [(-1,0),(1,0),(0,-1),(0,1),(-1,-1),(1,-1),(-1,1),(1,1)]
+
+        # room bounds
+        x0, y0 = self.x, self.y
+        x1, y1 = x0 + self.width, y0 + self.height
+
+        while q:
+            x, y = q.popleft()
+
+            if x0 <= x < x1 and y0 <= y < y1:
+                if 0 <= x < W and 0 <= y < H and grid[y, x] > 0:
+                    return (x, y)
+
+            for dx, dy in dirs:
+                nx, ny = x + dx, y + dy
+                if (nx, ny) not in seen:
+                    seen.add((nx, ny))
+                    q.append((nx, ny))
+
+        # fallback (should never happen in valid rooms)
+        return (cx, cy)
+
+    def center(self):
+        if self.arena.grid[self.CENTER[1], self.CENTER[0]] == CellType.WALL:
+            self.CENTER = self.getCenter()
+        return self.CENTER
+        
+
     
     def randomCell(self) -> Tuple[int, int]:
         while True:
@@ -73,6 +184,19 @@ class Room:
             self.connections.append(room)
         if self not in room.connections:
             room.connections.append(self)
+
+    def allCells(self):
+        cells = []
+        gx = self.arena.grid
+        x0, y0 = self.x, self.y
+        x1, y1 = x0 + self.width, y0 + self.height
+
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                if gx[y, x]:    # walkable cell
+                    cells.append((x, y))
+
+        return cells
 
 class ArenaGenerator:
     def __init__(self, width: int = 80, height: int = 60, seed: Optional[int] = None):
@@ -103,11 +227,10 @@ class ArenaGenerator:
             colors = {
                 CellType.WALL.value: (0,0,0),           # Dark gray
                 CellType.FLOOR.value: (55,55,55),       # Light gray
-                CellType.DOOR.value: (139, 69, 19),          # Brown
-                CellType.STAIRS_UP.value: (70, 130, 180),    # Steel blue
-                CellType.STAIRS_DOWN.value: (25, 25, 112),   # Midnight blue
-                CellType.ENTRANCE.value: (0, 255, 0),        # Green
-                CellType.EXIT.value: (255, 0, 0)             # Red
+                CellType.CTVIS.value: [15, 26, 51],          # Brown
+                CellType.TVIS.value: [51,42,13],    # Steel blue
+                CellType.VIS.value: (100,100,100),   # Midnight blue
+
             }
         
         # Create surface
@@ -161,11 +284,10 @@ class ArenaGenerator:
         default_colors = {
                 CellType.WALL.value: (0,0,0),           # Dark gray
                 CellType.FLOOR.value: (55,55,55),       # Light gray
-                CellType.DOOR.value: (139, 69, 19),          # Brown
-                CellType.STAIRS_UP.value: (70, 130, 180),    # Steel blue
-                CellType.STAIRS_DOWN.value: (25, 25, 112),   # Midnight blue
-                CellType.ENTRANCE.value: (0, 255, 0),        # Green
-                CellType.EXIT.value: (255, 0, 0)             # Red
+                CellType.CTVIS.value: [15, 26, 51],          # Brown
+                CellType.TVIS.value: [51,42,13],    # Steel blue
+                CellType.VIS.value: (100,100,100),   # Midnight blue
+
             }
         
         # Fill surface
@@ -178,7 +300,7 @@ class ArenaGenerator:
                 # Use texture or color based on cell type
                 if cell_type == CellType.WALL.value and wall_texture:
                     surface.blit(wall_texture, (pixel_x, pixel_y))
-                elif cell_type == CellType.FLOOR.value and floor_texture:
+                elif cell_type != CellType.WALL.value and floor_texture:
                     surface.blit(random.choice(floor_texture), (pixel_x, pixel_y))
                 else:
                     # Fall back to solid colors
@@ -251,6 +373,10 @@ class ArenaGenerator:
         
         # Step 3: Create corridors between rooms
         self._create_corridors(corridor_width)
+
+        for x in self.rooms:
+            for i in range(random.randint(0,5)):
+                place_obstacle(x, max_tries=1)
         
         # Step 4: Add doors and special features
         #self._add_doors()

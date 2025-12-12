@@ -9,17 +9,16 @@ import time
 # Cell type constants for Numba compatibility
 CELL_WALL = 0
 CELL_FLOOR = 1
-CELL_DOOR = 2
-CELL_STAIRS_UP = 3
-CELL_STAIRS_DOWN = 4
-CELL_ENTRANCE = 5
-CELL_EXIT = 6
+CELL_CT = 2
+CELL_T = 3
+CELL_ALL = 4
+
 
 # Movement type constants
 MOVEMENT_GROUND = 0
-MOVEMENT_FLYING = 1
-MOVEMENT_CLIMBING = 2
-MOVEMENT_ETHEREAL = 3
+MOVEMENT_TERRORIST = 1
+MOVEMENT_COUNTERTERRORIST = 2
+
 
 # Heuristic type constants
 HEURISTIC_MANHATTAN = 0
@@ -30,62 +29,53 @@ HEURISTIC_DIAGONAL = 2
 class CellType(Enum):
     WALL = 0
     FLOOR = 1
-    DOOR = 2
-    STAIRS_UP = 3
-    STAIRS_DOWN = 4
-    ENTRANCE = 5
-    EXIT = 6
+    CTVIS = 2
+    TVIS = 3
+    VIS = 4
 
 class MovementType(Enum):
     GROUND = "ground"
-    FLYING = "flying"
-    CLIMBING = "climbing"
-    ETHEREAL = "ethereal"
+    TERRORIST = "terrorist"
+    COUNTERTERRORIST = "counterterrorist"
+
 
 @njit
 def get_movement_costs_ground():
     """Get movement costs for ground units."""
-    costs = np.full(7, np.inf, dtype=np.float32)
+    costs = np.full(5, 1.0, dtype=np.float32)
+    costs[CELL_WALL] = np.inf
+    return costs
+
+@njit
+def get_movement_costs_terrorist():
+    """Get movement costs for sneaking terrorist units."""
+    costs = np.full(5, np.inf, dtype=np.float32)
     costs[CELL_FLOOR] = 1.0
-    costs[CELL_DOOR] = 1.2
-    costs[CELL_STAIRS_UP] = 1.5
-    costs[CELL_STAIRS_DOWN] = 1.5
-    costs[CELL_ENTRANCE] = 1.0
-    costs[CELL_EXIT] = 1.0
+    costs[CELL_T] = 1.0
     return costs
 
 @njit
-def get_movement_costs_flying():
-    """Get movement costs for flying units."""
-    costs = np.ones(7, dtype=np.float32)
-    costs[CELL_WALL] = 2.0
+def get_movement_costs_counterterrorist():
+    """Get movement costs for sneaking counterterrorist units."""
+    costs = np.full(5, np.inf, dtype=np.float32)
+    costs[CELL_FLOOR] = 1.0
+    costs[CELL_CT] = 1.0
     return costs
 
-@njit
-def get_movement_costs_climbing():
-    """Get movement costs for climbing units."""
-    costs = np.ones(7, dtype=np.float32)
-    costs[CELL_DOOR] = 1.2
-    costs[CELL_WALL] = 3.0
-    return costs
 
-@njit
-def get_movement_costs_ethereal():
-    """Get movement costs for ethereal units."""
-    return np.ones(7, dtype=np.float32)
+
+
 
 @njit
 def get_movement_cost_for_type(cell_type: int, movement_type: int) -> float:
     """Get movement cost for specific cell and movement type."""
     if movement_type == MOVEMENT_GROUND:
         costs = get_movement_costs_ground()
-    elif movement_type == MOVEMENT_FLYING:
-        costs = get_movement_costs_flying()
-    elif movement_type == MOVEMENT_CLIMBING:
-        costs = get_movement_costs_climbing()
-    else:  # MOVEMENT_ETHEREAL
-        costs = get_movement_costs_ethereal()
-    
+    elif movement_type == MOVEMENT_TERRORIST:
+        costs = get_movement_costs_terrorist()
+    elif movement_type == MOVEMENT_COUNTERTERRORIST:
+        costs = get_movement_costs_counterterrorist()
+
     if cell_type < 0 or cell_type >= len(costs):
         return np.inf
     return costs[cell_type]
@@ -362,9 +352,9 @@ def get_reachable_area_numba(grid: np.ndarray, start_x: int, start_y: int,
 class Pathfinder:
     """Numba-accelerated pathfinding system maintaining API compatibility."""
     
-    def __init__(self, arena_grid: np.ndarray):
-        self.grid = arena_grid
-        self.height, self.width = arena_grid.shape
+    def __init__(self, app):
+        self.app = app
+        self.height, self.width = self.app.map.grid.shape
         
         # Cache for frequently used paths
         self.path_cache: Dict[Tuple[int, int, int, int, int], List[Tuple[int, int]]] = {}
@@ -373,9 +363,8 @@ class Pathfinder:
         # Movement type mapping
         self.movement_type_map = {
             MovementType.GROUND: MOVEMENT_GROUND,
-            MovementType.FLYING: MOVEMENT_FLYING,
-            MovementType.CLIMBING: MOVEMENT_CLIMBING,
-            MovementType.ETHEREAL: MOVEMENT_ETHEREAL
+            MovementType.TERRORIST: MOVEMENT_TERRORIST,
+            MovementType.COUNTERTERRORIST: MOVEMENT_COUNTERTERRORIST,
         }
         
         # Heuristic type mapping
@@ -409,7 +398,7 @@ class Pathfinder:
         if not self.is_valid_position(x, y):
             return float('inf')
         
-        cell_type = self.grid[y, x]
+        cell_type = self.app.map.grid[y, x]
         m_type = self.movement_type_map[movement_type]
         return get_movement_cost_for_type(cell_type, m_type)
     
@@ -423,7 +412,8 @@ class Pathfinder:
                   movement_type: MovementType = MovementType.GROUND,
                   allow_diagonal: bool = False,
                   heuristic_type: str = "manhattan",
-                  use_cache: bool = True) -> Optional[List[Tuple[int, int]]]:
+                  use_cache: bool = True,
+                  verbose = False) -> Optional[List[Tuple[int, int]]]:
         """
         Find optimal path using Numba-accelerated A* algorithm.
         
@@ -440,6 +430,10 @@ class Pathfinder:
         """
         # Convert enums to integers for Numba
         m_type = self.movement_type_map[movement_type]
+        if verbose:
+            print("TYPE:", movement_type)
+            print("MAP:", m_type)
+            #print("CT", get_movement_cost_for_type(2, int(movement_type)), "T", get_movement_cost_for_type(3, int(movement_type)))
         h_type = self.heuristic_map.get(heuristic_type, HEURISTIC_MANHATTAN)
         
         # Check cache
@@ -449,7 +443,7 @@ class Pathfinder:
         
         # Run Numba-accelerated pathfinding
         path = astar_numba_core(
-            self.grid,
+            self.app.map.grid,
             start[0], start[1],
             goal[0], goal[1],
             m_type,
@@ -463,6 +457,8 @@ class Pathfinder:
                 # Remove oldest entry
                 self.path_cache.pop(next(iter(self.path_cache)))
             self.path_cache[cache_key] = path.copy()
+
+        #print("Got back:", str(path[:10]), "...")
         
         return path
     
@@ -506,7 +502,7 @@ class Pathfinder:
         """Get all positions reachable within a certain distance."""
         m_type = self.movement_type_map[movement_type]
         reachable_list = get_reachable_area_numba(
-            self.grid, start[0], start[1], max_distance, m_type
+            self.app.map.grid, start[0], start[1], max_distance, m_type
         )
         return set(reachable_list)
     
@@ -517,13 +513,13 @@ class Pathfinder:
             return path
         
         m_type = self.movement_type_map[movement_type]
-        return smooth_path_numba(path, self.grid, m_type)
+        return smooth_path_numba(path, self.app.map.grid, m_type)
     
     def _has_line_of_sight(self, start: Tuple[int, int], end: Tuple[int, int], 
                           movement_type: MovementType) -> bool:
         """Check if there's a clear line of sight between two points."""
         m_type = self.movement_type_map[movement_type]
-        return check_line_of_sight(self.grid, start[0], start[1], end[0], end[1], m_type)
+        return check_line_of_sight(self.app.map.grid, start[0], start[1], end[0], end[1], m_type)
     
     def _reconstruct_path(self, node) -> List[Tuple[int, int]]:
         """Compatibility method - not used in Numba version."""
@@ -579,7 +575,7 @@ def test_pathfinding_performance():
     
     for i, (start, goal) in enumerate(test_cases):
         # Test different movement types
-        for movement_type in [MovementType.GROUND, MovementType.FLYING, MovementType.CLIMBING]:
+        for movement_type in [MovementType.GROUND, MovementType.TERRORIST]:
             path = pathfinder.find_path(start, goal, movement_type)
             if path:
                 print(f"Test {i+1} ({movement_type.value}): Path length = {len(path)}")

@@ -9,11 +9,7 @@ import time
 class CellType(Enum):
     WALL = 0
     FLOOR = 1
-    DOOR = 2
-    STAIRS_UP = 3
-    STAIRS_DOWN = 4
-    ENTRANCE = 5
-    EXIT = 6
+    CTVIS = 2
 
 @dataclass
 class PathNode:
@@ -34,9 +30,7 @@ class PathNode:
 class MovementType(Enum):
     """Different movement capabilities."""
     GROUND = "ground"        # Can walk on floor, through doors
-    FLYING = "flying"        # Can move over most terrain
-    CLIMBING = "climbing"    # Can climb walls (with penalty)
-    ETHEREAL = "ethereal"    # Can phase through walls
+    TERRORIST = "terrorist"
 
 class Pathfinder:
     """Highly optimized pathfinding system for 2D arenas."""
@@ -48,36 +42,19 @@ class Pathfinder:
         # Pre-calculate movement costs for different cell types
         self.movement_costs = {
             CellType.FLOOR.value: 1.0,
-            CellType.DOOR.value: 1.2,      # Slightly higher cost
-            CellType.STAIRS_UP.value: 1.5,
-            CellType.STAIRS_DOWN.value: 1.5,
-            CellType.ENTRANCE.value: 1.0,
-            CellType.EXIT.value: 1.0,
+            CellType.CTVIS.value: 1.0,
             CellType.WALL.value: float('inf')  # Impassable for ground units
         }
         
         # Different movement type costs
         self.movement_type_costs = {
             MovementType.GROUND: self.movement_costs.copy(),
-            MovementType.FLYING: {
+
+            MovementType.TERRORIST: {
                 CellType.FLOOR.value: 1.0,
-                CellType.DOOR.value: 1.0,
-                CellType.STAIRS_UP.value: 1.0,
-                CellType.STAIRS_DOWN.value: 1.0,
-                CellType.ENTRANCE.value: 1.0,
-                CellType.EXIT.value: 1.0,
-                CellType.WALL.value: 2.0  # Can fly over walls with penalty
+                CellType.CTVIS.value: 50.0,
+                CellType.WALL.value: float('inf')
             },
-            MovementType.CLIMBING: {
-                CellType.FLOOR.value: 1.0,
-                CellType.DOOR.value: 1.2,
-                CellType.STAIRS_UP.value: 1.0,  # Climbers love stairs
-                CellType.STAIRS_DOWN.value: 1.0,
-                CellType.ENTRANCE.value: 1.0,
-                CellType.EXIT.value: 1.0,
-                CellType.WALL.value: 3.0  # Can climb walls with high penalty
-            },
-            MovementType.ETHEREAL: {cell: 1.0 for cell in range(7)}  # Equal cost everywhere
         }
         
         # Pre-compute neighbor offsets

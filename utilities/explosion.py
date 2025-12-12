@@ -8,7 +8,7 @@ class Explosion:
         self.im = self.app.explosion[0]
         self.pos = v2(pos)
         if self.onScreen():
-            self.app.CAMERA.vibrate(10)
+            self.app.CAMERA.vibrate(damage/10)
         self.app.playPositionalAudio(self.app.explosionSound, self.pos)
         self.app.visualEntities.append(self)
         self.firer = firer
@@ -26,7 +26,7 @@ class Explosion:
                         if self.app.map.grid[ny, nx] == 0:
                             continue
 
-                        self.app.FireSystem.addCell(nx, ny, random.uniform(10,20), firer)
+                        self.app.FireSystem.addCell(nx, ny, random.uniform(3,10), firer)
 
 
         self.damage = damage

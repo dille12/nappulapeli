@@ -13,14 +13,15 @@ from itertools import combinations
 class ArenaWithPathfinding:
     """Extended arena generator with integrated pathfinding capabilities."""
     
-    def __init__(self, arena_generator: ArenaGenerator):
+    def __init__(self, app, arena_generator: ArenaGenerator):
         """Initialize with an existing ArenaGenerator instance."""
+        self.app = app
         self.arena_gen = arena_generator
         self.pathfinder = None
         
         # Initialize pathfinder if arena exists
         if hasattr(arena_generator, 'grid') and arena_generator.grid is not None:
-            self.pathfinder = Pathfinder(arena_generator.grid)
+            self.pathfinder = Pathfinder(app)
     
     def generate_arena_with_pathfinding(self, **kwargs):
         """Generate arena and initialize pathfinding system."""
@@ -101,6 +102,67 @@ class ArenaWithPathfinding:
 
         print("Combo found", best_combo, "iterations", iters)
         return best_combo
+    
+    
+
+    def find_detonation_sites(self, ct_spawn, t_spawn):
+        rooms = self.arena_gen.rooms
+
+        # Precompute centers for speed
+        room_centers = {r: r.center() for r in rooms}
+        ct_center = ct_spawn.center()
+        t_center = t_spawn.center()
+
+        # Pre-filter by distance to both spawns
+        # (Tune these thresholds as needed)
+        MIN_CT_DIST = 30    # example
+        MIN_T_DIST  = 70    # example
+
+        candidate_rooms = []
+        for r in rooms:
+            rc = room_centers[r]
+            if (math.dist(rc, ct_center) >= MIN_CT_DIST and
+                math.dist(rc, t_center)  >= MIN_T_DIST):
+                candidate_rooms.append(r)
+
+        # If not enough, fallback to all rooms
+        if len(candidate_rooms) < 3:
+            candidate_rooms = rooms
+
+        best_combo = None
+        best_min_dist = -1
+        iters = 0
+
+        for combo in combinations(candidate_rooms, 3):
+            # Compute the minimum important distance:
+            # - between the sites themselves
+            # - from each site to each spawn
+            dists = []
+
+            # site–site distances
+            for i in range(3):
+                for j in range(i+1, 3):
+                    d = math.dist(room_centers[combo[i]], room_centers[combo[j]])
+                    dists.append(d)
+
+            # site–spawn distances
+            for r in combo:
+                rc = room_centers[r]
+                d_ct = math.dist(rc, ct_center)
+                d_t  = math.dist(rc, t_center)
+                dists.append(d_ct)
+                dists.append(d_t)
+
+            min_dist = min(dists)
+            iters += 1
+
+            if min_dist > best_min_dist:
+                best_min_dist = min_dist
+                best_combo = combo
+
+        print("Site combo found:", best_combo, "iterations:", iters)
+        return best_combo
+
 
     
     def find_optimal_spawn_points(self, 

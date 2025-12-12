@@ -25,7 +25,7 @@ class FireSystem:
 
     def smoke_color(self, a):
         a = max(0.0, min(1.0, a))
-        return (40, 40, 40, int(a*180))
+        return (40, 40, 40, int(a*50))
     
     def to_screen(self, x, y):
         return int(x - self.app.cameraPosDelta.x), int(y - self.app.cameraPosDelta.y)

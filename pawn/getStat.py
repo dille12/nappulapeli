@@ -186,7 +186,7 @@ class getStat:
 
     @ult_multiplier
     def getSpeed(self):
-        s = self.speed * self.itemEffects["speedMod"] * (1 + 0.5*self.weapon.runOffset * self.itemEffects["tacticalSprintSpeed"])
+        s = self.speed * self.itemEffects["speedMod"] * (1 + 1.0*self.weapon.runOffset * self.itemEffects["tacticalSprintSpeed"])
         if self.revengeHunt():
             s *= 2
         return s

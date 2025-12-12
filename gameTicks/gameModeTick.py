@@ -237,7 +237,8 @@ class GlitchGamemodeDisplay:
             '1v1': 'Tapa vihu ja voita :D',
             'RACING': 'Calibrating Track Systems',
             'PUZZLE': 'Loading Brain Teasers',
-            'FINAL SHOWDOWN': "Voi paska :D"
+            'FINAL SHOWDOWN': "Voi paska :D",
+            "DETONATION": "Kyrnäri :D"
         }
         
         self.subtitle = subtitles.get(self.current_gamemode, 'Initializing Game')
