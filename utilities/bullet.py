@@ -33,12 +33,13 @@ def line_intersects_rect(x1, y1, x2, y2, rx, ry, rw, rh):
 
 
 class Bullet:
-    def __init__(self, owner, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = False, critChance = 0):
-        self.owner = owner
-        self.app = owner.app
+    def __init__(self, weapon, pos, angle, spread = 0.1, damage = 10, rocket = False, type = "normal", piercing = False, homing = False, critChance = 0):
+        self.weapon = weapon
+        self.owner = weapon.owner
+        self.app = self.owner.app
         self.pos = pos
         self.angle = angle + random.uniform(-spread, spread)
-        self.speed = 4000
+        self.speed = 6000
         self.damage = damage
         self.vel = v2(math.cos(self.angle), math.sin(self.angle))
         self.pastPos = []
@@ -56,6 +57,7 @@ class Bullet:
         self.piercing = piercing
         self.homing = homing
         self.target = None
+        
         self.turnRate = 3.0  # radians per second
         self.targetRefreshTimer = 0
         self.targetRefreshRate = 0.05  # seconds
@@ -147,7 +149,7 @@ class Bullet:
                 self.app.ENTITIES.remove(self)
 
                 if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.owner, doFire=True)
+                    Explosion(self.app, self.pos, firer = self.weapon, damage = self.damage, doFire=True)
 
                 return
         except:
@@ -193,9 +195,9 @@ class Bullet:
                 damage = self.damage 
 
                 if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.owner, damage = self.damage, doFire=True)
+                    Explosion(self.app, self.pos, firer = self.weapon, damage = self.damage, doFire=True)
                 else:
-                    x.takeDamage(damage, fromActor = self.owner, typeD = self.type, bloodAngle = self.angle)
+                    x.takeDamage(damage, fromActor = self.weapon, typeD = self.type, bloodAngle = self.angle) # TEST 
                 
                 #if x.onScreen():
                 if self.crit:

@@ -552,7 +552,7 @@ class Game(valInit):
             polygon = [p1 - self.cameraPosDelta, p2 - self.cameraPosDelta]
             p1InFrame = 0 <= polygon[0][0] <= self.res[0] and 0 <= polygon[0][1] <= self.res[1]
             p2InFrame = 0 <= polygon[1][0] <= self.res[0] and 0 <= polygon[1][1] <= self.res[1]
-            if not p1InFrame and not p2InFrame:
+            if not p1InFrame and not p2InFrame: 
                 continue
             maxDiff = 0
             for x in range(2):
@@ -568,7 +568,7 @@ class Game(valInit):
     def genLevel(self):
 
         
-        i = infoBar(self, "Generating level")
+        
         if self.GAMEMODE == "1v1":
             self.map = ArenaGenerator(50, 40)
             self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=3)
@@ -590,7 +590,7 @@ class Game(valInit):
         print(self.map.grid.shape)
 
         print("Rooms", len(self.map.rooms))
-        i.text ="Finding spawn points"
+        self.loadInfo.text = "Finding spawn points"
         if self.GAMEMODE == "DETONATION":
             self.teamSpawnRooms = self.arena.find_spawn_rooms(2)
         else:
@@ -618,7 +618,7 @@ class Game(valInit):
         else:
             self.commonRoom = max(self.map.rooms, key=lambda room: room.area)
 
-
+        self.loadInfo.text = "Making walls"
         self.corners, midpoints = self.findCorners(self.map.grid)
         walls = self.findWalls(self.corners, midpoints)
         self.walls = []
@@ -628,7 +628,8 @@ class Game(valInit):
         
 
         self.map.get_spawn_points()
-        i.text ="Drawing the map"
+        self.loadInfo.text = "Rendering"
+
         
 
         
@@ -642,8 +643,11 @@ class Game(valInit):
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
         
         self.SITES = []
-        if self.GAMEMODE == "DETONATION":
 
+
+
+        if self.GAMEMODE == "DETONATION":
+            self.loadInfo.text = "Handling detonation"
             self.originalGrid = self.map.grid.copy()
 
             #self.compute_spawnroom_distances()
@@ -680,8 +684,7 @@ class Game(valInit):
             print("SKULL CREATED!")
         elif self.GAMEMODE == "DETONATION":
             self.skull = Bomb(self, self.allTeams[-1].getDetonationSpawnRoom().randomCell())
-        i.text ="Map done!"
-        i.killed = True
+        self.loadInfo.text = "Map done"
         
         self.mapCreated = True
 
@@ -756,6 +759,18 @@ class Game(valInit):
 
     def cell2Pos(self, cell):
         return v2(cell) * self.tileSize + [self.tileSize/2, self.tileSize/2]
+    
+
+    def initiationWrapper(self):
+        self.loadInfo = infoBar(self, "Starting game")
+        try:
+            self.initiateGame()
+            self.loadInfo.text = "Done!"
+            self.loadInfo.killed = True
+        except:
+            self.loadInfo.text = "ERRORED!!!"
+            raise RuntimeError
+
 
     def initiateGame(self):
 
@@ -788,7 +803,7 @@ class Game(valInit):
                         x.allied.append(y)
                         print(x.i, "allied with", y.i)
 
-
+        self.loadInfo.text = "Generating level"
         self.genLevel()
         self.resetLevelUpScreen()
     
@@ -821,9 +836,9 @@ class Game(valInit):
         self.midMusicIndex = 0
 
         self.AUDIOVOLUME = 0.3
-
+        
         if self.GAMEMODE == "FINAL SHOWDOWN":
-
+            self.loadInfo.text = "Making Bablo"
             self.BLOCKMUSIC = True
 
             babloPath = "boss/bablo.png"
@@ -858,10 +873,12 @@ class Game(valInit):
         for x in self.allTeams:
             x.refreshColor()
 
-
+        if self.giveWeapons:
+            self.giveAllWeapons()
+        
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
 
-        time.sleep(max(0, 5 - (time.time() - self.now)))
+        #time.sleep(max(0, 5 - (time.time() - self.now)))
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -900,7 +917,6 @@ class Game(valInit):
             return
 
         if self.crackAppearTimes[self.crackIndex] < timeIntoMusic:
-            print("CRACK!")
             P = self.commonRoom.center()
             POS = v2(P) * self.tileSize + [random.uniform(-1 * self.tileSize, 1*self.tileSize), random.uniform(-1 * self.tileSize, 1*self.tileSize)]
             for i in range(random.randint(1,6)):
@@ -1140,7 +1156,12 @@ class Game(valInit):
         if abs(angleVel) < 1e-6:  # Avoid division by zero
             decelarationTicks = 0
         else:
-            decelarationTicks = abs(angleVel / gainFactor)
+            try:
+                decelarationTicks = abs(angleVel / gainFactor)
+            except:
+                print("VITUN OUTO BUGI")
+                print(angleVel, gainFactor)
+                decelarationTicks = 0
         # Your original calculation - distance covered while decelerating
         distanceDecelerating = angleVel * decelarationTicks - 0.5 * dir * gainFactor * decelarationTicks**2
         
@@ -1148,8 +1169,16 @@ class Game(valInit):
         
         return acceleratingMod * gainFactor
     
+    def toggleStressTest(self):
+        self.STRESSTEST = not self.STRESSTEST
+        self.log(f"STRESS: {self.STRESSTEST}")
+
+    
     def getAngleFrom(self, fromPoint, toPoint):
-        return math.radians(v2([0,0]).angle_to(toPoint - fromPoint)) 
+        return math.radians(v2([0,0]).angle_to(v2(toPoint) - v2(fromPoint))) 
+    
+    def getDistFrom(self, fromPoint, toPoint):
+        return math.sqrt((fromPoint[0] - toPoint[0])**2 + (fromPoint[1] - toPoint[1])**2)
     
     def rangeDegree(self, angle):
         return angle % 360
@@ -1302,6 +1331,12 @@ class Game(valInit):
                 if self.GAMEMODE == "DETONATION":
                     l = [x for x in self.pawnHelpList.copy() if not x.team.detonationTeam]
                     e = sorted(l, key=lambda p: p.onCameraTime)
+                elif self.GAMEMODE == "ODDBALL":
+                    if self.objectiveCarriedBy:
+                        l = [x for x in self.pawnHelpList.copy() if x.team == self.objectiveCarriedBy.team]
+                    else:
+                        l = [x for x in self.pawnHelpList.copy() if not x.NPC]
+                    e = sorted(l, key=lambda p: p.onCameraTime)
                 else:
                     l = [x for x in self.pawnHelpList.copy() if not x.NPC]
                     e = sorted(l, key=lambda p: p.onCameraTime)
@@ -1318,8 +1353,16 @@ class Game(valInit):
                 self.cameraLinger = 1
                 
             else:
-                self.cameraPos = self.cameraLock.pos - self.res/2
-                self.cameraLock.onCameraTime += self.deltaTime
+
+                if not self.cameraLock.target and self.cameraLock.currentlyAliveNade:
+                    self.cameraPos = self.cameraLock.currentlyAliveNade.pos - [0, self.cameraLock.currentlyAliveNade.verticalPos] - self.res/2
+                    #self.cameraLinger = 0.4
+
+                else:
+                    self.cameraPos = self.cameraLock.pos - self.res/2
+                    self.cameraLock.onCameraTime += self.deltaTime
+
+
                 if self.cameraLock.target:
                     self.cameraIdleTime = 0
                     if not self.pendingLevelUp and not self.VICTORY:
@@ -1752,6 +1795,9 @@ class Game(valInit):
 
     def playPositionalAudio(self, audio, pos = None):
 
+        if self.STRESSTEST:
+            return
+
         if isinstance(audio, list):
             audio = random.choice(audio)
 
@@ -1780,7 +1826,7 @@ class Game(valInit):
 
     def initAudioEngine(self):
         self.log("Initializing audio engine...")
-        self.playPositionalAudio("audio/shit.wav", v2(random.uniform(-3000, 3000), random.uniform(-3000, 3000)))
+        self.playPositionalAudio("audio/flash.wav", v2(random.uniform(-3000, 3000), random.uniform(-3000, 3000)))
         self.log("Audio engine initialized.")
 
     def notify(self, text, color = [255,255,255]):
@@ -1935,8 +1981,11 @@ class Game(valInit):
             pygame.display.update()
             self.t1 = time.time() - tickStartTime
             
-
-            self.deltaTimeR = self.clock.tick(self.MAXFPS) / 1000
+            if self.STRESSTEST:
+                self.clock.tick()
+                self.deltaTimeR = 1/self.FIXED_FRAMERATE
+            else:
+                self.deltaTimeR = self.clock.tick(self.MAXFPS) / 1000
             self.t2 = time.time() - tickStartTime
 
 

@@ -11,7 +11,11 @@ class Explosion:
             self.app.CAMERA.vibrate(damage/10)
         self.app.playPositionalAudio(self.app.explosionSound, self.pos)
         self.app.visualEntities.append(self)
-        self.firer = firer
+        self.weapon = firer
+
+        s = random.choice(self.app.stains)
+        pos = self.pos - v2(s.get_size())/2
+        self.app.MAP.blit(s, pos)
 
         maxDist = (1 + (damage/125)*0.05) * 500
 
@@ -23,10 +27,13 @@ class Explosion:
                         nx = cx + dx
                         ny = cy + dy
 
-                        if self.app.map.grid[ny, nx] == 0:
+                        if 0 <= ny < self.app.map.grid.shape[0] and 0 <= nx < self.app.map.grid.shape[1]:
+                            if self.app.map.grid[ny, nx] == 0:
+                                continue
+                        else:
                             continue
 
-                        self.app.FireSystem.addCell(nx, ny, random.uniform(3,10), firer)
+                        self.app.FireSystem.addCell(nx, ny, random.uniform(3,10), self.weapon)
 
 
         self.damage = damage
@@ -36,7 +43,7 @@ class Explosion:
             dist = 1 - (self.pos.distance_to(x.pos)/maxDist)
             if dist > 0:
                 dam = dist * self.damage
-                x.takeDamage(dam, fromActor = self.firer, typeD = "explosion")
+                x.takeDamage(dam, fromActor = self.weapon, typeD = "explosion")
         
         
 

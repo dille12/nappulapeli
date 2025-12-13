@@ -11,6 +11,7 @@ from utilities.bullet import Bullet, line_intersects_rect
 from particles.laser import ThickLaser
 from utilities.explosion import Explosion
 import io, base64
+from utilities.grenade import Grenade, GrenadeType
 def surface_to_base64(surface: pygame.Surface) -> str:
     buf = io.BytesIO()
     pygame.image.save(surface, buf, "PNG")
@@ -20,6 +21,10 @@ def surface_to_base64(surface: pygame.Surface) -> str:
 
 def angle_diff(a, b):
     diff = (b - a + 180) % 360 - 180
+    return diff
+
+def angle_diff_radians(a,b):
+    diff = (b - a + math.pi) % (2*math.pi) - math.pi
     return diff
 
 def ease_in_out(t):
@@ -120,25 +125,27 @@ class Weapon:
         self.owner = owner
         self.typeD = typeD
         self.price = price
-        
 
-        
+
+        self.weaponIsGrenade = fireFunction == Weapon.grenade
+        if self.weaponIsGrenade:
+            print("IS GRENADE", self.name)
 
         if not precomputedImage:
             self.image = pygame.image.load(image_path).convert_alpha()
             if image_path == "texture/ak47.png":
                 self.image = trim_surface(self.image)
-            self.image = pygame.transform.scale_by(self.image, (150*sizeMult) / self.image.get_width())  # Scale the image to a suitable size
+
+            if self.image.get_width() == 16 and self.image.get_height() == 16:
+                self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
+            else:
+                self.image = pygame.transform.scale_by(self.image, (150*sizeMult) / self.image.get_width())  # Scale the image to a suitable size
         else:
             self.image = precomputedImage
 
 
         self.shopIcon = pygame.transform.scale_by(self.image.copy(), 100 / self.image.get_height()) 
         self.shopIcon = trim_surface(self.shopIcon)
-
-
-        if image_path == "texture/skull.png" or image_path == "texture/bomb.png":
-            self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
 
         self.imageR = pygame.transform.flip(self.image.copy(), True, False)
 
@@ -180,6 +187,10 @@ class Weapon:
         self.ROTATION = 0
         self.ROTATIONVEL = 0
         self.barrelOffset = v2(75, 0) * sizeMult
+
+
+        self.grenadeThrowI = 0
+        self.TARGETROTATION = 0
 
         self.lazerActive = False
         self.lazerTimer = 0
@@ -250,25 +261,18 @@ class Weapon:
         #    self.app.reloadSound.play()
 
 
-    
-    
-
-    
-
-
     def addRecoil(self, amount):
         self.recoil += amount / self.owner.itemEffects["recoilMult"]
 
     
     def skull(self):
-        self.magazine = self.getMaxCapacity()
+        self.magazine = self.owner.getMaxCapacity()
         return
     
     
 
     def getMeleeTime(self):
         return 0.5 / max(self.owner.getHandling(), 0.1)
-    
     
 
     def tryToMelee(self):
@@ -277,10 +281,10 @@ class Weapon:
         self.meleeI = self.getMeleeTime()
         t = self.owner.target.pos.copy()
 
-        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self.owner)
+        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self, typeD="melee")
 
         if self.owner.itemEffects["detonation"]:
-            Explosion(self.app, t, self.owner, 100*self.owner.itemEffects["meleeDamage"])
+            Explosion(self.app, t, self, 100*self.owner.itemEffects["meleeDamage"])
 
 
         self.app.playPositionalAudio(self.app.meleeSound, self.owner.pos)
@@ -396,7 +400,7 @@ class Weapon:
                     if collides:
                         x.takeDamage(
                             self.owner.getDamage() * self.owner.getRoundsPerSecond(),  # fixed time step damage
-                            fromActor=self.owner,
+                            fromActor=self,
                             typeD="energy",
                             bloodAngle=-math.radians(self.ROTATION)
                         )
@@ -432,8 +436,10 @@ class Weapon:
         homing = self.owner.itemEffects["homing"]
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
 
+        r = self.adjustToAccuracy(r)
+
         for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.4)
         self.addRecoil(3)
 
@@ -509,9 +515,28 @@ class Weapon:
 
         pierce = self.owner.itemEffects["piercing"]
         homing = self.owner.itemEffects["homing"]
+
+        r = self.adjustToAccuracy(r)
+
         for x in range(10*self.owner.itemEffects["multiShot"]):
-            Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.15)
+
+
+    def grenade(self):
+        self.grenadeThrowI += self.app.deltaTime
+        if self.grenadeThrowI >= 1:
+
+            if self.name == "Flashbang":
+                gType = GrenadeType.FLASH
+            elif self.name == "Frag Grenade":
+                gType = GrenadeType.FRAG
+
+            Grenade(self.app, self.owner.getOwnCell(), self.owner.grenadePos, self.image, self.owner, grenadeType=gType)
+            self.grenadeThrowI = 0
+            self.owner.grenadePos = None
+            self.app.playPositionalAudio("audio/nadeThrow.wav", self.owner.pos)
+        pass
 
     def AKshoot(self, sounds = None, critChance = 0, recoil = 0.25):
         
@@ -534,12 +559,27 @@ class Weapon:
         for x in range(self.owner.itemEffects["multiShot"]):
             self.createBullet(recoil, critChance = critChance)
 
+    def adjustToAccuracy(self, r):
+        if not self.owner.target:
+            return r
+        accuracy = self.owner.itemEffects["accuracy"] - 1
+        accuracy = min(max(accuracy, -1), 1)
+        actualR = self.app.getAngleFrom(self.defaultPos, self.owner.target.pos)
+
+        diff = angle_diff_radians(actualR, r)
+        r = r - accuracy * diff
+
+        return r
+
     def createBullet(self, recoil, critChance = 0):
         r = math.radians(-self.ROTATION)
         pierce = self.owner.itemEffects["piercing"]
         homing = self.owner.itemEffects["homing"]
-        Bullet(self.owner, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, 
-               piercing=pierce, homing=homing, critChance = critChance) #-math.radians(self.FINALROTATION)
+
+        r = self.adjustToAccuracy(r)
+
+        Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, 
+               piercing=pierce, homing=homing, critChance = critChance * self.owner.itemEffects["accuracy"]) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
 
 
@@ -553,6 +593,9 @@ class Weapon:
         return True
 
     def canShoot(self):
+
+        
+
         if self.meleeing(): return False
      
         if self.isReloading(): return False
@@ -564,6 +607,8 @@ class Weapon:
         if self.fireTick > 0:
             self.fireTick -= self.app.deltaTime
             return False
+        
+        if self.owner.flashed > 0: return True
 
         if not self.pointingAtTarget(): return False
 
@@ -651,6 +696,11 @@ class Weapon:
         if self.owner.target and not self.isReloading():
             r = math.degrees(self.app.getAngleFrom(self.defaultPos, self.owner.target.pos))
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
+
+        elif self.weaponIsGrenade and self.owner.grenadePos:
+            r = math.degrees(self.app.getAngleFrom(self.defaultPos, v2(self.owner.grenadePos) * self.app.tileSize))
+            self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
+
         else:
             if self.raiseWeaponWhileRunning():
                 if self.name not in ["Skull", "Glock", "USP-S", "Desert Eagle"]:
@@ -693,6 +743,8 @@ class Weapon:
         
         rotation = self.app.rangeDegree(rotation)
 
+        
+
         RGAIN = 1000 * self.owner.getHandling()
         RGAIN = max(1, RGAIN)
 
@@ -706,9 +758,14 @@ class Weapon:
             RGAIN,               # Gain factor - acceleration rate (no deltaTime here)
             DIFF  # Angle difference
         )
-
+        if self.owner.flashed > 0:
+            if self.ROTATIONVEL < 720:
+                self.ROTATIONVEL += RGAIN * self.app.deltaTime
+            else:
+                self.ROTATIONVEL -= RGAIN * self.app.deltaTime
+        else:
         # Apply the acceleration to velocity
-        self.ROTATIONVEL += rotation_factor * self.app.deltaTime
+            self.ROTATIONVEL += rotation_factor * self.app.deltaTime
 
         # Apply velocity to position
         self.ROTATION += self.ROTATIONVEL * self.app.deltaTime

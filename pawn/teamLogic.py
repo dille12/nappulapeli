@@ -6,6 +6,16 @@ if TYPE_CHECKING:
 from utilities.building import Building
 import numpy as np
 import random
+
+class NadePos:
+    def __init__(self, pos):
+        self.pos = pos
+        self.lifetime = 4
+
+    def equal(self, pos):
+        return self.pos[0] == pos[0] and self.pos[1] == pos[1]
+
+
 class Team:
     def __init__(self, app: "Game", i):
         self.pawns = []
@@ -18,6 +28,11 @@ class Team:
         self.enslavedTo = self.i
         self.buildingsToBuild = 5
         self.bombCarrier = None
+
+        self.utilityPos = {
+            "smoke": [],
+            "aggr": [],
+        }
 
         self.planTimer = 30
         self.plan = {"currentAction": "probe",
@@ -38,11 +53,10 @@ class Team:
         if self.app.objectiveCarriedBy and self.plan["site"] and self.app.objectiveCarriedBy.getOwnCell() == self.plan["site"].plantingSite:
             print("BOMB PLANTED")
 
-            
-            
             self.app.skull.planted = True
             self.app.skull.plantedAt = self.plan["site"]
             self.app.skull.planter = self.app.objectiveCarriedBy
+            self.app.allTeams[0].plan["site"] = self.plan["site"]
 
             self.app.objectiveCarriedBy.dropSkull()
 
@@ -119,8 +133,8 @@ class Team:
                 if self.plan["currentAction"] == "prepare":
                     p = self.getDetonationPawns()
                     l = [x.attackInPosition() for x in p]
-                    l2 = [x.target for x in p]
-                    if all(l) or any(l2):
+                    #l2 = [x.target for x in p]
+                    if all(l):
                         self.planTimer = 0
 
             else:
@@ -135,9 +149,9 @@ class Team:
 
                 if self.plan["currentAction"] == "prepare":
                     p = self.getDetonationPawns()
-                    l = [x.attackInPosition() for x in p]
-                    l2 = [x.target for x in p]
-                    if all(l) or any(l2):
+                    l = [x.attackInPosition() or x.isBombCarrier() for x in p]
+                    #l2 = [x.target for x in p]
+                    if all(l):
                         self.planTimer = 0
                 
             else:
@@ -154,8 +168,17 @@ class Team:
                 self.plan["currentAction"] = "prepare"
                 self.planTimer = 45
                 self.plan["site"] = random.choice(SITES)
+
+                
+
             elif self.plan["currentAction"] == "prepare":
                 self.plan["currentAction"] = "execute"
+
+                for i in range(5):
+                    self.addNadePos(self.plan["site"].room.randomCell())
+
+                print("Grenade positions", self.utilityPos["aggr"])
+
                 self.planTimer = 30
             elif self.plan["currentAction"] == "execute":
                 self.plan["currentAction"] = "probe"
@@ -165,12 +188,53 @@ class Team:
                 if x.team.detonationTeam == self.detonationTeam:
                     x.pickWalkingTarget()
 
+    def addNadePos(self, pos):
+        self.utilityPos["aggr"].append(NadePos(pos))
+
+    def getRandomNadePos(self):
+        if not self.utilityPos["aggr"]:
+            return
+        return random.choice(self.utilityPos["aggr"]).pos
+
+    def deleteNadePos(self, delPos):
+        for obj in self.utilityPos["aggr"]:
+            if obj.equal(delPos):
+                self.utilityPos["aggr"].remove(obj)
+                break
+
+    def tickNadePos(self):
+        dt = self.app.deltaTime
+        to_remove = []
+        for obj in self.utilityPos["aggr"]:
+            obj.lifetime -= dt
+            if obj.lifetime <= 0:
+                to_remove.append(obj)
+        for obj in to_remove:
+            self.utilityPos["aggr"].remove(obj)
+            
+
     def getGodTeam(self):
+
+        if self.app.GAMEMODE != "DETONATION":
+            return self
+
         if self.detonationTeam:
             return self.app.allTeams[0]
         else:
             return self.app.allTeams[-1]
-         
+        
+
+    def getPawns(self):
+        if self.app.GAMEMODE == "DETONATION":
+            p = []
+            for x in self.app.allTeams:
+                if x.detonationTeam == self.detonationTeam:
+                    p += x.pawns
+            return p
+        else:
+            return self.pawns
+
+          
 
 
     def getDetonationSpawnRoom(self):

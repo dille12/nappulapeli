@@ -211,6 +211,10 @@ class PawnBehaviour:
 
         elif t.plan["currentAction"] == "probe":
 
+            if self.isBombCarrier() and self.carryingSkull():
+                self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
+                return
+
             for x in self.app.SITES:
                 if x.inhabited[0] > x.inhabited[1]:
                     self.getRouteTo(endPosGrid=x.room.randomCell())
@@ -234,13 +238,15 @@ class PawnBehaviour:
             if self.carryingSkull():
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
             else:
-
                 site = t.plan["site"]
-                self.getRouteTo(endPosGrid=site.room.randomCell())
+                if site:
+                    self.getRouteTo(endPosGrid=site.room.randomCell())
 
     def getAttackPosition(self):
         t = self.team.getGodTeam()
         site = t.plan["site"]
+        if not site:
+            return
         l = self.team.getDetonationPawns()
 
         index = l.index(self)
@@ -251,6 +257,10 @@ class PawnBehaviour:
             return site.attackPositionsT[index % len(site.attackPositionsT)]
     
     def attackInPosition(self):
+
+        if not self.getAttackPosition():
+            return False
+
         return self.getOwnCell()[0] == self.getAttackPosition()[0] and self.getOwnCell()[1] == self.getAttackPosition()[1]
 
     def pickWalkingTarget(self):
@@ -435,7 +445,7 @@ class PawnBehaviour:
                     self.walkTo = None
                     self.stepI = 0  # Reset step index when reaching the target
 
-            if (self.route and len(self.route) > 5) and self.app.GAMEMODE != "DETONATION":
+            if (self.route and len(self.route) > 5): # and self.app.GAMEMODE != "DETONATION"
                 c = self.getOwnCell()
                 r1x, r1y = self.route[0]
                 r2x, r2y = self.route[1]
@@ -450,11 +460,16 @@ class PawnBehaviour:
     def shoot(self):
 
         if self.dualwield:
-            l = [self.weapon, self.dualWieldWeapon]
+            l = [self.currWeapon, self.dualWieldWeapon]
         else:
-            l = [self.weapon]
+            l = [self.currWeapon]
 
         for WEAPON in l:
+
+            if WEAPON.weaponIsGrenade or self.flashed > 0:
+                #print("Forcing tick")
+                WEAPON.fireFunction(WEAPON)
+                continue
 
             s = WEAPON.lazerActive
             WEAPON.lazerActive = False

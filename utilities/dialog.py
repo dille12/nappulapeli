@@ -29,6 +29,7 @@ def onKill(ownName, killedName: str):
         "Ja TOSTA!",
         "Ilmanen",
         "Yritätsä ees?",
+        "War is hell, bozo."
 
         
     ])

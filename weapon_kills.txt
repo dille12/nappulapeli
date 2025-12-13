@@ -1,0 +1,16 @@
+Desert Eagle 474
+SMG 391
+E-BR 334
+Sniper 332
+Frag Grenade 227
+Rocket Launcher 226
+BFG 223
+EMG 198
+Machine Gun 161
+FAMAS 155
+Shotgun 146
+Glock 132
+AK-47 67
+USP-S 45
+Skull 18
+Flashbang 5

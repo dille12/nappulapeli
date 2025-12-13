@@ -99,6 +99,22 @@ def collapse_to_floor(surface, twist_angle=40, flatten=0.4):
     twisted = pygame.transform.rotate(flattened, twist_angle)
     return twisted
 
+def brighten_surface(surface, gain=2.5, offset=40):
+    arr = pygame.surfarray.pixels3d(surface).copy()
+    alpha = pygame.surfarray.pixels_alpha(surface).copy()
+
+    arr = arr.astype(np.float32)
+    arr = arr * gain + offset
+    np.clip(arr, 0, 255, out=arr)
+
+    arr = arr.astype(np.uint8)
+
+    result = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+    pygame.surfarray.blit_array(result, arr)
+    pygame.surfarray.pixels_alpha(result)[:, :] = alpha
+    return result
+
+
 def colorize_to_blood(surface):
     arr = pygame.surfarray.pixels3d(surface).copy()
     alpha = pygame.surfarray.pixels_alpha(surface).copy()

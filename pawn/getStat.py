@@ -32,8 +32,8 @@ class getStat:
             "weaponReload" : 1.0,
             "weaponFireRate" : 1.0,
             "weaponAmmoCap" : 1.0,
-            "weaponRange":1.0,
-            "accuracy":1.0,
+            "weaponRange": 1.0,
+            "accuracy": 1.0,
             "multiShot" : 1,
             "recoilMult": 1.0,
 
@@ -59,7 +59,7 @@ class getStat:
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": False,
+            "talking": True,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,

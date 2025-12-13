@@ -850,3 +850,69 @@ class ParticleSystem:
             particles.append(Particle(self.app, x, y, **particle_kwargs))
         
         return particles
+    
+    def create_flashbang(self, x: float, y: float, **kwargs):
+        particles = []
+
+        # 1) Core white flash (screen-burn)
+        for _ in range(2):
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=random.uniform(-0.5, 0.5),
+                vel_y=random.uniform(-0.5, 0.5),
+                lifetime=random.randint(20, 25),
+                start_color=(255, 255, 255, 255),
+                end_color=(255, 255, 255, 0),
+                start_size=random.uniform(20, 30),
+                end_size=random.uniform(100, 200),
+                shape=ParticleShape.CIRCLE,
+                blend_mode=BlendMode.ADD,
+                size_curve=EasingType.EASE_OUT,
+                **kwargs
+            ))
+
+        # 2) Radial shock rays
+        for i in range(24):
+            angle = (i / 24) * 2 * math.pi
+            speed = random.uniform(100, 180)
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=math.cos(angle) * speed,
+                vel_y=math.sin(angle) * speed,
+                lifetime=random.randint(30, 40),
+                start_color=(255, 255, 255, 220),
+                end_color=(255, 255, 255, 0),
+                start_size=random.uniform(40, 70),
+                end_size=0,
+                shape=ParticleShape.LINE,
+                rotation=angle,
+                blend_mode=BlendMode.ADD,
+                friction=0.85,
+                **kwargs
+            ))
+
+        # 3) Hot sparks
+        for _ in range(20):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(6, 14)
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=math.cos(angle) * speed,
+                vel_y=math.sin(angle) * speed,
+                lifetime=random.randint(20, 40),
+                start_color=(255, 220, 120, 255),
+                end_color=(120, 60, 20, 0),
+                start_size=random.uniform(2, 4),
+                end_size=0,
+                shape=ParticleShape.CIRCLE,
+                gravity=0.2,
+                friction=0.92,
+                trail_length=3,
+                trail_alpha_decay=0.6,
+                blend_mode=BlendMode.ADD,
+                **kwargs
+            ))
+
+
+
+        return particles

@@ -52,7 +52,7 @@ def tickShops(self: "Game"):
 
 
 def goToGame(self: "Game"):
-    t = threading.Thread(target=self.initiateGame)
+    t = threading.Thread(target=self.initiationWrapper)
     t.daemon = True
     t.start()
     self.GAMESTATE = "loadingScreen"

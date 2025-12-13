@@ -19,7 +19,7 @@ class Site:
         tStartPos = self.app.allTeams[-1].getDetonationSpawnRoom().randomCell()
 
         self.visibilityCT = self.getVis(ctStartPos)
-        self.visibilityT = self.getVis(tStartPos)
+        self.visibilityT = self.getVis()
         #print("Site visibility:", self.visibilityCT)
 
         for x,y in self.visibilityCT:
@@ -49,19 +49,28 @@ class Site:
         tStartPos = self.app.allTeams[-1].getDetonationSpawnRoom().randomCell()
 
         self.attackPositionsT = self.getAttackPositions(self.visibilityCT, tStartPos, num_cells=15, movementType = MovementType.TERRORIST)
+        #if not self.attackPositionsT:
+        #    self.attackPositionsT = self.getAttackPositions(self.visibilityCT, tStartPos, num_cells=15, movementType = MovementType.GROUND)
+        #    print("No positions for T. Falling back to default")
+
         self.attackPositionsCT = self.getAttackPositions(self.visibilityT, ctStartPos, num_cells=15, movementType= MovementType.COUNTERTERRORIST)
+        #if not self.attackPositionsT:
+        #    self.attackPositionsCT = self.getAttackPositions(self.visibilityT, ctStartPos, num_cells=15, movementType= MovementType.GROUND)
+        #    print("No positions for CT. Falling back to default")
+
         print("CT:", len(self.attackPositionsCT), "T", len(self.attackPositionsT))
 
-    def getVis(self, routeFrom):
+    def getVis(self, routeFrom = None):
         cells = self.room.allCells()
         vis = set()
         get_vis = self.app.map.get_visible_cells
 
 
         #ctStartPos = self.app.allTeams[0].getDetonationSpawnRoom().center()
-        route = self.app.arena.pathfinder.find_path(routeFrom, self.room.randomCell())
+        if routeFrom:
+            route = self.app.arena.pathfinder.find_path(routeFrom, self.room.randomCell())
 
-        cells += route
+            cells += route
 
         for x, y in cells:
             for cx, cy in get_vis(x, y, 15):
@@ -105,13 +114,29 @@ class Site:
 
         return cells
 
+
+    def getRoomsBetween(self, routeFrom):
+        route = self.app.arena.pathfinder.find_path(self.room.randomCell(), routeFrom, movement_type=MovementType.GROUND)
+        rooms = []
+        for c in route:
+            for r in self.app.map.rooms:
+                if r in rooms:
+                    continue
+                if r.contains(c[0], c[1]):
+                    rooms.append(r)
+        
+        cells = []
+        for r in rooms:
+            cells += r.allCells()
+        return cells
+
     
     def getAttackPositions(self, vis, routeFrom, num_cells=50, movementType = MovementType.GROUND):
-        all_cells = self.get_two_hop_connected_cells()
+        all_cells = self.getRoomsBetween(routeFrom)
 
         #if len(all_cells) <= num_cells:
         #    return all_cells
-        random.shuffle(all_cells)
+        #random.shuffle(all_cells)
         possible = []
         for pos in all_cells:
 

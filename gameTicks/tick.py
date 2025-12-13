@@ -103,6 +103,11 @@ def battleTick(self: "Game"):
         if self.GAMEMODE == "FINAL SHOWDOWN":
             if self.currMusic == 1:
                 self.roundTime -= self.deltaTime
+
+        elif self.GAMEMODE == "DETONATION":
+            if not self.skull.planted:
+                self.roundTime -= self.deltaTime
+
         else:
 
             self.roundTime -= self.deltaTime
@@ -152,6 +157,9 @@ def battleTick(self: "Game"):
 
         self.allTeams[0].tickDetonation()
         self.allTeams[-1].tickDetonation()
+
+    for x in self.allTeams:
+        x.tickNadePos()
 
     for x in entities_temp:
         if hasattr(x, "itemEffects"):
@@ -209,7 +217,7 @@ def battleTick(self: "Game"):
     #self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
     #self.cameraPosDelta += self.cameraVel * self.deltaTimeR
 
-    self.CAMERA.update(self.cameraPos, self.deltaTimeR, smooth_time=0.25)
+    self.CAMERA.update(self.cameraPos, self.deltaTimeR, smooth_time=0.1)
     self.cameraPosDelta = self.CAMERA.pos.copy()
     self.AUDIOORIGIN = self.cameraPosDelta.copy() + self.res/2
 

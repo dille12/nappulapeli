@@ -106,6 +106,9 @@ class valInit:
 
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
 
+        self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.frag = Weapon(self, "Frag Grenade", [0,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
                         self.shotgun, self.mg, self.BFG, self.desert]
 
@@ -114,6 +117,10 @@ class valInit:
 
         self.skullW = Weapon(self, "Skull", [0,0], "texture/skull.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
         self.bombW = Weapon(self, "Skull", [0,0], "texture/bomb.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
+
+
+        
+
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
 
@@ -196,11 +203,15 @@ class valInit:
         self.AUDIOORIGIN = v2(0, 0)
         self.AUDIOVOLUME = 0.3
 
+
+        self.STRESSTEST = False
+        self.FIXED_FRAMERATE = 20
+
         self.ultCalled = False
         self.ultFreeze = 0
         self.commonRoomSwitchI = 0
 
-        self.gameModeLineUp = ["DETONATION", "TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN", 
+        self.gameModeLineUp = ["TEAM DEATHMATCH"] # , ,  "FINAL SHOWDOWN",  #, "DETONATION", "TURF WARS", "FINAL SHOWDOWN"
 
         self.babloMusic = self.loadSound("audio/taikakeinu/bar", volume=0.75, asPygame=True)
         self.BABLO = None
@@ -219,6 +230,30 @@ class valInit:
 
         self.crack = pygame.image.load("texture/crack.png").convert_alpha()
         self.crack = pygame.transform.scale_by(self.crack, 400 / self.crack.get_width())
+
+
+        self.stains = []
+        for x in ["texture/stain1.png", "texture/stain2.png"]:
+            stain = pygame.image.load(x).convert_alpha()
+            for x in range(5):
+                s = stain.copy()
+                s = pygame.transform.scale_by(s, random.randint(300,400) / stain.get_width())
+                s = pygame.transform.rotate(s, random.randint(0,360))
+                s.set_alpha(random.randint(155,255))
+                self.stains.append(s)
+
+
+        self.killFeedMeleeIcon = pygame.image.load("texture/melee.png").convert_alpha()
+        self.killFeedMeleeIcon = pygame.transform.scale_by(self.killFeedMeleeIcon, 20 / self.killFeedMeleeIcon.get_width())
+
+        self.flashKillFeed = pygame.image.load("texture/flash.png").convert_alpha()
+        self.flashKillFeed = pygame.transform.scale_by(self.flashKillFeed, 20 / self.flashKillFeed.get_width())
+
+        self.fragKillFeed = pygame.image.load("texture/frag.png").convert_alpha()
+        self.fragKillFeed = pygame.transform.scale_by(self.fragKillFeed, 20 / self.fragKillFeed.get_width())
+
+        self.skullKillFeed = pygame.image.load("texture/death.png").convert_alpha()
+        self.skullKillFeed = pygame.transform.scale_by(self.skullKillFeed, 30 / self.skullKillFeed.get_width())
         
         
         self.crackAppearTimes = []
@@ -338,7 +373,7 @@ class valInit:
         self.TRANSITION = False
         self.transIndex = 0
 
-        self.midRoundTime = 0
+        self.midRoundTime = 3
 
         self.USE_AI = False
         if self.USE_AI:

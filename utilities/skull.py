@@ -60,7 +60,7 @@ class Bomb(Objective):
         self.name = "BOMB"
         self.planted = False
         self.plantedAt = None
-        self.time = 5
+        self.time = 40
         self.planter = None
         super().__init__(app, cell)
 
@@ -75,11 +75,9 @@ class Bomb(Objective):
 
                 self.planted = False
                 self.plantedAt = None
-                self.time = 5
+                self.time = 40
 
-                Explosion(self.app, self.pos, self.planter, 500, doFire=True)
-
-                
+                Explosion(self.app, self.pos, None, 500, doFire=True)                
 
                 self.app.getSites()
         
