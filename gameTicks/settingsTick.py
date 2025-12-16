@@ -107,15 +107,15 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar", volume=0.2, asPygame=True)
+            self.music = self.loadSound("audio/bar", volume=0, asPygame=True)
             print("Loaded")
 
         elif self.musicChoice.get_selected() == "Bablo >:)":
-            self.music = self.loadSound("audio/taikakeinu/bar", volume=0.2, asPygame=True)
+            self.music = self.loadSound("audio/taikakeinu/bar", volume=0, asPygame=True)
             print("Loaded")
             
         elif self.musicChoice.get_selected() == "HH":
-            self.music = self.loadSound("audio/hh/bar", volume=0.2, asPygame=True)
+            self.music = self.loadSound("audio/hh/bar", volume=0, asPygame=True)
             print("Loaded")
 
     self.loadedMusic = self.musicChoice.get_selected()

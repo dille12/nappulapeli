@@ -156,6 +156,7 @@ class Grenade:
                     "Tapoiksmä sen?",
                     f"Hyvä lineuppi {self.owner.name}",
                     f"Kiitti vitusti {self.owner.name}",
+                    
                     ]))
         
         if totalFlashed:

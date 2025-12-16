@@ -20,6 +20,9 @@ class Objective:
         self.cell = self.originalCell
         print("Skull out of bounds!!! reset!")
 
+    def getPos(self):
+        return v2(self.cell) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
+
     def defaultTick(self):
         if self.app.objectiveCarriedBy:
             return
@@ -27,7 +30,7 @@ class Objective:
         if self.app.map.grid[self.cell[1], self.cell[0]] == CellType.WALL.value:
             self.reset()
 
-        self.pos = v2(self.cell) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
+        self.pos = self.getPos()
         self.bounce += self.app.deltaTime 
         self.bounce = self.bounce%0.5
 
@@ -63,12 +66,29 @@ class Bomb(Objective):
         self.time = 40
         self.planter = None
         self.defusedBy = None
-        self.defuseTimer = 5
+        
+
+        self.defuseMaxTime = 7.5
+        self.defuseTimer = self.defuseMaxTime
+
+        self.bombTickI = 0
+
         super().__init__(app, cell)
 
     def tick(self):
+
+        if not self.defusedBy:
+            self.defuseTimer = self.defuseMaxTime
+
         if self.planted:
             self.time -= self.app.deltaTime
+
+            self.bombTickI += self.app.deltaTime
+            interval = 0.05 + 0.95 * self.time/40
+            interval = max(0.05, interval)
+            if self.bombTickI >= interval:
+                self.bombTickI = 0
+                self.app.playPositionalAudio("audio/bombTick.wav", self.getPos())
 
             if self.defusedBy:
                 self.defuseTimer -= self.app.deltaTime
@@ -78,13 +98,15 @@ class Bomb(Objective):
                     self.plantedAt = None
                     self.time = 40
                     self.defusedBy = None
-                    self.defuseTimer = 5
+                    self.defuseTimer = self.defuseMaxTime
                     self.reset()
-            else:
-                self.defuseTimer = 5
+                
 
-            if self.time <= 0:
+            if self.time <= 0 and not self.defusedBy:
                 self.app.notify("BOMB EXPLODED!", self.planter.team.getColor())
+
+                self.app.playPositionalAudio("audio/bombExplode.wav", self.getPos())
+
                 self.reset()
 
                 self.app.SITES.remove(self.plantedAt)
@@ -94,7 +116,7 @@ class Bomb(Objective):
                 self.time = 40
 
                 self.defusedBy = None
-                self.defuseTimer = 5
+                self.defuseTimer = self.defuseMaxTime
 
                 Explosion(self.app, self.pos, None, 500, doFire=True)                
 

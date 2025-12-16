@@ -1,16 +1,14 @@
-FAMAS 1735
-Glock 1092
-Frag Grenade 811
-Rocket Launcher 624
-BFG 537
-Machine Gun 469
-Shotgun 449
-SMG 417
-EMG 367
-Desert Eagle 325
-Sniper 320
-E-BR 313
-USP-S 294
-AK-47 213
-Skull 76
-Flashbang 15
+Glock 117
+Rocket Launcher 60
+Frag Grenade 60
+Shotgun 31
+SMG 29
+Desert Eagle 24
+Machine Gun 21
+FAMAS 19
+Sniper 17
+EMG 15
+E-BR 11
+AK-47 9
+Skull 7
+USP-S 6

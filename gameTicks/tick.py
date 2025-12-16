@@ -8,7 +8,7 @@ import time
 from core.AI import constructTeamVisibility, drawGridMiniMap
 import math
 from utilities.bullet import raycast_grid
-
+from core.drawRectPerimeter import draw_rect_perimeter
 def battleTick(self: "Game"):
 
     self.PEACEFUL = False
@@ -64,10 +64,12 @@ def battleTick(self: "Game"):
         elif self.GAMEMODE == "DETONATION":
             victoryCondition = [0 for _ in range(2)]
             if self.SITES:
-                victoryCondition[0] = 1
-            else:
                 victoryCondition[1] = 1
-                self.announceVictory(1)
+                
+            else:
+                victoryCondition[0] = 1
+                self.announceVictory(0)
+                
                     
                 
         
@@ -93,13 +95,27 @@ def battleTick(self: "Game"):
         self.handleCameraManual()
 
 
+    combat = any(
+            p.target or p.grenadePos
+            for p in self.pawnHelpList
+        ) or self.bombPlanted()
     
+    if not combat:
+        self.fastForwardI += self.deltaTimeR
+        self.fastForwardI = min(3, self.fastForwardI)
+    else:
+        self.fastForwardI -= self.deltaTimeR * 5
+        self.fastForwardI = max(0, self.fastForwardI)
+
+    FF = max(1, self.fastForwardI)
     
+    TIMESCALE = self.TIMESCALE * FF
+
 
     #self.handleUltingCall()
 
     self.deltaTime *= self.SLOWMO
-    self.deltaTime *= self.TIMESCALE
+    self.deltaTime *= TIMESCALE
 
     if not self.VICTORY:
 
@@ -143,12 +159,27 @@ def battleTick(self: "Game"):
                 pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(i, 1), (r2.x*self.MINIMAPCELLSIZE, r2.y*self.MINIMAPCELLSIZE, 
                                                                                       r2.width*self.MINIMAPCELLSIZE, r2.height*self.MINIMAPCELLSIZE), width=1)
                 
-    if self.GAMEMODE == "DETONATION" and False:
+    if self.GAMEMODE == "DETONATION":
+
+        
+
         for site in self.SITES:
-            color = [51,42,13] if site.controlledByT() else [15, 26, 51]
-            r = site.room
-            pygame.draw.rect(self.MINIMAPTEMP, color, (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
-                                                                                      r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
+
+            pos = v2(site.room.center())*self.MINIMAPCELLSIZE
+            t = self.fontSmaller.render(site.name, True, [155,0,0])
+            self.MINIMAPTEMP.blit(t, pos - v2(t.get_size())/2)
+            room = site.room
+            rect = pygame.Rect(room.x*self.MINIMAPCELLSIZE, room.y*self.MINIMAPCELLSIZE, room.width*self.MINIMAPCELLSIZE, room.height*self.MINIMAPCELLSIZE)
+            color = [255,0,0] if site == self.allTeams[0].getCurrentSite() else [255,255,255]
+            draw_rect_perimeter(self.MINIMAPTEMP, rect, time.time()-self.now, 20, 2, color, width=1)
+
+
+
+
+        #    color = [51,42,13] if site.controlledByT() else [15, 26, 51]
+        #    r = site.room
+        #    pygame.draw.rect(self.MINIMAPTEMP, color, (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
+        #                                                                              r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
     #constructTeamVisibility(self)
         
 
@@ -238,64 +269,71 @@ def battleTick(self: "Game"):
 
     self.DUALVIEWACTIVE = DUAL
 
+    if self.RENDERING:
+        for i in range(1 if not DUAL else 2):
 
-    for i in range(1 if not DUAL else 2):
+            if not DUAL:
+                self.DRAWTO = self.screen
+                
+            elif i == 0:
+                self.DRAWTO = self.screenCopy1
+            else:
+                self.DRAWTO = self.screenCopy2
 
-        if not DUAL:
-            self.DRAWTO = self.screen
+            self.DRAWTO.fill((0,0,0))
+
+            if i == 1:
+                SAVECAMPOS = self.cameraPosDelta.copy()
+                self.cameraPosDelta = self.posToTargetTo2.copy()
+
+            self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
+
+            if self.SLOWMO_FOR > 0 and not self.BABLO.killed:
+                alpha = int(255 * min(max(self.SLOWMO_FOR * 2, 0.5), 1.0))
+                self.speedLinesSurf.fill((0, 0, 0, alpha))
+                self.speedlines.draw(self.speedLinesSurf, self.BABLO.pos - self.cameraPosDelta)
+                self.DRAWTO.blit(self.speedLinesSurf, (0,0))
+
+            #self.renderParallax2()
+            #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
+            self.drawTurfs()
+            self.drawDetonation()
+
+            #if self.cameraLock:
+            #    self.cameraLock.visualizeVis()
+
             
-        elif i == 0:
-            self.DRAWTO = self.screenCopy1
-        else:
-            self.DRAWTO = self.screenCopy2
 
-        self.DRAWTO.fill((0,0,0))
+            for x in self.shitDict.values():
+                x.render()
 
-        if i == 1:
-            SAVECAMPOS = self.cameraPosDelta.copy()
-            self.cameraPosDelta = self.posToTargetTo2.copy()
+            self.FireSystem.draw(self.DRAWTO)
 
-        self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
+            for x in entities_temp:
+                x.render()
 
-        if self.SLOWMO_FOR > 0 and not self.BABLO.killed:
-            alpha = int(255 * min(max(self.SLOWMO_FOR * 2, 0.5), 1.0))
-            self.speedLinesSurf.fill((0, 0, 0, alpha))
-            self.speedlines.draw(self.speedLinesSurf, self.BABLO.pos - self.cameraPosDelta)
-            self.DRAWTO.blit(self.speedLinesSurf, (0,0))
+            for x in self.visualEntities:
+                x.render()
 
-        #self.renderParallax2()
-        #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
-        self.drawTurfs()
-        self.drawDetonation()
+            self.drawBFGLazers()
 
-        #if self.cameraLock:
-        #    self.cameraLock.visualizeVis()
+            for x in self.bulletImpactPositions:
+                pygame.draw.circle(self.DRAWTO, [255,0,0], v2(x) - self.cameraPosDelta, 10, )
 
-        for x in self.shitDict.values():
-            x.render()
+            self.particle_system.render_all(self.DRAWTO)
 
-        self.FireSystem.draw(self.DRAWTO)
+            
 
-        for x in entities_temp:
-            x.render()
+            if DUAL and i == 1:
+                self.cameraPosDelta = SAVECAMPOS.copy()
 
-        for x in self.visualEntities:
-            x.render()
+        if DUAL:
+            self.splitScreen()
+    else:
+        self.screen.fill((0,0,0))
 
-        self.drawBFGLazers()
 
-        for x in self.bulletImpactPositions:
-            pygame.draw.circle(self.DRAWTO, [255,0,0], v2(x) - self.cameraPosDelta, 10, )
-
-        self.particle_system.render_all(self.DRAWTO)
-
-        
-
-        if DUAL and i == 1:
-            self.cameraPosDelta = SAVECAMPOS.copy()
-
-    if DUAL:
-        self.splitScreen()
+    
         
 
     #if self.currMusic == 0:
@@ -330,7 +368,10 @@ def battleTick(self: "Game"):
             self.tickScoreBoard()
 
     if not self.VICTORY:
-        self.drawRoundInfo()
+        if self.GAMEMODE != "DETONATION":
+            self.drawRoundInfo()
+        else:
+            self.drawRoundInfoDetonation()
 
     ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(self.tileSize)
     w, h = self.MINIMAPCELLSIZE*self.res/(self.tileSize)
@@ -351,8 +392,8 @@ def battleTick(self: "Game"):
     self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
 
 
-    t = self.font.render("Points", True, [255,255,255])
-    self.screen.blit(t, [self.res.x - 10 - t.get_width(), MINIMAP_POS.y - 45 - t.get_height()])
+    #t = self.font.render("Points", True, [255,255,255])
+    #self.screen.blit(t, [self.res.x - 10 - t.get_width(), MINIMAP_POS.y - 45 - t.get_height()])
 
     w = self.MINIMAP.get_width()
     h = 40
@@ -414,6 +455,14 @@ def battleTick(self: "Game"):
     if self.ultFreeze > 0:
         self.handleUlting()
 
+    if FF > 1:
+        t = self.fontLarge.render("FAST FORWARDING", True, [255,255,255])
+
+        alpha = 255*(FF-1)/2
+        t.set_alpha(int(alpha))
+
+        self.screen.blit(t, self.res/2 - v2(t.get_size())/2)
+
     self.debugText(f"FPS: {self.FPS:.0f} (+/-{self.STD*1000:.1f}ms)")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")
@@ -429,8 +478,9 @@ def battleTick(self: "Game"):
         self.debugText(f"{self.cameraLock}")
 
     if self.GAMEMODE == "DETONATION":
-        self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].planTimer:.1f}")
-        self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].planTimer:.1f}")
+        self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].plan["planTimer"]:.1f}")
+        self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].plan["planTimer"]:.1f}")
+        self.debugText(f"Site controlled: {self.allTeams[0].terroristsHoldPlanSite()}")
 
 
     #self.drawFPS()

@@ -20,7 +20,7 @@ def getItems():
         Item("Cryo-puku", "Suojaa hyvin energia-ammuksilta.", defenceEnergy=["mult", 2], speedMod=["mult", 0.8]),
         Item("Kosto elää", "Mä tuun tappaan sut kohta...", revenge=["set", True]),
         Item("Neurosynkronointi", "Ase vispaa ampuessa muttei ladatessa.", weaponHandling=["mult", 1.6], weaponReload=["mult", 0.75]),
-        Item("Rumpulipas", "Gangstashittii.", weaponAmmoCap=["mult", 2.0], weaponFireRate=["mult", 0.8]),
+        Item("Rumpulipas", "Lipas.", weaponAmmoCap=["mult", 2.0], weaponFireRate=["mult", 0.8]),
         Item("Adderall", "Ylivilkas ja hauras.", weaponHandling=["mult", 2], speedMod=["mult", 1.25], weaponReload=["mult", 0.75], healthCapMult=["mult", 0.5]),
         Item("Dodge Charger", "Emmää ees myy huumeita.", dodgeChance=["add", 0.2], speedMod=["mult", 1.2]),
         Item("Adrenaalimutageeni", "Tappaminen virkistää.", healOnKill=["add", 25], healthCapMult=["mult", 0.8]),
@@ -62,11 +62,12 @@ def getItems():
         Item("Mersun merkki", "Visva. Saatana.", speedMod=["mult", 1.25]),
         Item("Taktinen juoksu", "Hvarin poliisi belike", tacticalSprintSpeed=["mult", 2]),
         Item("VAC", "Rupee koodarit jäämää.", bossKiller=["set", True]),
-        Item("Joku bugi", "Servu lagaa", timeScale=["add", 0.1]),
-        Item("Piri", "Johan rupee sujuu", timeScale=["add", 0.25]),
-        Item("Kalustevyö", "Valoshow", utilityUsage=["add", 1]),
+        Item("Joku bugi", "Servu lagaa", timeScale=["add", 0.05]),
+        Item("Piri", "Johan rupee sujuu", timeScale=["add", 0.10]),
+        Item("Valoshow", "Lentää!", utilityUsage=["add", 1]),
         Item("Ransuexprertti", "Kaljaasi", utilityUsage=["add", 1]),
-        Item("Keinosnipu", "Highrollereille", weaponDamage=["mult",3], weaponFireRate=["mult", 0.2], recoilMult=["mult", 0.75])
+        Item("Keinosnipu", "Highrollereille", weaponDamage=["mult",1.5], weaponFireRate=["mult", 0.5], recoilMult=["mult", 0.75]),
+        Item("Dualwield", "Kaverille kans", dualWield=["set", True])
         #Item("Mag dump", "Mikä vitun firerate", magDump=["set", True]),
     ]
 

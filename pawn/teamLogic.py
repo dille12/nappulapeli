@@ -40,11 +40,7 @@ class Team:
             "aggr": [],
         }
 
-        self.planTimer = 30
-        self.plan = {"currentAction": "probe",
-                     "ctHolding" : True,
-                     "viableSites": [], 
-                     "site": None}
+        self.defaultPlan()
 
         
 
@@ -52,7 +48,33 @@ class Team:
 
         self.sightGrid = None
 
+
+    def getTerroristTeam(self):
+        """
+        Terrorists are the latter half of the teams. detonationTeam is False
+        """
+        return self.app.allTeams[-1]
+
+    def getCounterTeam(self):
+        """
+        Terrorists are the first half of the teams. detonationTeam is True
+        """
+        return self.app.allTeams[0]
+
+    def defaultPlan(self):
+        self.plan = {"currentAction": "defend",
+                     "ctHolding" : True,
+                     "viableSites": [], 
+                     "site": None,
+                     "planTimer": 30}
+
     def refreshCarrier(self):
+
+        if self.isCT(): return
+
+        if self.app.objectiveCarriedBy:
+            self.bombCarrier = self.app.objectiveCarriedBy
+
         if not self.bombCarrier or self.bombCarrier.killed:
             self.bombCarrier = random.choice(self.getDetonationPawns())
 
@@ -65,12 +87,21 @@ class Team:
             self.app.allTeams[0].plan["site"] = self.plan["site"]
             self.app.allTeams[-1].plan["site"] = self.plan["site"]
 
+            self.app.playPositionalAudio("audio/bombPlant.wav", self.app.skull.planter.pos)
+
             self.app.objectiveCarriedBy.dropSkull()
 
             self.app.notify("THE BOMB HAS BEEN PLANTED!", self.getColor())
 
+    def isCT(self):
+        return self.detonationTeam
+    
+    def bombInEnemyTerritory(self):
+        skull_x, skull_y = self.app.skull.cell
+        return self.app.map.grid[skull_y, skull_x] in (2, 4) and not self.app.objectiveCarriedBy
+
     def tryToDefuse(self):
-        if self.detonationTeam: return
+        if not self.isCT(): return
 
         if not self.app.skull.planted: return
 
@@ -79,6 +110,7 @@ class Team:
         for x in self.getPawns():
             if x.getOwnCell() == self.app.skull.plantedAt.plantingSite:
                 self.app.skull.defusedBy = x
+                x.target = None
                 return
 
     def getDetI(self):
@@ -116,6 +148,28 @@ class Team:
         self.plan["viableSites"] = viable_sites
 
 
+    def getClosestSite(self):
+
+        if self.isCT(): return
+
+        startPos = self.getDetonationSpawnRoom().center()
+
+        m = [None, float("inf")]
+
+        for x in self.plan["viableSites"]:
+            cell = x.room.randomCell()
+            route = self.app.arena.pathfinder.find_path(startPos, x.room.randomCell())
+            if len(route) < m[1]:
+                m = [x, len(route)]
+
+        print("Picking closest site", m[0])
+        return m[0]
+
+    def terroristsHoldPlanSite(self):
+        if self.app.allTeams[-1].plan["site"]:
+            return self.app.allTeams[-1].plan["site"].controlledByT()
+        return False
+
     def terroristsInControlOfSite(self):
         return any(x.controlledByT() for x in self.app.SITES)
 
@@ -152,7 +206,7 @@ class Team:
         if self.app.GAMEMODE != "DETONATION":
             return self
 
-        if self.detonationTeam:
+        if self.isCT():
             return self.app.allTeams[0]
         else:
             return self.app.allTeams[-1]
@@ -215,6 +269,9 @@ class Team:
                 return i
             else:
                 i += len(x.pawns)
+
+    def getCurrentSite(self):
+        return self.getTerroristTeam().plan["site"]
     
 
     def getSite(self, p):
@@ -252,11 +309,10 @@ class Team:
             return self.app.getTeamColor(self.getI())
         
         if hasattr(self.app, "GAMEMODE") and self.app.GAMEMODE == "DETONATION":
-            if self.detonationTeam:
-                return [76, 129, 255]
-            
+            if self.isCT():
+                return [76, 129, 255]  # CT
             else:
-                return [255, 210, 64]
+                return [255, 210, 64] # T
         
         return self.app.getTeamColor(self.i)
         

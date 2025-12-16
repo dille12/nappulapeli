@@ -36,6 +36,8 @@ class FlyingCorpse:
 
         life = (1-(self.lifeTime/self.maxLife))
 
+        life = max(0, min(1, life))
+
         self.yPos = -math.sin(life * math.pi) * (self.maxLife - 0.4)*300
 
         self.rotation = life * self.targetRotation
@@ -51,7 +53,8 @@ class FlyingCorpse:
 
             self.app.playPositionalAudio(self.app.deathSounds, self.pos)
 
-            self.SOUND.active = False
+            if self.SOUND:
+                self.SOUND.active = False
 
             for x in range(random.randint(4,8)):
                 self.app.bloodSplatters.append(BloodParticle(self.pos.copy(), 1.2, app = self.app))

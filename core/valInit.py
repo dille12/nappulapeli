@@ -176,6 +176,7 @@ class valInit:
         self.fontSmaller = pygame.font.Font(self.fontName, 18)  # Smaller font for debug text
         self.pawnGenI = 0
         self.pawnGenT = 0
+        self.fastForwardI = 0
         #self.map = ArenaGenerator(80, 60)
 
         self.killstreaks = [
@@ -201,7 +202,8 @@ class valInit:
 
         self.filmOnly = []
         self.winningTeam = None
-        self.maxWins = 3
+        self.maxWins = 100
+        self.RENDERING = True
         
         self.teamsSave = self.teams
         self.MINIMAPCELLSIZE = 2
@@ -220,6 +222,8 @@ class valInit:
         self.ultCalled = False
         self.ultFreeze = 0
         self.commonRoomSwitchI = 0
+
+        self.bombInfoI = 0
 
         self.gameModeLineUp = ["DETONATION"] # , ,  "FINAL SHOWDOWN",  #,  "TEAM DEATHMATCH", 
 

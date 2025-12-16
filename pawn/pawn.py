@@ -481,6 +481,16 @@ class Pawn(PawnBehaviour, getStat):
 
         self.sendCurrWeaponShop()
 
+    def reLevelPawn(self, to = 10):
+        self.level = 0
+        self.xp = 0
+        self.itemEffects = self.referenceEffects.copy()
+        while self.level < to:
+            self.getNextItems()
+            self.levelUp()
+
+
+
     def pickAnother(self, exclude, pickFrom):
         exclude_set = set(exclude)
         candidates = [x for x in pickFrom if x not in exclude_set]
@@ -750,7 +760,10 @@ class Pawn(PawnBehaviour, getStat):
         elif self.app.GAMEMODE == "ODDBALL" and self.carryingSkull() or (self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team):
             self.respawnI = 15
         elif self.app.GAMEMODE == "DETONATION":
-            self.respawnI = 2
+            if self.team.isCT():
+                self.respawnI = 10
+            else:
+                self.respawnI = 2
         else:
             self.respawnI = 10
 
@@ -1108,6 +1121,8 @@ class Pawn(PawnBehaviour, getStat):
         self.dumpAndSend(packet)
 
     def dumpAndSend(self, packet):
+        if not self.client:
+            return    
         json_packet = json.dumps(packet)
         asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
 
@@ -1226,9 +1241,13 @@ class Pawn(PawnBehaviour, getStat):
             #                                     vel_x=random.uniform(-0.01, 0.01), vel_y=random.uniform(0.01, 0.05), lifetime=10)
         
     def isBombCarrier(self):
-        return self.team.getGodTeam().bombCarrier == self and not self.team.detonationTeam
+        return self.team.getGodTeam().bombCarrier == self and not self.team.isCT()
     
     def levelUpClient(self):
+
+        if not self.client:
+            return    
+
         # Select 3 items (or 4 if a special item is present)
         choices = self.nextItems  # returns list of Item instances
 
@@ -1291,7 +1310,11 @@ class Pawn(PawnBehaviour, getStat):
             "Maken valo",
             "Täältä pesee",
             "Jumpthrowi",
-            "Tätä lineuppia on jyynätty"]))
+            "Tätä lineuppia on jyynätty",
+            "Inshallah",
+            "Allah ohjaa kättäni",
+            "Kuolema vihulle!"
+            ]))
 
     def tick(self):
 
@@ -1352,6 +1375,7 @@ class Pawn(PawnBehaviour, getStat):
 
         else:           
             self.currWeapon = self.weapon
+        
         #########
 
         #DELTATIMESAVE = self.app.deltaTime
@@ -1365,7 +1389,6 @@ class Pawn(PawnBehaviour, getStat):
         else:
             self.ULT = False
 
-        
 
         if self.itemEffects["turnCoat"]:
             self.handleTurnCoat()
@@ -1376,9 +1399,6 @@ class Pawn(PawnBehaviour, getStat):
         else:
             self.flashedBy = None
 
-        
-        
-        
 
         if not self.app.PEACEFUL:
             if self.xpI > 0:
@@ -1466,8 +1486,6 @@ class Pawn(PawnBehaviour, getStat):
 
         self.hitBox.center = self.pos.copy()
 
-        
-
         #pygame.draw.arc(self.app.screen, (255, 255, 255), arcRect, 0, math.pi)
 
         #self.app.screen.blit(breatheIm, self.deltaPos - v2(breatheIm.get_size()) / 2 + [0, breatheY]  - self.app.cameraPosDelta)
@@ -1478,7 +1496,7 @@ class Pawn(PawnBehaviour, getStat):
         self.buildingRotationOffset = 0
 
         if not self.BOSS:
-            self.dualwield = self.carryingSkull()
+            self.dualwield = self.carryingSkull() or self.itemEffects["dualWield"]
 
         self.currWeapon.tick()
 
@@ -1691,6 +1709,8 @@ class Pawn(PawnBehaviour, getStat):
         p.walkTo = None
         self.route = None
         self.walkTo = None
+        if self.app.skull.name == "BOMB":
+            self.team.getTerroristTeam().bombCarrier = p
 
     def handlePawnAngle(self):
         aimAt = None

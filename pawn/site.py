@@ -11,6 +11,9 @@ class Site:
         self.inhabited = [0,0]
         self.alive = True
 
+        self.app.SITES.append(self)
+        self.name = ["A", "B", "C", "D"][self.app.SITES.index(self)]
+        print("SITE", self.name, "CREATED")
         self.plantingSite = self.room.randomCell()
 
     def processSite(self):
@@ -73,7 +76,7 @@ class Site:
             cells += route
 
         for x, y in cells:
-            for cx, cy in get_vis(x, y, 15):
+            for cx, cy in get_vis(x, y, 40):
                 vis.add((int(cx), int(cy)))
 
         return list(vis)
@@ -127,7 +130,11 @@ class Site:
         
         cells = []
         for r in rooms:
-            cells += r.allCells()
+            
+            roomCells = r.allCells()
+            random.shuffle(roomCells)
+
+            cells += roomCells
         return cells
 
     

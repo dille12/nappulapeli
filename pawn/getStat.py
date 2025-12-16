@@ -26,7 +26,6 @@ class getStat:
             "thorns": 0.0,
             "healthCapMult": 1.0,
             
-
             "weaponHandling" : 1.0,
             "weaponDamage" : 1.0,
             "weaponReload" : 1.0,
@@ -36,7 +35,6 @@ class getStat:
             "accuracy": 1.0,
             "multiShot" : 1,
             "recoilMult": 1.0,
-
             "meleeDamage": 1.0,
             
             "saveChance" : 0.0,
@@ -76,6 +74,7 @@ class getStat:
             "revenge" : False,
             "duplicator" : False,
             "bossKiller" : False,
+            "dualWield" : False,
         }
 
         self.effect_labels_fi = {
@@ -131,7 +130,8 @@ class getStat:
             "magDump": "Lipas tyhjäksi",
             "lifeSteal": "Elämänimeminen",
             "tacticalSprintSpeed": "Taktinen juoksu",
-            "bossKiller" : "Koodarikilleri"
+            "bossKiller" : "Koodarikilleri",
+            "dualWield" : "Dual wield",
         }
 
         self.effect_labels_en = {

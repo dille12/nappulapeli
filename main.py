@@ -42,6 +42,8 @@ import tkinter
 from statistics import stdev
 from collections import deque
 from pawn.site import Site
+from utilities.register import register_gun_kill
+
 print("Imports complete")
 # KILL STREAKS
 # Flash bang: Ampuu sinne tänne nänni pohjassa
@@ -648,10 +650,12 @@ class Game(valInit):
         
         self.MAP = self.map.to_pygame_surface_textured2(cell_size=self.tileSize) #
 
-        mapUntextured = self.map.to_pygame_surface(cell_size=self.tileSize) #
+        #mapUntextured = self.map.to_pygame_surface(cell_size=self.tileSize) #
         #pygame.image.save(mapUntextured, "untexturedLevel.png")
 
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
+
+        
         
         self.SITES = []
 
@@ -682,8 +686,19 @@ class Game(valInit):
 
         for team, r in enumerate(self.teamSpawnRooms):
             print("Drawing", team, "spawn room")
+
+            if self.GAMEMODE == "DETONATION":
+                if team == 0:
+                    team = self.teams - 1
+                else:
+                    team = 0
+
             pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize, r.y*self.tileSize, 
                                                                                       r.width*self.tileSize, r.height*self.tileSize))
+            
+            pygame.draw.rect(self.MINIMAP, self.getTeamColor(team, 0.2), (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
+                                                                                      r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
+            
 
         self.MINIMAPTEMP = self.MINIMAP.copy()
         #entrance = self.map.get_entrance_position()
@@ -722,10 +737,10 @@ class Game(valInit):
         self.allTeams[-1].getViableSites()
         self.allTeams[-1].planTimer = 0
         #self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes) #
-        self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
-        for site in self.SITES:
-            for x,y in site.attackPositionsT:
-                pygame.draw.rect(self.MINIMAP, [255,0,0], [x*self.MINIMAPCELLSIZE,y*self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE])
+        #self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
+        #for site in self.SITES:
+        #    for x,y in site.attackPositionsT:
+        #        pygame.draw.rect(self.MINIMAP, [255,0,0], [x*self.MINIMAPCELLSIZE,y*self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE, self.MINIMAPCELLSIZE])
 
 
     def pickDetonationSites(self):
@@ -755,9 +770,11 @@ class Game(valInit):
         return sites
     
     def makeDetonationSites(self):
+        self.SITES.clear()
         sites = self.arena.find_detonation_sites(self.teamSpawnRooms[1], self.teamSpawnRooms[0])
         for x in sites:
-            self.SITES.append(Site(self,x))
+            Site(self,x)
+            
 
 
     def refreshSites(self):
@@ -816,6 +833,8 @@ class Game(valInit):
                         x.allied.append(y)
                         print(x.i, "allied with", y.i)
 
+                x.defaultPlan()
+
         self.loadInfo.text = "Generating level"
         self.genLevel()
         self.resetLevelUpScreen()
@@ -832,6 +851,8 @@ class Game(valInit):
         self.VICTORY = False
         if self.GAMEMODE == "1v1":
             self.roundTime = 60
+        #elif self.GAMEMODE == "DETONATION":
+        #    self.roundTime = 180
         else:
             self.roundTime = self.MAXROUNDLENGTH
 
@@ -888,6 +909,11 @@ class Game(valInit):
 
         if self.giveWeapons:
             self.giveAllWeapons()
+
+        if self.STRESSTEST:
+            for x in self.pawnHelpList:
+                print("Releveling", x.name)
+                x.reLevelPawn(10)
         
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
 
@@ -1053,6 +1079,11 @@ class Game(valInit):
         self.VICTORY = True 
         self.points = []
 
+        if self.victoryTeam == 1:
+            register_gun_kill("COUNTERTERRORIST", path="detonationWins.txt")
+        else:
+            register_gun_kill("TERRORIST", path="detonationWins.txt")
+
         if self.GAMEMODE == "DETONATION":
             for x in self.allTeams:
                 if x.detonationTeam == victoryTeam:
@@ -1162,6 +1193,13 @@ class Game(valInit):
 
         hue = (team * 1/maxTeams) % 1.0  # Cycle hue every ~6 teams
         r, g, b = colorsys.hsv_to_rgb(hue, 1, 1)
+
+        if hasattr(self, "GAMEMODE") and self.GAMEMODE == "DETONATION":
+            if self.allTeams[team].isCT():
+                r, g, b = [76/255, 129/255, 255/255]  # CT
+            else:
+                r, g, b = [255/255, 210/255, 64/255] # T
+
         return [int(r * 255 * intensity), int(g * 255 * intensity), int(b * 255 * intensity)]
 
         if team == 0:
@@ -1386,9 +1424,17 @@ class Game(valInit):
                     if self.GAMEMODE == "DETONATION":
                         if self.skull.plantedAt:
                             l = [x for x in FILMLIST.copy() if self.skull.plantedAt.room.contains(*x.getOwnCell())]
+                            e = sorted(l, key=lambda p: p.onCameraTime)
                         else:
                             l = [x for x in FILMLIST.copy() if not x.team.detonationTeam]
-                        e = sorted(l, key=lambda p: p.onCameraTime)
+                            site = self.allTeams[0].getCurrentSite()
+                            if site:
+                                sitePos = self.allTeams[0].getCurrentSite().room.center()
+                                e = sorted(l, key=lambda p: self.getDistFrom(p.getOwnCell(), sitePos))
+                            else:
+                                e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
+
+                        #e = sorted(l, key=lambda p: p.onCameraTime)
                     elif self.GAMEMODE == "ODDBALL":
                         if self.objectiveCarriedBy:
                             l = [x for x in FILMLIST.copy() if x.team.i == self.objectiveCarriedBy.team.i]
@@ -1519,6 +1565,8 @@ class Game(valInit):
 
         pygame.draw.line(self.screen, [255, 255, 255], self.line1, self.line2, 3)
 
+    def bombPlanted(self):
+        return self.GAMEMODE == "DETONATION" and self.skull and self.skull.planted
 
     def tickEndGame(self):
         self.endGameI -= self.deltaTimeR
@@ -1528,8 +1576,8 @@ class Game(valInit):
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
         if self.GAMEMODE == "DETONATION":
-            s = "COUNTER TERRORISTS" if self.victoryTeam == 0 else "TERRORISTS"
-            t = 0 if not self.victoryTeam else -1
+            s = "COUNTER TERRORISTS" if self.victoryTeam == 1 else "TERRORISTS"
+            t = -1 if not self.victoryTeam else 0
             text = self.fontLarge.render(f"{s} WON", True, self.allTeams[t].getColor())
 
         else:
@@ -1539,7 +1587,7 @@ class Game(valInit):
 
         for i, y in enumerate(self.points):
             pawn, points, reason_str = y
-            text = self.font.render(f"{pawn.name}: {reason_str}", True, self.getTeamColor(pawn.team))
+            text = self.font.render(f"{pawn.name}: {reason_str}", True, self.getTeamColor(pawn.team.i))
             text.set_alpha(int(255 * (1-I)))
             self.screen.blit(text, v2(300,500 + i*40))
 
@@ -1637,7 +1685,7 @@ class Game(valInit):
 
             yPos = self.res[1] - 220*(1-(1-self.hudChange)**2)
             surf = pygame.Surface((200,200))
-            c = self.getTeamColor(self.currHud.team)
+            c = self.getTeamColor(self.currHud.team.i)
             surf.fill((c[0]*0.2, c[1]*0.2, c[2]*0.2))
             surf.blit(self.currHud.hudImage, v2(100,100) - v2(self.currHud.hudImage.get_size())/2)
             surf.blit(random.choice(self.noise), (0,0))
@@ -1826,6 +1874,9 @@ class Game(valInit):
             y += 22
 
 
+    def toggleRendering(self):
+        self.RENDERING = not self.RENDERING
+
     
     def drawRoundInfo(self):
         t1 = self.fontSmaller.render("Round: " + str(self.round+1), True, [255]*3)
@@ -1838,6 +1889,55 @@ class Game(valInit):
         seconds = int(self.roundTime % 60)
         t3 = self.font.render(f"{minutes:02}:{seconds:02}", True, [255]*3)
         self.screen.blit(t3, [self.res[0]/2 - t3.get_size()[0]/2, 70])
+
+    def drawRoundInfoDetonation(self):
+        t1 = self.fontSmaller.render("Round: " + str(self.round+1), True, [255]*3)
+        t2 = self.font.render(self.GAMEMODE, True, [255]*3)
+        
+        self.screen.blit(t1, [self.res[0]/2 - t1.get_size()[0]/2, 10])
+        self.screen.blit(t2, [self.res[0]/2 - t2.get_size()[0]/2, 40])
+
+        minutes = int(self.roundTime / 60)
+        seconds = int(self.roundTime % 60)
+        t3 = self.font.render(f"{minutes:02}:{seconds:02}", True, [255]*3)
+
+        if self.skull.planted:
+            t3.set_alpha(100)
+
+        self.screen.blit(t3, [self.res[0]/2 - t3.get_size()[0]/2, 70])
+        
+        if self.skull.planted:
+
+            self.bombInfoI = 1 * 0.01 + self.bombInfoI * 0.99
+
+            if not self.skull.defusedBy:
+                seconds = self.skull.time
+                t3 = self.font.render(f"BOMB EXPLODES IN {seconds:.1f} SECONDS", True, [255, 210, 64])
+                self.screen.blit(t3, [self.res[0]/2 - t3.get_size()[0]/2, 100])
+
+            else:
+                seconds = self.skull.defuseTimer
+                t3 = self.font.render(f"DEFUSED IN {seconds:.1f} SECONDS", True, [76, 129, 255])
+                self.screen.blit(t3, [self.res[0]/2 - t3.get_size()[0]/2, 100])
+
+        else:
+            self.bombInfoI = self.bombInfoI * 0.99
+
+        for i, site in enumerate(self.SITES):
+
+            planSite = self.allTeams[0].getCurrentSite() == site
+
+            xPos = i - (len(self.SITES) - 1)/2
+
+            c = v2([self.res[0]/2 + 60 * xPos, 130 + 25*self.bombInfoI])
+            rect = pygame.Rect(1,1,40,35)
+            rect.center = c
+
+            color = [255,0,0] if planSite else [255,255,255]
+
+            pygame.draw.rect(self.screen, color, rect, width=2)
+            t = self.font.render(site.name, True, color)
+            self.screen.blit(t, v2(rect.center) - v2(t.get_size())/2)
         
 
 
