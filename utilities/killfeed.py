@@ -64,6 +64,9 @@ class KillFeed:
         t2 = self.app.font.render(self.killed.name, True, killed.teamColor)
 
         if assist:
+            
+            assist.gainXP(assist.getKillXP(killed)/2)
+            assist.stats["assists"] += 1
 
             plus_surf = self.app.font.render("+", True, (255, 255, 255))
 

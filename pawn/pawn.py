@@ -43,6 +43,8 @@ import base64
 from pawn.teamLogic import Team
 from utilities.grenade import GrenadeType
 from gameTicks.pawnExplosion import PawnParticle
+from utilities.textParticle import TextParticle
+from pawn.flyingCorpse import FlyingCorpse
 def debug_draw_alpha(surface):
     alpha_arr = pygame.surfarray.array_alpha(surface)
     alpha_rgb = np.stack([alpha_arr]*3, axis=-1)
@@ -252,6 +254,13 @@ class Pawn(PawnBehaviour, getStat):
         self.route = None
         self.speed = 400
 
+        self.gType = None
+        self.gType = random.randint(0,1)
+        #if self.team.i == 0:
+        #    self.gType = 1
+        self.grenadeAmount = 0
+        self.grenadeReloadI = 0
+
         self.vel = v2(0,0)
 
         self.stepI = 0 
@@ -262,6 +271,9 @@ class Pawn(PawnBehaviour, getStat):
             "damageTaken": 0,
             "teamkills": 0,
             "suicides": 0,
+            "assists": 0,
+            "flashes": 0,
+            "teamFlashes": 0,
         }
         self.playerSpecificStats = {}
         self.mostKilled = None
@@ -300,6 +312,9 @@ class Pawn(PawnBehaviour, getStat):
         self.bombWeapon = self.app.bombW.duplicate(self)
         self.skullWeapon = self.app.skullW.duplicate(self) 
         self.hammer = self.app.hammer.duplicate(self) 
+
+        self.dualwield = False
+        self.dualWieldWeapon = self.app.pistol2.duplicate(self)
 
         self.cameraLockI = 0
         self.onCameraTime = 0
@@ -385,8 +400,7 @@ class Pawn(PawnBehaviour, getStat):
         #    i = random.choice(self.app.items)
         #    i.apply(self)
 
-        self.dualwield = False
-        self.dualWieldWeapon = False
+        
         if self.BOSS:
             for i in range(39):
                 self.getNextItems()
@@ -441,10 +455,10 @@ class Pawn(PawnBehaviour, getStat):
 
 
         #else:
-        #    for x in range(random.randint(1,25)):
+        #    for x in range(4):
         #        self.getNextItems()
         #        self.levelUp()
-        
+       #
         print(self.name, "created.")
         self.GENERATING = False
 
@@ -676,7 +690,7 @@ class Pawn(PawnBehaviour, getStat):
         self.loseTargetI = 1
         self.buildingTarget = None
 
-        self.team.addNadePos(self.target.getOwnCell())
+        self.team.addNadePos(self.target.getOwnCell()) #
         
         if not self.itemEffects["berserker"] and not self.carryingSkull():
             self.walkTo = v2(self.getOwnCell()) * self.app.tileSize
@@ -697,10 +711,7 @@ class Pawn(PawnBehaviour, getStat):
             self.health = self.getHealthCap()
             return
 
-        
-
-        for x in range(random.randint(4,8)):
-            self.app.bloodSplatters.append(BloodParticle(self.pos.copy(), 1.2, app = self.app))
+    
 
         #if self.app.cameraLock == self and self.target:
         #    self.app.cameraLock = self.target
@@ -714,7 +725,7 @@ class Pawn(PawnBehaviour, getStat):
             Explosion(self.app, self.pos.copy(), self.currWeapon, damage = 200 * self.itemEffects["weaponDamage"])
 
         
-        self.app.playPositionalAudio(self.app.deathSounds, self.pos)
+        
 
         x, y = self.getOwnCell()
         for r in self.app.map.rooms:
@@ -723,8 +734,7 @@ class Pawn(PawnBehaviour, getStat):
                 break
 
 
-        c = random.choice(self.corpses)
-        self.app.MAP.blit(c, self.pos - v2(c.get_size())/2)
+        FlyingCorpse(self.pos, self)
 
         self.reset()
 
@@ -762,7 +772,10 @@ class Pawn(PawnBehaviour, getStat):
         if self.app.GAMEMODE == "DETONATION":
             SPAWNROOM = self.team.getDetonationSpawnRoom()
         else:
-            SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
+            if self.team.i < len(self.app.teamSpawnRooms):
+                SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
+            else:
+                SPAWNROOM = self.app.teamSpawnRooms[0]
         if SPAWNROOM:
             P = SPAWNROOM.randomCell()
         else:
@@ -788,6 +801,10 @@ class Pawn(PawnBehaviour, getStat):
         self.respawnI = 0
         self.tripped = False
         self.grenadePos = None
+        self.flashed = 0
+
+        if self.defusing():
+            self.app.skull.defusedBy = None
 
         self.teamColor = self.team.getColor(self.enslaved)
 
@@ -833,6 +850,13 @@ class Pawn(PawnBehaviour, getStat):
 
         if fromActor and fromActor.itemEffects["bossKiller"]:
             damage *= max(1, self.level - fromActor.level)
+
+        if self.flashed > 1:
+            if self.flashedBy:
+                mult = (1 + self.flashed/5 * self.flashedBy.itemEffects["utilityUsage"])
+                damage *= mult
+            else:
+                damage *= 2
 
         self.stats["damageTaken"] += damage
         if fromActor:
@@ -883,10 +907,17 @@ class Pawn(PawnBehaviour, getStat):
             else:
                 self.say(onTakeDamage(), 0.1)
 
+    def isManual(self):
+        return self == self.app.MANUALPAWN
+
     def gainXP(self, amount):
         if self.app.VICTORY or self.ULT or self.BOSS:
             return
-        self.xp += amount * self.itemEffects["xpMult"]
+
+        am = amount * self.itemEffects["xpMult"]
+        TextParticle(self.app, f"+{am:.1f}XP", self.pos)
+
+        self.xp += am
         self.updateStats({"xp": self.xp})
 
     def updateStats(self, stats: dict):
@@ -941,6 +972,8 @@ class Pawn(PawnBehaviour, getStat):
         reason_str = f"{points} total points: " + ", ".join(reasons)
         return points, reason_str
 
+    def getKillXP(self, killed: "Pawn"):
+        return int((killed.level ** 0.5) * (max(1, killed.level - self.level)))
 
     def gainKill(self, killed: "Pawn"):
         self.health += self.itemEffects["healOnKill"]
@@ -960,7 +993,7 @@ class Pawn(PawnBehaviour, getStat):
             self.kills += 1
             self.stats["kills"] += 1
 
-        xp = int((killed.level ** 0.5) * (max(1, killed.level - self.level)))
+        xp = self.getKillXP(killed)
 
         self.gainXP(xp)
 
@@ -1214,12 +1247,22 @@ class Pawn(PawnBehaviour, getStat):
         asyncio.run_coroutine_threadsafe(self.sendPacket(json_packet), self.app.loop)
 
     def tryToNade(self):
+
+        if self.isManual(): return
+
+        if self.gType == None: return
+
+        if self.grenadeAmount <= 0: return
+
         if self.grenadePos:
             return
         if self.target:
             return
         if not self.team.utilityPos["aggr"]:
-            return
+            if self.app.GAMEMODE in ["TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"]:
+                c = self.app.commonRoom.randomCell()
+                self.team.addNadePos(c)
+                return
         
         pos = self.team.getGodTeam().getRandomNadePos()
         if not isinstance(pos, (list, tuple)):
@@ -1228,7 +1271,7 @@ class Pawn(PawnBehaviour, getStat):
         if self.canSeeCell(pos):
             return
         dist = self.app.getDistFrom(self.getOwnCell(), pos)
-        if 10 > dist or dist > 40:
+        if 10 > dist or dist > 20 + 10*self.itemEffects["utilityUsage"]:
             return
         
         teamPawns = self.team.getPawns()
@@ -1239,7 +1282,7 @@ class Pawn(PawnBehaviour, getStat):
 
         self.grenadePos = pos
         self.team.deleteNadePos(pos)
-        self.gType = random.randint(0,1)
+        #self.gType = random.randint(0,1)
 
         self.say(random.choice([
             "Lentää!",
@@ -1260,54 +1303,15 @@ class Pawn(PawnBehaviour, getStat):
             if self.app.GAMEMODE != "FINAL SHOWDOWN":
                 self.respawnI = 2
 
-        else:
-            self.tryToNade()
-
-
-        if self.grenadePos:
-            self.currWeapon = self.grenades[self.gType]
-
-        elif self.carryingSkull():
-            if self.app.skull.name == "SKULL":
-                self.currWeapon = self.skullWeapon
-            else:
-                self.currWeapon = self.bombWeapon
-
-        elif self.buildingTarget and not self.target:
-            self.currWeapon = self.hammer
-
-        else:           
-            
-            self.currWeapon = self.weapon
-                
-
-        #DELTATIMESAVE = self.app.deltaTime
-        #self.app.deltaTime *= self.itemEffects["timeScale"]
-
-        self.ONSCREEN = self.onScreen()
-
-        if self.ULT_TIME > 0:
-            self.ULT_TIME -= self.app.deltaTime
-            self.ULT = True
-        else:
-            self.ULT = False
 
         if self.weapon:
             self.weapon.tryToDisableLazer()
 
 
-        if self.itemEffects["turnCoat"]:
-            self.handleTurnCoat()
-
-        if self.flashed > 0:
-            self.flashed -= self.app.deltaTime
-            self.flashed = max(0, self.flashed)
-        else:
-            self.flashedBy = None
-
+        #########
         if self.respawnI > 0:
             if not self.BOSS:
-                if self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team:
+                if self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team and self.app.GAMEMODE == "ODDBALL":
                     self.respawnI -= self.app.deltaTime*0.25
                 else:
                     self.respawnI -= self.app.deltaTime
@@ -1321,6 +1325,60 @@ class Pawn(PawnBehaviour, getStat):
             self.app.particle_system.create_healing_particles(self.pos[0], self.pos[1])
 
         self.killed = False
+
+        #########
+        if self.gType != None:
+            if self.grenadeAmount <= 2 ** self.itemEffects["utilityUsage"]:
+                self.grenadeReloadI += self.app.deltaTime * self.itemEffects["utilityUsage"]
+                if self.grenadeReloadI >= 10:
+                    self.grenadeAmount += 1
+                    self.grenadeReloadI = 0
+
+            if not self.app.PEACEFUL:
+                self.tryToNade()
+
+        #########
+        if self.grenadePos:
+            self.currWeapon = self.grenades[self.gType]
+
+        elif self.carryingSkull():
+            if self.app.skull.name == "SKULL":
+                self.currWeapon = self.skullWeapon
+            else:
+                self.currWeapon = self.bombWeapon
+
+        elif self.buildingTarget and not self.target:
+            self.currWeapon = self.hammer
+
+        else:           
+            self.currWeapon = self.weapon
+        #########
+
+        #DELTATIMESAVE = self.app.deltaTime
+        #self.app.deltaTime *= self.itemEffects["timeScale"]
+
+        self.ONSCREEN = self.onScreen()
+
+        if self.ULT_TIME > 0:
+            self.ULT_TIME -= self.app.deltaTime
+            self.ULT = True
+        else:
+            self.ULT = False
+
+        
+
+        if self.itemEffects["turnCoat"]:
+            self.handleTurnCoat()
+
+        if self.flashed > 0:
+            self.flashed -= self.app.deltaTime
+            self.flashed = max(0, self.flashed)
+        else:
+            self.flashedBy = None
+
+        
+        
+        
 
         if not self.app.PEACEFUL:
             if self.xpI > 0:
@@ -1354,11 +1412,15 @@ class Pawn(PawnBehaviour, getStat):
             elif not self.client:
                 self.app.pendingLevelUp = self # Old implementation, the screen displays the item choices. 
 
-        if not self.tripped:
-            self.think()
-            self.walk()
-            if not self.app.PEACEFUL:
-                self.shoot()
+        if not self.tripped and not self.defusing():
+            if not self.isManual():
+                self.think()
+                self.walk()
+                if not self.app.PEACEFUL:
+                    self.shoot()
+            else:
+                self.walkManual()
+                self.weapon.fireFunction(self.weapon)
 
         if self.tripped:
             self.tripI = min(self.tripI + self.app.deltaTime, 1.0)
@@ -1415,8 +1477,11 @@ class Pawn(PawnBehaviour, getStat):
         self.buildingBounceOffset = 0
         self.buildingRotationOffset = 0
 
+        if not self.BOSS:
+            self.dualwield = self.carryingSkull()
 
         self.currWeapon.tick()
+
         if self.dualwield and self.dualWieldWeapon:
             self.dualWieldWeapon.tick() 
 
@@ -1582,6 +1647,9 @@ class Pawn(PawnBehaviour, getStat):
             self.headIm = pygame.transform.rotate(tempIm, self.rotation)
         
         return newPos
+    
+    def defusing(self):
+        return self.app.GAMEMODE == "DETONATION" and self.app.skull.defusedBy == self
 
 
     def carryingSkull(self):
@@ -1636,6 +1704,10 @@ class Pawn(PawnBehaviour, getStat):
             self.aimAt = lerp_angle(self.aimAt, aimAt, 0.1)
 
         
+    def marchCells(self, angle, dist = 3):
+        x,y = self.getOwnCell()
+        cell = self.app.map.marchRay(x,y, angle, dist)
+        return cell
 
         
 
@@ -1683,6 +1755,9 @@ class Pawn(PawnBehaviour, getStat):
 
         if self.app.cameraLock == self:
             pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi)
+
+            #cell = self.marchCells(-self.aimAt, 5)
+            #self.app.highLightCell(cell)
 
         heightOffset = v2(0, - self.height/2 + 30)
         
@@ -1745,6 +1820,8 @@ class Pawn(PawnBehaviour, getStat):
         #if not self.app.PEACEFUL and self.app.cameraLock == self:
         #    self.renderInfo()
 
+        
+
 
     
     def distanceToPawn(self, pawn):
@@ -1791,9 +1868,9 @@ class Pawn(PawnBehaviour, getStat):
     def getCell(self, pos):
         return self.v2ToTuple((pos + [0, self.app.tileSize/2]) / self.app.tileSize)
 
-    def getVisibility(self):
+    def getVisibility(self, maxDist = 10):
         cell = self.getOwnCell()
-        return self.app.map.get_visible_cells(cell[0], cell[1])
+        return self.app.map.get_visible_cells(cell[0], cell[1], maxDist)
     
     def sees(self, target: "Pawn"):
         c1 = self.getOwnCell()

@@ -6,7 +6,7 @@ from pygame.math import Vector2 as v2
 from utilities.camera import Camera
 from pawn.weapon import Weapon
 from core.loadAnimation import load_animation
-from utilities.items import getItems, getItemsEng
+from utilities.items import getItems
 from gameTicks.millionaire import initMillionaire
 from gameTicks.settingsTick import createSettings
 from gameTicks.qrCodesTick import createQRS
@@ -18,6 +18,8 @@ from utilities.babloBG import SpeedLines
 from utilities.bosslyrics import getLyricTimes
 from typing import TYPE_CHECKING
 from utilities.fireSystem import FireSystem
+from collections import deque
+
 if TYPE_CHECKING:
     from main import Game
     from pawn.pawn import Pawn
@@ -157,6 +159,8 @@ class valInit:
         tile_w = 70
         w, h = self.concrete.get_width(), self.concrete.get_height()
 
+
+
         for i in range(w//tile_w):
             rect = pygame.Rect(i * tile_w, 0, tile_w, h)
             tile = self.concrete.subsurface(rect).copy()
@@ -194,6 +198,10 @@ class valInit:
 
         
         # TEAM COUNT
+
+        self.filmOnly = []
+        self.winningTeam = None
+        self.maxWins = 3
         
         self.teamsSave = self.teams
         self.MINIMAPCELLSIZE = 2
@@ -207,14 +215,28 @@ class valInit:
         self.STRESSTEST = False
         self.FIXED_FRAMERATE = 20
 
+        self.MANUALPAWN = None
+
         self.ultCalled = False
         self.ultFreeze = 0
         self.commonRoomSwitchI = 0
 
-        self.gameModeLineUp = ["TEAM DEATHMATCH"] # , ,  "FINAL SHOWDOWN",  #, "DETONATION", "TURF WARS", "FINAL SHOWDOWN"
+        self.gameModeLineUp = ["DETONATION"] # , ,  "FINAL SHOWDOWN",  #,  "TEAM DEATHMATCH", 
 
         self.babloMusic = self.loadSound("audio/taikakeinu/bar", volume=0.75, asPygame=True)
         self.BABLO = None
+
+        self.bulletImpactPositions = []
+
+        self.roomTextures = []
+        for x in os.listdir("texture/floorTiles"):
+            im = pygame.image.load(f"texture/floorTiles/{x}").convert()
+            im = pygame.transform.scale(im, [self.tileSize, self.tileSize])
+            self.roomTextures.append(im)
+
+        self.grass = pygame.image.load(f"texture/Asphalt3_img.jpg").convert()
+        self.grass = pygame.transform.scale(self.grass, [self.tileSize, self.tileSize])
+
 
 
         self.speedlines = SpeedLines(num_lines=120, length=2000, width=10, speed=3)
@@ -324,9 +346,10 @@ class valInit:
         self.visualEntities = []
         self.explosion = load_animation("texture/expl1", 0, 31, size = [500,500])
         self.items = getItems()
+        print("ITEMS:", len(self.items))
         self.cameraLock = None
 
-        self.levelUps = [round(5*(x+1) * (1.1) ** x) for x in range(100)]
+        self.levelUps = [round(10*(x+1) * (1.1) ** x) for x in range(100)]
 
         self.pendingLevelUp = None
         self.levelUpI = 5
@@ -391,6 +414,8 @@ class valInit:
         
         self.ARSounds = self.loadSound("audio/assault")
 
+        self.deathScreams = os.listdir("audio/screams")
+
         self.deathSounds = self.loadSound("audio/death")
 
         self.hitSounds = self.loadSound("audio/hit")
@@ -414,6 +439,11 @@ class valInit:
 
         self.MAXFPS = 144
         self.TIMESCALE = 1
+
+        self.ekg_time = 0.0
+        self.ekg_accum = 0.0
+        self.ekg_points = deque(maxlen=100)
+        self.heartRateEKG = 1.2
 
 
         self.bloodClearI = 0

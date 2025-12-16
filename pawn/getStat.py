@@ -54,12 +54,13 @@ class getStat:
             "knockbackMult":1.0,
             "healAllies":0,
             "timeScale": 1.0,
+            "utilityUsage": 1.0,
 
             "berserker" : False,
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": True,
+            "talking": False,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,
@@ -75,8 +76,6 @@ class getStat:
             "revenge" : False,
             "duplicator" : False,
             "bossKiller" : False,
-            
-            
         }
 
         self.effect_labels_fi = {
@@ -108,6 +107,9 @@ class getStat:
             "defenceNormal": "Normaali puolustus",
             "defenceEnergy": "Energiapuolustus",
             "defenceExplosion": "Räjähdyssuoja",
+
+            "timeScale": "Kellonopeus",
+            "utilityUsage": "Kalusteiden käyttö",
 
             "dodgeChance": "Väistön todennäköisyys",
             "xpMult": "XP-kerroin",
@@ -216,7 +218,7 @@ class getStat:
         if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
             self.lastKiller = None
             
-        return self.itemEffects["revenge"] and self.lastKiller and not self.lastKiller.killed and not self.app.PEACEFUL
+        return self.itemEffects["revenge"] and self.lastKiller and not self.lastKiller.killed and not self.app.PEACEFUL and self.flashed <= 0
     
     @ult_multiplier
     def defenceNormal(self):

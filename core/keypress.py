@@ -30,7 +30,7 @@ def key_press_manager(obj):
         [pygame.K_3, "3"],
         [pygame.K_4, "4"],
         [pygame.K_TAB, "tab"],
-
+        [pygame.K_LSHIFT, "shift"],
         [pygame.K_RETURN, "enter"],
         [pygame.K_SPACE, "space"],
         [pygame.K_BACKSPACE, "backspace"],

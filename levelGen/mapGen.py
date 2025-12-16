@@ -30,6 +30,49 @@ def get_visible_mask(grid, from_x, from_y, max_range, cos_table, sin_table):
 
     return visible
 
+@nb.njit
+def march_ray_all_cells(grid, from_x, from_y, max_range, dx, dy):
+    height, width = grid.shape
+    visited = np.zeros((max_range, 2), dtype=np.int32)
+    count = 0
+
+    for step in range(1, max_range + 1):
+        x = int(from_x + dx * step)
+        y = int(from_y + dy * step)
+
+        if x < 0 or x >= width or y < 0 or y >= height:
+            break
+
+        if grid[y, x] == 0:  # WALL=0
+            break
+
+        visited[count, 0] = x
+        visited[count, 1] = y
+        count += 1
+
+    return visited[:count]  # slice to only return the visited cells
+
+@nb.njit
+def march_ray(grid, from_x, from_y, max_range, dx, dy):
+    height, width = grid.shape
+    last_y = from_y
+    last_x = from_x
+
+    for step in range(1, max_range + 1):
+        x = int(from_x + dx * step)
+        y = int(from_y + dy * step)
+
+        if x < 0 or x >= width or y < 0 or y >= height:
+            break
+
+        if grid[y, x] == 0:  # WALL=0
+            break
+
+        last_x = x
+        last_y = y
+
+    return last_y, last_x
+
 
 
 class CellType(Enum):
@@ -128,6 +171,7 @@ class Room:
         self.occupyI = 5
         self.kills = 0
         self.CENTER = (self.x + self.width // 2, self.y + self.height // 2)
+        self.texture = random.choice(self.arena.app.roomTextures)
         
         
     def getCenter(self):
@@ -199,7 +243,8 @@ class Room:
         return cells
 
 class ArenaGenerator:
-    def __init__(self, width: int = 80, height: int = 60, seed: Optional[int] = None):
+    def __init__(self, app, width: int = 80, height: int = 60, seed: Optional[int] = None):
+        self.app = app
         self.width = width
         self.height = height
         self.grid = np.zeros((height, width), dtype=int)
@@ -253,6 +298,38 @@ class ArenaGenerator:
                             (pixel_x, pixel_y, cell_size, cell_size))
         
         return surface
+    
+
+    def to_pygame_surface_textured2(self, cell_size=16):
+        # Create surface
+        surface_width = self.width * cell_size
+        surface_height = self.height * cell_size
+        surface = pygame.Surface((surface_width, surface_height))
+
+        for y in range(self.height):
+            for x in range(self.width):
+                cell_type = self.grid[y, x]
+                if cell_type == CellType.WALL.value:
+                    continue
+
+
+                pixel_x = x * cell_size
+                pixel_y = y * cell_size
+
+                drawn = False
+                for r in self.rooms:
+                    if r.contains(x,y):
+                        surface.blit(r.texture, (pixel_x, pixel_y))
+                        drawn = True
+                        break
+                
+                if not drawn:
+                    surface.blit(random.choice(self.app.concretes), (pixel_x, pixel_y))
+
+        
+        return surface
+        
+
 
     def to_pygame_surface_textured(self, 
                                 wall_texture: Optional[pygame.Surface] = None,
@@ -672,6 +749,20 @@ class ArenaGenerator:
         
         self.grid = new_grid
 
+
+    def marchRay(self, from_x: int, from_y: int, angle: float, max_range: int = 20):
+        dx = np.cos(angle)
+        dy = np.sin(angle)
+
+        y, x = march_ray(self.grid, from_x, from_y, max_range, dx, dy)
+        return x, y
+    
+    def marchRayAll(self, from_x: int, from_y: int, angle: float, max_range: int = 20):
+        dx = np.cos(np.radians(angle))
+        dy = np.sin(np.radians(angle))
+
+        cells = march_ray_all_cells(self.grid, from_x, from_y, max_range, dx, dy)
+        return cells
 
     def get_visible_cells(self, from_x: int, from_y: int, max_range: int = 10):
         angles = np.arange(0, 360, 2)

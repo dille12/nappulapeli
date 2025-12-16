@@ -7,19 +7,7 @@ import pygame
 import time
 from core.AI import constructTeamVisibility, drawGridMiniMap
 import math
-def announceVictory(self: "Game", victoryTeam):
-    #print(f"Team {i+1} WON")
-    self.victoryTeam = victoryTeam
-    self.VICTORY = True 
-    self.points = []
-
-    self.nextMusic = -1
-
-    for x in self.pawnHelpList:
-        points, reason_str = x.evaluatePawn()
-        self.points.append((x, points, reason_str))
-
-    self.points.sort(key=lambda x: x[1], reverse=True)
+from utilities.bullet import raycast_grid
 
 def battleTick(self: "Game"):
 
@@ -39,7 +27,7 @@ def battleTick(self: "Game"):
             for i, x in enumerate(self.skullTimes):
                 if x >= self.skullVictoryTime:
                     #print(f"Team {i+1} WON")
-                    announceVictory(self, i)
+                    self.announceVictory(i)
                     break
 
         elif self.GAMEMODE == "TEAM DEATHMATCH":
@@ -48,8 +36,8 @@ def battleTick(self: "Game"):
                 victoryCondition[p.team.i] += p.kills
             
             for i, x in enumerate(victoryCondition):
-                if x >= 200:
-                    announceVictory(self, i)
+                if x >= 100:
+                    self.announceVictory(i)
                     break
         
         elif self.GAMEMODE == "1v1":
@@ -59,7 +47,7 @@ def battleTick(self: "Game"):
             
             for i, x in enumerate(victoryCondition):
                 if x >= 10:
-                    announceVictory(self, self.duelPawns[i].team.i)
+                    self.announceVictory(self.duelPawns[i].team.i)
                     break
 
         elif self.GAMEMODE == "TURF WARS":
@@ -70,8 +58,16 @@ def battleTick(self: "Game"):
             
             for i, x in enumerate(victoryCondition):
                 if x == len(self.map.rooms):
-                    announceVictory(self, i)
+                    self.announceVictory(i)
                     break
+        
+        elif self.GAMEMODE == "DETONATION":
+            victoryCondition = [0 for _ in range(2)]
+            if self.SITES:
+                victoryCondition[0] = 1
+            else:
+                victoryCondition[1] = 1
+                self.announceVictory(1)
                     
                 
         
@@ -88,9 +84,16 @@ def battleTick(self: "Game"):
 
 
     self.CREATEDUAL = False
-    if self.AUTOCAMERA:
-        self.handleCameraLock()
-        self.handleCameraSplit()
+
+    if not self.MANUALPAWN:
+        if self.AUTOCAMERA:
+            self.handleCameraLock()
+            self.handleCameraSplit()
+    else:
+        self.handleCameraManual()
+
+
+    
     
 
     #self.handleUltingCall()
@@ -114,7 +117,7 @@ def battleTick(self: "Game"):
         if self.roundTime <= 0:
             # Pick out from the victoryCondition the highest index
             max_index = victoryCondition.index(max(victoryCondition))
-            announceVictory(self, max_index)
+            self.announceVictory(max_index)
 
     
     
@@ -177,7 +180,7 @@ def battleTick(self: "Game"):
     self.handleTurfWar()
 
 
-    if self.GAMEMODE == "TEAM DEATHMATCH":
+    if self.GAMEMODE == "TEAM DEATHMATCH" or True:
         self.commonRoomSwitchI += self.deltaTime
         if self.commonRoomSwitchI >= 10:
             self.commonRoomSwitchI = 0
@@ -281,6 +284,9 @@ def battleTick(self: "Game"):
 
         self.drawBFGLazers()
 
+        for x in self.bulletImpactPositions:
+            pygame.draw.circle(self.DRAWTO, [255,0,0], v2(x) - self.cameraPosDelta, 10, )
+
         self.particle_system.render_all(self.DRAWTO)
 
         
@@ -339,8 +345,62 @@ def battleTick(self: "Game"):
             skullpos = self.skull.pos.copy()
 
         pygame.draw.circle(self.MINIMAPTEMP, [255,255,255], self.MINIMAPCELLSIZE*skullpos/self.tileSize, 6, width=1)
+
+    MINIMAP_POS = self.res - self.MINIMAP.get_size() - [10,10]
     
-    self.screen.blit(self.MINIMAPTEMP, self.res - self.MINIMAP.get_size() - [10,10])
+    self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
+
+
+    t = self.font.render("Points", True, [255,255,255])
+    self.screen.blit(t, [self.res.x - 10 - t.get_width(), MINIMAP_POS.y - 45 - t.get_height()])
+
+    w = self.MINIMAP.get_width()
+    h = 40
+    w_r = w / len(self.allTeams)
+    x = 0
+
+    for team in self.allTeams:
+
+        rect1 = pygame.Rect(MINIMAP_POS + [x, -h], [w_r, h])
+
+        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.2), rect1)
+
+        rect2 = rect1.copy()
+        rect2.height = (team.wins/self.maxWins) * h
+        rect2.bottom = rect1.bottom
+        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.5), rect2)
+
+        
+        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 1), rect1, width=2)
+        
+        x += w_r
+
+        center = rect1.center
+        t = self.font.render(f"{team.wins}", True, [255,255,255])
+        self.screen.blit(t, v2(center) - v2(t.get_size())/2)
+
+        if self.winningTeam != None and team == self.winningTeam:
+            # draw a yellow crown on top of the rect
+            crown_width = w_r * 0.6
+            crown_height = h * 0.6
+            crown_top = rect1.top - crown_height * 0.8
+            crown_center_x = rect1.centerx
+
+            points = [
+                (crown_center_x - crown_width/2, rect1.top),                # bottom-left
+                (crown_center_x - crown_width/2 - 5, crown_top),                # left spike
+                (crown_center_x - crown_width/5, crown_top + crown_height*0.33),
+                (crown_center_x, crown_top - crown_height*0.5),                                # middle spike
+                (crown_center_x + crown_width/5, crown_top + crown_height*0.33),
+                (crown_center_x + crown_width/2 + 5, crown_top),                # right spike
+                (crown_center_x + crown_width/2, rect1.top)                 # bottom-right
+            ]
+            pygame.draw.polygon(self.screen, (255, 255, 0), points)
+            pygame.draw.polygon(self.screen, (200, 200, 0), points, width=2)  # outline
+
+
+    #debugRay(self)
+
 
     self.handleHud()
 
@@ -362,12 +422,54 @@ def battleTick(self: "Game"):
     self.debugText(f"ONSCREEN: {onscreen}")
     self.debugText(f"MUSIC: {self.currMusic} -> {self.nextMusic}")
     self.debugText(f"CAM: {self.CAMERA.vibration_amp}")
+    self.debugText(f"{self.cameraLinger:.2f}")
+    if self.cameraLock:
+        self.debugText(f"{self.cameraLock.name}")
+    else:
+        self.debugText(f"{self.cameraLock}")
 
     if self.GAMEMODE == "DETONATION":
         self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].planTimer:.1f}")
         self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].planTimer:.1f}")
 
 
-    self.drawFPS()
+    #self.drawFPS()
     
     #self.genPawns()
+
+
+def debugRay(self):
+    ray_origin = self.cameraPosDelta + self.res / 2
+
+    mouse_world = self.cameraPosDelta + self.mouse_pos
+    direction = mouse_world - ray_origin
+    if direction.length_squared() == 0:
+        return
+    direction = direction.normalize()
+
+    max_dist_tiles = 2000 / self.tileSize
+
+    hit = raycast_grid(
+        ray_origin,
+        direction,
+        max_dist_tiles,
+        self.map.grid,
+        self.tileSize
+    )
+
+    if hit is not None:
+        pygame.draw.circle(
+            self.DRAWTO,
+            (255, 0, 0),
+            hit - self.cameraPosDelta,
+            6
+        )
+    else:
+        end = ray_origin + direction * 2000
+        pygame.draw.line(
+            self.DRAWTO,
+            (0, 255, 0),
+            ray_origin - self.cameraPosDelta,
+            end - self.cameraPosDelta,
+            2
+        )

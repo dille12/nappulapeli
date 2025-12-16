@@ -62,11 +62,27 @@ class Bomb(Objective):
         self.plantedAt = None
         self.time = 40
         self.planter = None
+        self.defusedBy = None
+        self.defuseTimer = 5
         super().__init__(app, cell)
 
     def tick(self):
         if self.planted:
             self.time -= self.app.deltaTime
+
+            if self.defusedBy:
+                self.defuseTimer -= self.app.deltaTime
+                if self.defuseTimer <= 0:
+                    self.app.notify("BOMB DEFUSED!", self.defusedBy.team.getColor())
+                    self.planted = False
+                    self.plantedAt = None
+                    self.time = 40
+                    self.defusedBy = None
+                    self.defuseTimer = 5
+                    self.reset()
+            else:
+                self.defuseTimer = 5
+
             if self.time <= 0:
                 self.app.notify("BOMB EXPLODED!", self.planter.team.getColor())
                 self.reset()
@@ -76,6 +92,9 @@ class Bomb(Objective):
                 self.planted = False
                 self.plantedAt = None
                 self.time = 40
+
+                self.defusedBy = None
+                self.defuseTimer = 5
 
                 Explosion(self.app, self.pos, None, 500, doFire=True)                
 

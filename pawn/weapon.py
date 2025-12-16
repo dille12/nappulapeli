@@ -128,8 +128,7 @@ class Weapon:
 
 
         self.weaponIsGrenade = fireFunction == Weapon.grenade
-        if self.weaponIsGrenade:
-            print("IS GRENADE", self.name)
+        self.weaponIsObjective = fireFunction == Weapon.skull
 
         if not precomputedImage:
             self.image = pygame.image.load(image_path).convert_alpha()
@@ -281,7 +280,7 @@ class Weapon:
         self.meleeI = self.getMeleeTime()
         t = self.owner.target.pos.copy()
 
-        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self, typeD="melee")
+        self.owner.target.takeDamage(50*self.owner.itemEffects["meleeDamage"], fromActor = self)
 
         if self.owner.itemEffects["detonation"]:
             Explosion(self.app, t, self, 100*self.owner.itemEffects["meleeDamage"])
@@ -367,9 +366,13 @@ class Weapon:
                 return
 
             startPos = self.getBulletSpawnPoint()
+
+            r = math.radians(-self.ROTATION)
+            r = self.adjustToAccuracy(r)
+
             endPos = [
-                startPos[0] + math.cos(math.radians(-self.ROTATION)) * self.owner.getRange(),
-                startPos[1] + math.sin(math.radians(-self.ROTATION)) * self.owner.getRange()
+                startPos[0] + math.cos(r) * self.owner.getRange(),
+                startPos[1] + math.sin(r) * self.owner.getRange()
             ]
             
             self.app.BFGLasers.append([startPos, endPos, self.owner.teamColor])
@@ -477,7 +480,7 @@ class Weapon:
         if self.currBurstRounds > 0:
             
             if self.currBurstI <= 0:
-                self.currBurstI += self.burstI * self.owner.getFireRateMod()
+                self.currBurstI += self.burstI #* self.owner.getFireRateMod()
                 self.currBurstRounds -= 1
                 self.currBurstRounds = max(0, self.currBurstRounds)
 
@@ -524,15 +527,16 @@ class Weapon:
 
 
     def grenade(self):
-        self.grenadeThrowI += self.app.deltaTime
+        self.grenadeThrowI += self.app.deltaTime * self.owner.itemEffects["utilityUsage"]
         if self.grenadeThrowI >= 1:
 
             if self.name == "Flashbang":
                 gType = GrenadeType.FLASH
             elif self.name == "Frag Grenade":
                 gType = GrenadeType.FRAG
-
-            Grenade(self.app, self.owner.getOwnCell(), self.owner.grenadePos, self.image, self.owner, grenadeType=gType)
+            if self.owner.grenadePos:
+                Grenade(self.app, self.owner.getOwnCell(), self.owner.grenadePos, self.image, self.owner, grenadeType=gType)
+                self.owner.grenadeAmount -= 1
             self.grenadeThrowI = 0
             self.owner.grenadePos = None
             self.app.playPositionalAudio("audio/nadeThrow.wav", self.owner.pos)
@@ -608,9 +612,23 @@ class Weapon:
             self.fireTick -= self.app.deltaTime
             return False
         
+        if self.owner.isManual():
+            return "mouse0" in self.app.keypress_held_down and not self.app.PEACEFUL
+        
         if self.owner.flashed > 0: return True
 
         if not self.pointingAtTarget(): return False
+
+        x,y = self.owner.getOwnCell()
+        dist = self.app.getDistFrom((x,y), self.owner.target.getOwnCell())
+        allCells = self.app.map.marchRayAll(x,y, -self.owner.aimAt, int(dist)+1)
+        teamPawns = self.owner.team.getPawns()
+        for p in teamPawns:
+            if p == self.owner or p.killed:
+                continue
+            if p.getOwnCell() in allCells:
+                #self.owner.say("VÄISTÄ NII MÄ VOIN AMPUA", 0.1)
+                return False
 
         return True
 
@@ -646,8 +664,8 @@ class Weapon:
         if self.owner.pos.distance_to(self.owner.walkTo) < 500 and not self.owner.route:
             return False
         
-        if self.owner.route and len(self.owner.route) < 5:
-            return False
+        #if self.owner.route and len(self.owner.route) < 5:
+        #    return False
 
         return True
     
@@ -673,10 +691,10 @@ class Weapon:
 
         self.defaultPos = self.owner.deltaPos.copy()
         if self.owner.dualwield:
-            if self == self.owner.weapon:
-                self.defaultPos = self.owner.deltaPos.copy() + [-90, -40]
+            if self != self.owner.dualWieldWeapon:
+                self.defaultPos = self.owner.deltaPos.copy() + [-self.owner.height*0.3, -self.owner.height*0.13]
             else:
-                self.defaultPos = self.owner.deltaPos.copy() + [90, -40]
+                self.defaultPos = self.owner.deltaPos.copy() + [self.owner.height*0.3, -self.owner.height*0.13]
 
         if self.meleeing():
             self.meleeI -= self.app.deltaTime
@@ -693,7 +711,16 @@ class Weapon:
 
         rotationMod = ownerBreathe*5 - self.owner.rotation*0.5
 
-        if self.owner.target and not self.isReloading():
+        if self.owner.isManual():
+            #mouse = self.app.mouse_pos + self.app.cameraPosDelta
+            mouse_world = self.app.cameraPosDelta + self.app.mouse_pos
+            r = math.degrees(self.app.getAngleFrom(self.defaultPos, v2(mouse_world)))
+            if "shift" in self.app.keypress_held_down:
+                self.runOffset += (self.app.deltaTime * self.owner.getHandling()*2)
+            else:
+                self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
+
+        elif self.owner.target and not self.isReloading():
             r = math.degrees(self.app.getAngleFrom(self.defaultPos, self.owner.target.pos))
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
 
@@ -758,7 +785,7 @@ class Weapon:
             RGAIN,               # Gain factor - acceleration rate (no deltaTime here)
             DIFF  # Angle difference
         )
-        if self.owner.flashed > 0:
+        if self.owner.flashed > 1:
             if self.ROTATIONVEL < 720:
                 self.ROTATIONVEL += RGAIN * self.app.deltaTime
             else:

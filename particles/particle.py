@@ -195,10 +195,8 @@ class Particle:
         if not self.alive:
             return
         
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        if not (0 <= screen_x <= self.app.res[0] and 0 <= screen_y <= self.app.res[1]):
+
+        if not self.app.onScreen((self.x, self.y)):
             self.destroy()
             return
 
@@ -916,3 +914,36 @@ class ParticleSystem:
 
 
         return particles
+    
+    def create_wall_sparks(self, x: float, y: float, normal_angle: float = None, count: int = 12, **kwargs):
+        particles = []
+
+        if normal_angle is None:
+            base_angle = random.uniform(0, 2 * math.pi)
+        else:
+            base_angle = normal_angle + math.pi  # sparks go away from wall
+
+        for _ in range(count):
+            angle = base_angle + random.uniform(-0.1, 0.1)
+            speed = random.uniform(10, 20)
+
+            particles.append(Particle(
+                self.app,
+                x, y,
+                vel_x=math.cos(angle) * speed,
+                vel_y=math.sin(angle) * speed,
+                lifetime=random.randint(80, 120),
+                start_color=(255, 200, 120, 255),
+                end_color=(80, 40, 20, 0),
+                start_size=random.uniform(3, 4),
+                end_size=0,
+                shape=ParticleShape.CIRCLE,
+                gravity=0.1,
+                friction=0.88,
+                blend_mode=BlendMode.ADD,
+                use_subpixel=False,
+                **kwargs
+            ))
+
+        return particles
+

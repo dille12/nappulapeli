@@ -8,15 +8,16 @@ if TYPE_CHECKING:
     from pawn.pawn import Pawn
 from utilities.explosion import Explosion
 from enum import Enum
-
+from utilities.textParticle import TextParticle
 # Original enums for API compatibility
 class GrenadeType(Enum):
     FLASH = 0
     FRAG = 1
 
 
+
 class Grenade:
-    def __init__(self, app: "Game", fromCell, toCell, image, owner, grenadeType = GrenadeType.FLASH):
+    def __init__(self, app: "Game", fromCell, toCell, image, owner: "Pawn", grenadeType = GrenadeType.FLASH):
         self.app = app
         self.pos = (v2(fromCell) + [0.5,0.5])  * self.app.tileSize
         self.angle = self.app.getAngleFrom(fromCell, toCell)
@@ -29,15 +30,21 @@ class Grenade:
 
         self.type = grenadeType
 
+        self.owner = owner
+
         if self.type == GrenadeType.FLASH:
             self.imageKillFeed = self.app.flashKillFeed
             self.name = "Flash Grenade"
+
+            if not self.owner.itemEffects["allyProtection"]:
+                self.owner.team.takeCoverFromFlash(toCell)
+
         elif self.type == GrenadeType.FRAG:
             self.imageKillFeed = self.app.fragKillFeed
             self.name = "Frag Grenade"
         
 
-        self.MAXLIFE = 1
+        self.MAXLIFE = 1.5
         self.lifetime = self.MAXLIFE
 
         self.vel = diff * self.app.tileSize / self.MAXLIFE
@@ -47,7 +54,7 @@ class Grenade:
         self.verticalPos = 0
         self.rotation = random.randint(0,360)
         self.rotationVel = 720
-        self.owner = owner
+        
         self.imageR = pygame.transform.rotate(self.image, self.rotation)
 
     
@@ -80,15 +87,17 @@ class Grenade:
         elif self.type == GrenadeType.FRAG:
             self.explode()
 
+        if self.isNadeFilmed():
+            self.app.cameraLinger = 0.5
+
         if self.owner.currentlyAliveNade == self:
             self.owner.currentlyAliveNade = None
 
-        if self.isNadeFilmed():
-            self.app.cameraLinger = 0.4
+        
 
 
     def explode(self):
-        Explosion(self.app, self.pos, self, 100)
+        Explosion(self.app, self.pos, self, 75 * self.owner.itemEffects["weaponDamage"] * self.owner.itemEffects["utilityUsage"])
 
 
     def flash(self):
@@ -100,6 +109,8 @@ class Grenade:
 
 
         cell = self.getOwnCell()
+
+        totalFlashed = 0
 
         for x in self.app.pawnHelpList:
             if not x.canSeeCell(cell): continue
@@ -120,8 +131,19 @@ class Grenade:
 
             flashDur = 5 - 5 * (dist/1500)
             flashDur = min(5, max(flashDur, 0))
+
+            if not self.owner.team.hostile(self.owner, x):
+                flashDur /= self.owner.itemEffects["utilityUsage"]
+                self.owner.stats["teamFlashes"] += 1
+            else:
+                self.owner.gainXP(int(flashDur)/2.5)
+                self.owner.stats["flashes"] += 1
+
             x.flashed = flashDur
             if x.flashed > 0:
+                totalFlashed += 1
+                
+
                 x.target = None
                 x.flashedBy = self.owner
                 self.app.playPositionalAudio("audio/flashedSound.wav", x.pos)
@@ -134,9 +156,14 @@ class Grenade:
                     "Tapoiksmä sen?",
                     f"Hyvä lineuppi {self.owner.name}",
                     f"Kiitti vitusti {self.owner.name}",
-                    
-                    
                     ]))
+        
+        if totalFlashed:
+            if self.isNadeFilmed():
+                TextParticle(self.app, f"{totalFlashed} flashed!", self.pos)
+            else:
+                TextParticle(self.app, f"{totalFlashed} flashed!", self.owner.pos)
+                
 
         
 
@@ -160,7 +187,7 @@ class Grenade:
 
 
     def isNadeFilmed(self):
-        return self.owner == self.app.cameraLock and not self.owner.target
+        return self.owner == self.app.cameraLock and not self.owner.target and self == self.owner.currentlyAliveNade
     
 
 def angle_diff(a, b):

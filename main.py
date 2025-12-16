@@ -325,6 +325,13 @@ class Game(valInit):
             self.musicQueue = os.listdir("tracks")
             self.musicQueue = ["tracks/" + track for track in self.musicQueue if track.endswith(".mp3")]
             random.shuffle(self.musicQueue)
+
+
+    def highLightCell(self, cell):
+        print("HIGHLIGHTING", cell)
+        r = pygame.Rect(v2(cell) * self.tileSize, [self.tileSize, self.tileSize])
+        r.topleft -= self.cameraPosDelta
+        pygame.draw.rect(self.DRAWTO, [255,0,0], r, width=3)
     
     def drawSubs(self):
         if not self.subs:
@@ -570,11 +577,11 @@ class Game(valInit):
         
         
         if self.GAMEMODE == "1v1":
-            self.map = ArenaGenerator(50, 40)
+            self.map = ArenaGenerator(self, 50, 40)
             self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=3)
 
         else:
-            self.map = ArenaGenerator(120, 80)
+            self.map = ArenaGenerator(self, 120, 80)
             self.map.generate_arena(room_count=22, min_room_size=8, max_room_size=20, corridor_width=3)
 
         self.arena = ArenaWithPathfinding(self, self.map)
@@ -639,7 +646,11 @@ class Game(valInit):
 
         
         
-        self.MAP = self.map.to_pygame_surface_textured(cell_size=self.tileSize, floor_texture=self.concretes) #
+        self.MAP = self.map.to_pygame_surface_textured2(cell_size=self.tileSize) #
+
+        mapUntextured = self.map.to_pygame_surface(cell_size=self.tileSize) #
+        #pygame.image.save(mapUntextured, "untexturedLevel.png")
+
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
         
         self.SITES = []
@@ -779,6 +790,8 @@ class Game(valInit):
         self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
         self.gamemode_display.set_gamemode(self.GAMEMODE)
 
+        for x in self.allTeams:
+            x.allied.clear()
         
 
         if self.GAMEMODE == "1v1":
@@ -1020,12 +1033,35 @@ class Game(valInit):
     def toggleCam(self):
         self.AUTOCAMERA = not self.AUTOCAMERA
 
+    def getWinningTeam(self):
+        teams = self.allTeams
+        if not teams:
+            return None
+        sorted_teams = sorted(teams, key=lambda t: t.wins, reverse=True)
+        if len(sorted_teams) == 1:
+            self.winningTeam = sorted_teams[0]
+            return 
+        if sorted_teams[0].wins == sorted_teams[1].wins:
+            self.winningTeam = None
+            return None  # stalemate
+        self.winningTeam = sorted_teams[0]  # clear lead
+
 
     def announceVictory(self: "Game", victoryTeam):
         #print(f"Team {i+1} WON")
         self.victoryTeam = victoryTeam
         self.VICTORY = True 
         self.points = []
+
+        if self.GAMEMODE == "DETONATION":
+            for x in self.allTeams:
+                if x.detonationTeam == victoryTeam:
+                    x.wins += 1
+        else:
+            self.allTeams[self.victoryTeam].wins += 1
+
+        self.getWinningTeam()
+        print("Winning team", self.winningTeam)
 
         self.nextMusic = -1
 
@@ -1317,6 +1353,17 @@ class Game(valInit):
             self.screen.blit(t, r.topleft)
             yPos += 40
 
+    def setManualPawn(self, name):
+
+        if not name:
+            self.MANUALPAWN = None
+
+        for x in self.pawnHelpList:
+            if x.name == name:
+                self.MANUALPAWN = x
+                return
+        
+
     def handleCameraLock(self):
 
 
@@ -1328,19 +1375,34 @@ class Game(valInit):
                 self.cameraLock = self.BABLO
 
             elif self.pawnHelpList:
-                if self.GAMEMODE == "DETONATION":
-                    l = [x for x in self.pawnHelpList.copy() if not x.team.detonationTeam]
-                    e = sorted(l, key=lambda p: p.onCameraTime)
-                elif self.GAMEMODE == "ODDBALL":
-                    if self.objectiveCarriedBy:
-                        l = [x for x in self.pawnHelpList.copy() if x.team == self.objectiveCarriedBy.team]
-                    else:
-                        l = [x for x in self.pawnHelpList.copy() if not x.NPC]
-                    e = sorted(l, key=lambda p: p.onCameraTime)
-                else:
-                    l = [x for x in self.pawnHelpList.copy() if not x.NPC]
-                    e = sorted(l, key=lambda p: p.onCameraTime)
                 
+                if self.filmOnly:
+                    FILMLIST = [x for x in self.pawnHelpList.copy() if x in self.filmOnly]
+                    e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
+
+                else:
+                    FILMLIST = self.pawnHelpList.copy()
+
+                    if self.GAMEMODE == "DETONATION":
+                        if self.skull.plantedAt:
+                            l = [x for x in FILMLIST.copy() if self.skull.plantedAt.room.contains(*x.getOwnCell())]
+                        else:
+                            l = [x for x in FILMLIST.copy() if not x.team.detonationTeam]
+                        e = sorted(l, key=lambda p: p.onCameraTime)
+                    elif self.GAMEMODE == "ODDBALL":
+                        if self.objectiveCarriedBy:
+                            l = [x for x in FILMLIST.copy() if x.team.i == self.objectiveCarriedBy.team.i]
+                        else:
+                            l = FILMLIST
+                        e = sorted(l, key=lambda p: p.onCameraTime)
+                    else:
+                        l = FILMLIST
+                        e = sorted(l, key=lambda p: p.onCameraTime)
+
+                noNPC = [x for x in e if not x.NPC and not x.killed]
+                if noNPC:
+                    e = noNPC
+
                 for x in e:
                     if not x.killed:
                         self.cameraLock = x
@@ -1402,9 +1464,14 @@ class Game(valInit):
             self.SLOWMO = 1 - 0.5*(1-I)
             self.cameraLock = self.pendingLevelUp
 
+    def handleCameraManual(self):
+        if not self.MANUALPAWN.killed:
+            self.cameraPos = self.MANUALPAWN.pos  - self.res/2
+            self.cameraPos += (self.mouse_pos - self.res/2) * 0.35
+
     def handleCameraSplit(self):
         
-        if self.CREATEDUAL:
+        if self.CREATEDUAL and not self.STRESSTEST:
 
             self.splitI += self.deltaTimeR
             self.splitI = min(1, self.splitI)
@@ -1460,7 +1527,13 @@ class Game(valInit):
         
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
-        text = self.fontLarge.render(f"TEAM {self.victoryTeam+1} WON", True, self.getTeamColor(self.victoryTeam))
+        if self.GAMEMODE == "DETONATION":
+            s = "COUNTER TERRORISTS" if self.victoryTeam == 0 else "TERRORISTS"
+            t = 0 if not self.victoryTeam else -1
+            text = self.fontLarge.render(f"{s} WON", True, self.allTeams[t].getColor())
+
+        else:
+            text = self.fontLarge.render(f"TEAM {self.victoryTeam+1} WON", True, self.allTeams[self.victoryTeam].getColor())
         text.set_alpha(int(255 * (1-I)))
         self.screen.blit(text, self.res/2 - [0, 300] - v2(text.get_size())/2)
 
@@ -1484,6 +1557,7 @@ class Game(valInit):
 
         for x in self.allTeams:
             x.emancipate()
+            x.refreshColor()
             
         for x in self.pawnHelpList:
             self.allTeams[x.originalTeam].add(x)
@@ -1537,10 +1611,30 @@ class Game(valInit):
             self.hudChange = max(0, self.hudChange)
             if self.hudChange == 0:
                 self.currHud = None
+
+                self.ekg_time = 0.0
+                self.ekg_accum = 0.0
+                self.ekg_points.clear()
+
                 if not self.currHud and self.cameraLock:
                     self.currHud = self.cameraLock
 
         if self.hudChange > 0 and self.currHud:
+            
+            
+            health = self.currHud.health / self.currHud.getHealthCap()
+            health = min(1, max(health, 0))
+
+            if self.currHud.killed:
+                health = 0
+
+            if health != 0:
+                self.heartRateEKG = 1.2 + (5 * (1-health))
+            else:
+                self.heartRateEKG = 0
+
+            EKG = self.updateEKG()
+
             yPos = self.res[1] - 220*(1-(1-self.hudChange)**2)
             surf = pygame.Surface((200,200))
             c = self.getTeamColor(self.currHud.team)
@@ -1548,7 +1642,37 @@ class Game(valInit):
             surf.blit(self.currHud.hudImage, v2(100,100) - v2(self.currHud.hudImage.get_size())/2)
             surf.blit(random.choice(self.noise), (0,0))
             pygame.draw.rect(surf, c, (0,0,200,200), width=1)
+
+            surf2 = pygame.Surface((180,40))
+            surf2.fill((0,0,0))
+            color2 = heat_color(1-health)
+
+            
+            
+            lastPos = (0,39)
+            for i,p in enumerate(EKG):
+                x = i/len(EKG) * 180
+                y = 32 - p*5
+                pos = (x,y)
+                I = i/len(EKG)
+                c = [int(color2[0] * I), int(color2[1] * I), int(color2[2] * I)]
+                pygame.draw.line(surf2, c, lastPos, pos, width=2)
+                lastPos = pos
+
+            pygame.draw.rect(surf2, color2, (0,0,180,40), width=2)
+
+            if health != 0:
+                t = self.font.render(f"+{int(self.currHud.health)}", True, color2)
+            else:
+                t = self.font.render(f"DEAD", True, color2)
+            surf2.blit(t, (5, 20-t.get_height()/2))
+
+            surf.blit(surf2, [10, 155])
+
             self.screen.blit(surf, [20, yPos])
+
+
+
 
             c2 = [255,255,255]
 
@@ -1571,11 +1695,15 @@ class Game(valInit):
 
             xpTillnextLevel = self.levelUps[p.level-1] - p.xp
 
-            t1 = self.font.render(f"XP: {p.xp} Remaining: {xpTillnextLevel}", True, c2)
+            t1 = self.font.render(f"XP: {p.xp:.1f} Remaining: {xpTillnextLevel:.1f}", True, c2)
             self.screen.blit(t1, (230, yPos+105))
-
-            #t1 = self.font.render(f"{p.weapon.addedFireRate}", True, c2)
-            #self.screen.blit(t1, (230, yPos+140))
+    
+            if p.gType != None:
+                gtype = p.grenades[p.gType].name 
+                if p.grenadeAmount != 1:
+                    gtype += "s"
+                t1 = self.font.render(f"Utility: {p.grenadeAmount} {gtype}", True, c2)
+                self.screen.blit(t1, (230, yPos+140))
 
             p.hudInfo((600, yPos), screen=self.screen)
 
@@ -1676,6 +1804,24 @@ class Game(valInit):
         for x in sorted(self.pawnHelpList.copy(), key = lambda p: p.kills, reverse=True):
 
             t = combinedText(f"{x.name}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
+            r = t.get_rect()
+            r.topleft = [10,y]
+            
+            if r.collidepoint(self.mouse_pos):
+                pygame.draw.rect(self.screen, x.teamColor, r, width=2)
+                if "mouse0" in self.keypress:
+                    if x not in self.filmOnly:
+                        self.filmOnly.append(x)
+                    else:
+                        self.filmOnly.remove(x)
+
+                    self.cameraLock = None
+                    self.cameraLinger = 0
+
+            elif x in self.filmOnly:
+                pygame.draw.rect(self.screen, x.teamColor, r, width=1)
+
+
             self.screen.blit(t, [10,y])
             y += 22
 
@@ -1778,6 +1924,34 @@ class Game(valInit):
         self.levelUpI = self.LEVELUPTIME
         self.levelUpBlink = 1
         self.levelUpIndex = random.randint(0,2)
+
+
+    def updateEKG(self):
+        self.ekg_time += self.deltaTime
+        self.ekg_accum += self.deltaTime
+        # Sampling interval = 0.00625
+        while self.ekg_accum >= 0.005:
+            self.ekg_accum -= 0.005
+
+            t = self.ekg_time
+            if self.heartRateEKG == 0:
+                phase = 0.5
+            else:
+                phase = (t * self.heartRateEKG) % 1.0
+
+            if phase < 0.03:
+                y = 5.0 * phase / 0.03
+            elif phase < 0.06:
+                y = 5.0 * (1.0 - (phase - 0.03) / 0.03)
+            elif phase < 0.2:
+                y = -0.15 * math.sin((phase - 0.06) * math.pi / 0.14)
+            else:
+                y = 0.02 * math.sin((phase - 0.2) * 2.0 * math.pi / 0.8)
+
+            self.ekg_points.append(y)
+
+        return list(self.ekg_points)
+
 
 
     def randomWeighted(self, *args):
@@ -2002,6 +2176,23 @@ class Game(valInit):
 
             self.deltaTimeR = min(self.deltaTimeR, 1/30)
             self.deltaTime = self.deltaTimeR
+
+
+def heat_color(v):
+    v = max(0.0, min(1.0, v))
+    if v < 0.5:
+        # Green (0,255,0) → Yellow (255,255,0)
+        t = v / 0.5
+        r = round(255 * t)
+        g = 255
+        b = 0
+    else:
+        # Yellow (255,255,0) → Red (255,0,0)
+        t = (v - 0.5) / 0.5
+        r = 255
+        g = round(255 * (1 - t))
+        b = 0
+    return (r, g, b)
 
 def run():
     game = Game()

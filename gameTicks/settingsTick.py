@@ -144,10 +144,10 @@ def settingsTick(self: "Game"):
             w = random.choice(self.weapons)
             w.give(pawn)
 
-    if self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
+    if not (self.playerFilesToGen or self.pawnGenI) and self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
         self.GAMESTATE = "pawnGeneration"
 
-        
+        #self.MANUALPAWN = self.pawnHelpList[0]
 
         #t = threading.Thread(target=self.threadedGeneration, args=("BABLO", imageRaw, None), kwargs={"boss": True})
         #t.daemon = True

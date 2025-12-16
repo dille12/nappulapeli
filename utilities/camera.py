@@ -13,6 +13,7 @@ class Camera:
         self.vibration_offset = v2(0, 0)
 
     def vibrate(self, strength: float):
+        strength = min(strength, 40)
         self.vibration_amp = max(self.vibration_amp, strength)
 
     def update(self, target, delta, smooth_time=0.25):

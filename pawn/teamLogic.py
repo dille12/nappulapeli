@@ -6,7 +6,8 @@ if TYPE_CHECKING:
 from utilities.building import Building
 import numpy as np
 import random
-
+import math
+from core.detonation.teamDetonationLogic import tickDetonationLogic
 class NadePos:
     def __init__(self, pos):
         self.pos = pos
@@ -15,6 +16,11 @@ class NadePos:
     def equal(self, pos):
         return self.pos[0] == pos[0] and self.pos[1] == pos[1]
 
+
+
+
+def angle_diff(a, b):
+    return (b - a + math.pi) % (2 * math.pi) - math.pi
 
 class Team:
     def __init__(self, app: "Game", i):
@@ -57,10 +63,23 @@ class Team:
             self.app.skull.plantedAt = self.plan["site"]
             self.app.skull.planter = self.app.objectiveCarriedBy
             self.app.allTeams[0].plan["site"] = self.plan["site"]
+            self.app.allTeams[-1].plan["site"] = self.plan["site"]
 
             self.app.objectiveCarriedBy.dropSkull()
 
             self.app.notify("THE BOMB HAS BEEN PLANTED!", self.getColor())
+
+    def tryToDefuse(self):
+        if self.detonationTeam: return
+
+        if not self.app.skull.planted: return
+
+        if self.app.skull.defusedBy: return
+            
+        for x in self.getPawns():
+            if x.getOwnCell() == self.app.skull.plantedAt.plantingSite:
+                self.app.skull.defusedBy = x
+                return
 
     def getDetI(self):
         return 1 if self.detonationTeam else 0
@@ -101,92 +120,7 @@ class Team:
         return any(x.controlledByT() for x in self.app.SITES)
 
     def tickDetonation(self):
-
-        SITES = self.app.allTeams[-1].plan["viableSites"]
-        if not SITES:
-            return
-
-        self.refreshCarrier()
-
-        if self.plan["site"] not in self.app.SITES:
-            self.plan["site"] = None
-
-        if self.getDetI(): # CT
-            currHolding = not any(x.controlledByT() for x in self.app.SITES)
-            if currHolding != self.plan["ctHolding"]:
-                print("Switching ct plan!")
-
-                #if not currHolding:
-                self.plan["site"] = self.app.allTeams[-1].plan["site"]  
-
-                self.plan["ctHolding"] = currHolding
-                if not currHolding:
-                    print("Attacking site", self.plan["site"])
-                    self.plan["currentAction"] = "prepare"
-                    self.planTimer = 45
-            if not currHolding:
-                self.planTimer -= self.app.deltaTime
-                if self.plan["currentAction"] == "probe":
-                    self.plan["currentAction"] = "prepare"
-                    self.planTimer = 45
-
-                if self.plan["currentAction"] == "prepare":
-                    p = self.getDetonationPawns()
-                    l = [x.attackInPosition() for x in p]
-                    #l2 = [x.target for x in p]
-                    if all(l):
-                        self.planTimer = 0
-
-            else:
-                self.plan["currentAction"] = "probe"
-                self.planTimer = 30
-                          
-
-        else: # T
-            currHolding = any(x.controlledByT() for x in self.app.SITES)
-            if not currHolding:
-                self.planTimer -= self.app.deltaTime
-
-                if self.plan["currentAction"] == "prepare":
-                    p = self.getDetonationPawns()
-                    l = [x.attackInPosition() or x.isBombCarrier() for x in p]
-                    #l2 = [x.target for x in p]
-                    if all(l):
-                        self.planTimer = 0
-                
-            else:
-                self.plan["currentAction"] = "probe"
-                self.planTimer = 5
-                for x in self.app.SITES:
-                    if x.controlledByT():
-                        self.plan["site"] = x
-                        break
-
-        
-        if self.planTimer <= 0:
-            if self.plan["currentAction"] == "probe":
-                self.plan["currentAction"] = "prepare"
-                self.planTimer = 45
-                self.plan["site"] = random.choice(SITES)
-
-                
-
-            elif self.plan["currentAction"] == "prepare":
-                self.plan["currentAction"] = "execute"
-
-                for i in range(5):
-                    self.addNadePos(self.plan["site"].room.randomCell())
-
-                print("Grenade positions", self.utilityPos["aggr"])
-
-                self.planTimer = 30
-            elif self.plan["currentAction"] == "execute":
-                self.plan["currentAction"] = "probe"
-                self.planTimer = 30
-
-            for x in self.app.pawnHelpList:
-                if x.team.detonationTeam == self.detonationTeam:
-                    x.pickWalkingTarget()
+        tickDetonationLogic(self)
 
     def addNadePos(self, pos):
         self.utilityPos["aggr"].append(NadePos(pos))
@@ -234,7 +168,34 @@ class Team:
         else:
             return self.pawns
 
-          
+    
+    def takeCoverFromFlash(self, landingCell):
+        pawns = self.getPawns()
+
+        vis = None
+        get_vis = self.app.map.get_visible_cells
+
+        for x in pawns:
+            #c = x.getOwnCell()
+            if x.canSeeCell(landingCell):
+
+
+                v = self.app.cell2Pos(landingCell) - x.pos
+
+                grenade_angle = math.atan2(-v.y, v.x)
+                dtheta = angle_diff(x.aimAt, grenade_angle)
+                if abs(dtheta) > math.pi / 3: continue  # outside 90° FOV
+
+                if not vis:
+                    vis = set(get_vis(landingCell[0], landingCell[1]))
+                vis2 = set(x.getVisibility(4))
+                safe_cells = list(vis2 - vis)
+
+                if safe_cells:
+                    x.getRouteTo(endPosGrid=random.choice(safe_cells))
+                    x.say("Äkkiä piiloon!")
+                    print(x.name, "Dodges a flash")
+                    
 
 
     def getDetonationSpawnRoom(self):
@@ -257,14 +218,17 @@ class Team:
     
 
     def getSite(self, p):
-        if not self.detonationTeam:
+        if not self.detonationTeam: # CT
             index = self.getTotalIndex(p)
             SITES = self.app.allTeams[-1].plan["viableSites"]
             if not SITES:
                 return None
             return SITES[index%len(SITES)]
-        else:
+        else: # T
             index = self.getTotalIndex(p)
+            if not self.app.SITES:
+                #print("No sites???")
+                return None
             return self.app.SITES[index%len(self.app.SITES)]
 
 

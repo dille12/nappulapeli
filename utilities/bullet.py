@@ -138,24 +138,42 @@ class Bullet:
         self.pastPos.append(self.pos.copy())
         if len(self.pastPos) > 3:
             self.pastPos.pop(0)
-        self.pos += self.vel * self.app.deltaTime * self.speed
+        #self.pos += self.vel * self.app.deltaTime * self.speed
         nextPos = self.pos + self.vel * self.app.deltaTime * self.speed
         
         line = [list(self.pos), list(nextPos)]
         x,y = self.getOwnCell()
 
-        try:
-            if self.app.map.grid[y, x] == CellType.WALL.value:
-                self.app.ENTITIES.remove(self)
+        direction = self.vel.normalize()
+        move_dist = self.speed * self.app.deltaTime
+        hit, normal = raycast_grid(
+            nextPos,
+            direction,
+            move_dist / self.app.tileSize,
+            self.app.map.grid,
+            self.app.tileSize
+        )
 
-                if self.rocket:
-                    Explosion(self.app, self.pos, firer = self.weapon, damage = self.damage, doFire=True)
+        if hit is not None:
+            self.pos = hit
 
-                return
-        except:
-            if self in self.app.ENTITIES:
-                self.app.ENTITIES.remove(self)
+            # reflect direction
+            reflected = direction - 2 * direction.dot(normal) * normal
+            reflected_angle = math.atan2(-reflected.y, reflected.x)
+
+            self.app.particle_system.create_wall_sparks(
+                hit.x,
+                hit.y,
+                normal_angle=reflected_angle
+            )
+
+            if self.rocket:
+                Explosion(self.app, self.pos, firer = self.weapon, damage = self.damage, doFire=True)
+
+            self.app.ENTITIES.remove(self)
             return
+
+        self.pos += self.vel * move_dist
         
         for x in self.app.pawnHelpList:
             if x == self:
@@ -216,3 +234,54 @@ class Bullet:
     def render(self):
         if self.ONSCREEN:
             self.app.DRAWTO.blit(self.b, self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)
+
+def raycast_grid(pos, direction, max_dist, grid, tile_size):
+    x0, y0 = pos.x / tile_size, pos.y / tile_size
+    dx, dy = direction.x, direction.y
+
+    map_x = int(x0)
+    map_y = int(y0)
+
+    step_x = 1 if dx > 0 else -1
+    step_y = 1 if dy > 0 else -1
+
+    t_delta_x = abs(1 / dx) if dx != 0 else float("inf")
+    t_delta_y = abs(1 / dy) if dy != 0 else float("inf")
+
+    next_x = map_x + (1 if dx > 0 else 0)
+    next_y = map_y + (1 if dy > 0 else 0)
+
+    t_max_x = (next_x - x0) / dx if dx != 0 else float("inf")
+    t_max_y = (next_y - y0) / dy if dy != 0 else float("inf")
+
+    t = 0.0
+    hit_axis = None
+
+    while t <= max_dist:
+        if 0 <= map_x < grid.shape[1] and 0 <= map_y < grid.shape[0]:
+            if grid[map_y, map_x] == CellType.WALL.value:
+                hit_pos = pos + direction * (t * tile_size)
+                hit_pos -= direction * 1.0
+
+                if hit_axis == 'x':
+                    normal = pygame.Vector2(-step_x, 0)
+                else:
+                    normal = pygame.Vector2(0, -step_y)
+
+                return hit_pos, normal
+        else:
+            return None, None
+
+        if t_max_x < t_max_y:
+            map_x += step_x
+            t = t_max_x
+            t_max_x += t_delta_x
+            hit_axis = 'x'
+        else:
+            map_y += step_y
+            t = t_max_y
+            t_max_y += t_delta_y
+            hit_axis = 'y'
+
+    return None, None
+

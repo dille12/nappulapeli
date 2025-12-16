@@ -11,7 +11,7 @@ from utilities.building import Building
 from core.AI import runAI
 import pygame
 from levelGen.numbaPathFinding import MovementType
-
+from utilities.bullet import raycast_grid
 class PawnBehaviour:
     def __init__(self: "Pawn"):
         super().__init__()
@@ -189,57 +189,83 @@ class PawnBehaviour:
 
         t = self.team.getGodTeam()
 
-        if not t.detonationTeam:
+        if not t.detonationTeam:  # TERRORIST
             if not t.plan["viableSites"]:
+                self.app.log("-1")
                 return
             
             x,y = self.app.skull.cell
 
             if not self.app.objectiveCarriedBy and not self.app.skull.planted:
 
-                if self.app.map.grid[y,x] in [2,4]:
+                if self.app.map.grid[y,x] in [2,4]: # Bomb is dropped in CT territory
                     self.getRouteTo(endPosGrid=self.app.skull.cell, movement_type = MovementType.GROUND)
+                    self.app.log("0")
                     return
 
                 if self == t.bombCarrier and not self.carryingSkull() and not self.app.skull.planted and (not self.app.map.grid[y,x] in [2,4] or self.team.terroristsInControlOfSite()): # FETCH SKULL
                     self.getRouteTo(endPosGrid=self.app.skull.cell, movement_type = MovementType.GROUND)
+                    self.app.log("1")
                     return
 
 
-        if self.carryingSkull() and t.terroristsInControlOfSite():
+        if self.carryingSkull() and t.terroristsInControlOfSite(): # Planter tries to move towards 
             self.getRouteTo(endPosGrid=t.plan["site"].plantingSite, movement_type = MovementType.GROUND)
+            self.app.log("2")
+            return
+
+        if t.detonationTeam:  # CT should try to defuse!
+            if self.app.skull.planted and not self.app.skull.defusedBy and not self.app.skull.plantedAt.controlledByT():
+                self.getRouteTo(endPosGrid=self.app.skull.cell, movement_type = MovementType.GROUND)
+                self.app.log("3")
+                return
 
         elif t.plan["currentAction"] == "probe":
 
             if self.isBombCarrier() and self.carryingSkull():
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
+                self.app.log("4")
                 return
 
             for x in self.app.SITES:
                 if x.inhabited[0] > x.inhabited[1]:
                     self.getRouteTo(endPosGrid=x.room.randomCell())
+                    self.app.log("5")
                     return
 
             ownSite = self.team.getSite(self)
-            self.getRouteTo(endPosGrid=ownSite.room.randomCell()) # Just go to a random spawn point
+            if not ownSite:
+                self.app.log("6")
+                self.deathMatchWalkingTarget()
+            else:
+                self.app.log(f"{self.team.detonationTeam} 7")
+                self.getRouteTo(endPosGrid=ownSite.room.randomCell()) # Approach own site.
+                #print(self.route)
+
+
         elif t.plan["currentAction"] == "prepare":
 
             if t.detonationTeam:
+                self.app.log("8")
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.COUNTERTERRORIST)
             else:
+                self.app.log("9")
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
             if not self.route:
                 #print("NO ROUTE!?")
+                self.app.log("10")
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.GROUND)
 
 
         elif t.plan["currentAction"] == "execute":
 
             if self.carryingSkull():
+                self.app.log("11")
                 self.getRouteTo(endPosGrid=self.getAttackPosition(), movement_type = MovementType.TERRORIST)
             else:
                 site = t.plan["site"]
                 if site:
+                    self.app.log("12")
                     self.getRouteTo(endPosGrid=site.room.randomCell())
 
     def getAttackPosition(self):
@@ -299,6 +325,10 @@ class PawnBehaviour:
                     self.bossWalkingTarget()
                 elif self.app.GAMEMODE == "DETONATION":
                     self.detonationTarget()
+                    #if not self.team.getDetI(): # CT
+                    #    print("TERRORIST ROUTE")
+                    #    print(self.route)
+                    #    print(self.walkTo)
                 elif self.app.GAMEMODE == "1v1":
                     i = self.app.duelPawns.index(self)
                     endPos = self.app.duelPawns[(i+1)%2].getOwnCell()
@@ -306,10 +336,10 @@ class PawnBehaviour:
                 else: # Random attack
                     self.getRouteTo(endPosGrid=self.app.spawn_points[(self.team.i+1)%self.app.teams])
         else:
-            if self.carryingSkull(): # Go melee target
-                self.getRouteTo(endPosGrid=self.target.getOwnCell())
+            #if self.carryingSkull(): # Go melee target
+            #    self.getRouteTo(endPosGrid=self.target.getOwnCell())
 
-            elif self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
+            if self.itemEffects["coward"] and self.health <= 0.5 * self.getHealthCap():
                 self.say("APUA")
                 self.getRouteTo(endPosGrid=self.getCellInSpawnRoom())
 
@@ -400,6 +430,53 @@ class PawnBehaviour:
         self.route = None
 
 
+    def walkManual(self):
+        direction = pygame.Vector2(0, 0)
+
+        if "w" in self.app.keypress_held_down:
+            direction.y -= 1
+        if "s" in self.app.keypress_held_down:
+            direction.y += 1
+        if "a" in self.app.keypress_held_down:
+            direction.x -= 1
+        if "d" in self.app.keypress_held_down:
+            direction.x += 1
+
+        if direction.length_squared() > 0:
+            direction = direction.normalize()
+            # Set walkTo a point far enough in that direction
+            self.walkTo = self.pos + direction * 1000  # arbitrary long distance
+        else:
+            self.walkTo = None
+
+        self.walk()
+
+    def checkCollision(self):
+
+        if self.app.PEACEFUL: return
+
+        for x in [-1, 1]:
+            d = v2(x,0).normalize()
+            self.checkSingleDir(d)
+        for y in [-1, 1]:
+            d = v2(0,y).normalize()
+            self.checkSingleDir(d)
+                
+
+    def checkSingleDir(self, direction):
+
+        standPos = self.pos.copy() + [0, 50]
+
+        hit, d = raycast_grid(standPos, 
+                     direction,
+                     50 / self.app.tileSize,
+                     self.app.map.grid,
+                     self.app.tileSize)
+        if hit:
+            standPos = hit - direction*50
+            self.pos = standPos - [0, 50]
+
+
     def walk(self):
         if self.walkTo is not None:
             
@@ -445,13 +522,16 @@ class PawnBehaviour:
                     self.walkTo = None
                     self.stepI = 0  # Reset step index when reaching the target
 
-            if (self.route and len(self.route) > 5): # and self.app.GAMEMODE != "DETONATION"
+            if (self.route and len(self.route) > 1): # and self.app.GAMEMODE != "DETONATION"
                 c = self.getOwnCell()
                 r1x, r1y = self.route[0]
                 r2x, r2y = self.route[1]
 
                 if self.app.map.can_see(c[0], c[1], r1x, r1y) and self.app.map.can_see(c[0], c[1], r2x, r2y):
                     self.advanceRoute()
+
+            if self.isManual():
+                self.checkCollision()
 
         elif self.route:
             self.advanceRoute()
@@ -477,6 +557,8 @@ class PawnBehaviour:
             if self.loseTargetI <= 0:
                 if self.target:
                     self.say("Karkas saatana", 0.1)
+                    self.team.addNadePos(self.target.getOwnCell())  #.marchCells(-self.target.aimAt + math.pi, 5)
+
                 self.target = None
                 self.loseTargetI = 1
 
@@ -502,14 +584,9 @@ class PawnBehaviour:
             
             self.facingRight = self.target.pos[0] <= self.pos[0]
             if dist < 250:
-                if self.carryingSkull():
-                    if self.app.GAMEMODE == "DETONATION":
-                        self.bombWeapon.tryToMelee()
-                    else:
-                        self.skullWeapon.tryToMelee()
-                else:
-                    WEAPON.tryToMelee()
-            elif self.carryingSkull(): # Cannot shoot with the skull!
+                WEAPON.tryToMelee()
+                    
+            elif WEAPON.weaponIsObjective: # Cannot shoot with the skull!
                 pass
             else:
 
