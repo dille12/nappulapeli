@@ -475,7 +475,7 @@ class Pawn(PawnBehaviour, getStat):
         
         asyncio.run_coroutine_threadsafe(self.completeToApp(), self.app.loop)
 
-        self.updateStats({"xp": int(self.xp), "currency": self.team.currency, "level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
+        self.updateStats({"XP": int(self.xp), "Currency": self.team.currency, "Level" : self.level, "XP to next level" : self.app.levelUps[self.level-1]})
 
         self.sendHudInfo()
 
@@ -954,7 +954,7 @@ class Pawn(PawnBehaviour, getStat):
         TextParticle(self.app, f"+{am:.1f}XP", self.pos)
 
         self.xp += am
-        self.updateStats({"xp": self.xp})
+        self.updateStats({"XP": int(self.xp)})
 
     def updateStats(self, stats: dict):
         if not self.client:
@@ -1234,7 +1234,7 @@ class Pawn(PawnBehaviour, getStat):
         self.say(f"Jipii! Nousin tasolle {self.level}, ja sain uuden esineen!", 0.1)
         self.level += 1
 
-        self.updateStats({"level" : self.level, "xpToNextLevel" : self.app.levelUps[self.level-1]})
+        self.updateStats({"Level" : self.level, "XP to next level" : self.app.levelUps[self.level-1]})
         self.sendHudInfo()
         self.reconnectJson = None
         self.pendingAppLU = False
@@ -1464,11 +1464,12 @@ class Pawn(PawnBehaviour, getStat):
                 self.app.particle_system.create_level_up_indicator(self.pos[0], self.pos[1])
                 if self.client:
                     self.levelUpClient()
-                
-            if self.NPC or self.app.ITEM_AUTO:
-                self.levelUp()
-            elif not self.client:
-                self.app.pendingLevelUp = self # Old implementation, the screen displays the item choices. 
+
+            if not self.client: 
+                if self.NPC or self.app.ITEM_AUTO:
+                    self.levelUp()
+                else:
+                    self.app.pendingLevelUp = self # Old implementation, the screen displays the item choices. 
 
         if not self.tripped and not self.defusing():
             if not self.isManual():

@@ -372,7 +372,7 @@ class Team:
             if not x.client:
                 continue
 
-            x.updateStats({"currency": self.currency})
+            x.updateStats({"Currency": self.currency})
 
     def add(self, pawn: "Pawn"):
 
@@ -389,7 +389,7 @@ class Team:
                         "newTeamColor": self.color}
             pawn.dumpAndSend(packet)
 
-            pawn.updateStats({"currency": self.currency})
+            pawn.updateStats({"Currency": self.currency})
 
     def __mul__(self, other):
         return int(self) * other

@@ -190,6 +190,9 @@ def startServer(app):
     async def serverMain():
         async with websockets.serve(handler, "0.0.0.0", 8765, max_size=None):
             print("Server listening")
+            # print out local IP address
+            local_ip = get_local_ip()
+            print(f"Local IP address: {local_ip}:8765")
             app.loop = asyncio.get_event_loop() 
             await asyncio.Future()  # run forever
 
