@@ -21,6 +21,7 @@ from utilities.infoBar import infoBar
 from utilities.shop import Shop
 from particles.particle import ParticleSystem, Particle
 from core.console import runConsole, handleConsoleEvent
+from gameTicks.gameEnd import gameEndTick
 from gameTicks.settingsTick import settingsTick, createSettings
 from gameTicks.qrCodesTick import createQRS, qrCodesTick
 from gameTicks.pawnGeneration import preGameTick
@@ -32,6 +33,7 @@ from core.getCommonRoom import find_farthest_room
 from gameTicks.showcaseTick import showcaseTick
 import asyncio
 from core.qrcodeMaker import make_qr_surface
+from pawn.turret import Turret
 from pawn.teamLogic import Team
 import subprocess, glob
 from utilities.extractLyrics import get_subs_for_track
@@ -42,6 +44,7 @@ import tkinter
 from statistics import stdev
 from collections import deque
 from pawn.site import Site
+
 from utilities.register import register_gun_kill
 
 print("Imports complete")
@@ -295,7 +298,7 @@ class Game(valInit):
             f = self.FADEOUT[f_i]
             self.screen.blit(f, (0,0))
         self.transIndex += self.deltaTimeR
-        if self.transIndex >= 1:
+        if self.transIndex >= 1 or self.AUTOPLAY:
             self.TRANSITION = False
             self.FADEIN = len(self.FADEOUT) - 1
         
@@ -330,7 +333,7 @@ class Game(valInit):
 
 
     def highLightCell(self, cell):
-        print("HIGHLIGHTING", cell)
+        #print("HIGHLIGHTING", cell)
         r = pygame.Rect(v2(cell) * self.tileSize, [self.tileSize, self.tileSize])
         r.topleft -= self.cameraPosDelta
         pygame.draw.rect(self.DRAWTO, [255,0,0], r, width=3)
@@ -397,9 +400,9 @@ class Game(valInit):
 
     def switchRoomOwnership(self, r, majority_team):
         if r in self.teamSpawnRooms:
-            teamI = r.turfWarTeam
+            #teamI = r.turfWarTeam
             originalTeam = self.teamSpawnRooms.index(r)
-            team = self.allTeams[teamI]
+            team = self.allTeams[originalTeam]
             if originalTeam != majority_team:
                 self.notify(f"Team {originalTeam+1} was captured!", self.getTeamColor(originalTeam))
                 team.slaveTo(self.allTeams[majority_team])
@@ -552,6 +555,57 @@ class Game(valInit):
             pygame.draw.lines(self.DRAWTO, colorOutline, True, polygon + extruded, width = 2)
 
 
+    
+    def makeDeathHeatmapSurface(
+        self,
+        tilesize=8,
+        blur_sigma=1.5,
+        colormap=None,
+    ):
+        kg = self.killgrid.astype(np.float32)
+
+        # --- 1. smooth heatmap (Gaussian blur via separable convolution) ---
+        if blur_sigma > 0:
+            r = int(3 * blur_sigma)
+            x = np.arange(-r, r + 1)
+            g = np.exp(-(x**2) / (2 * blur_sigma**2))
+            g /= g.sum()
+
+            kg = np.apply_along_axis(lambda m: np.convolve(m, g, mode="same"), 0, kg)
+            kg = np.apply_along_axis(lambda m: np.convolve(m, g, mode="same"), 1, kg)
+
+        # normalize to [0, 1]
+        maxv = kg.max()
+        if maxv > 0:
+            kg /= maxv
+
+        # --- 2. apply walls (force to zero / black) ---
+        wall_mask = self.map.grid == CellType.WALL.value
+        kg[wall_mask] = 0.0
+
+        # --- 3. map to RGB ---
+        if colormap is None:
+            # black → red → yellow → white
+            r = np.clip(kg * 3, 0, 1)
+            g = np.clip(kg * 3 - 1, 0, 1)
+            b = np.clip(kg * 3 - 2, 0, 1)
+            rgb = np.stack((r, g, b), axis=-1)
+        else:
+            rgb = colormap(kg)[:, :, :3]
+
+        rgb = (55 + rgb * 200).astype(np.uint8)
+        rgb[wall_mask] = 0
+
+        # --- 4. pygame surface ---
+        surf = pygame.surfarray.make_surface(rgb.swapaxes(0, 1))
+
+        if tilesize != 1:
+            surf = pygame.transform.scale(
+                surf,
+                (surf.get_width() * tilesize, surf.get_height() * tilesize),
+            )
+
+        return surf
 
 
     def renderParallax(self):
@@ -584,7 +638,7 @@ class Game(valInit):
 
         else:
             self.map = ArenaGenerator(self, 120, 80)
-            self.map.generate_arena(room_count=22, min_room_size=8, max_room_size=20, corridor_width=3)
+            self.map.generate_arena(room_count=27, min_room_size=8, max_room_size=14, corridor_width=3)
 
         self.arena = ArenaWithPathfinding(self, self.map)
 
@@ -627,6 +681,10 @@ class Game(valInit):
         else:
             self.commonRoom = max(self.map.rooms, key=lambda room: room.area)
 
+            for dx in range(self.commonRoom.width):
+                for dy in range(self.commonRoom.height):
+                    self.map.grid[self.commonRoom.y + dy, self.commonRoom.x + dx] = CellType.FLOOR.value
+
         self.loadInfo.text = "Making walls"
         self.corners, midpoints = self.findCorners(self.map.grid)
         walls = self.findWalls(self.corners, midpoints)
@@ -655,6 +713,8 @@ class Game(valInit):
 
         self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
 
+        self.killgrid = np.zeros(self.map.grid.shape, dtype=np.uint32)
+
         
         
         self.SITES = []
@@ -671,6 +731,11 @@ class Game(valInit):
             print(self.SITES)
 
             self.getSites()
+
+            for x in self.SITES:
+                c = x.room.randomCell()
+                Turret(self, c, self.allTeams[0])
+
 
             #for site in self.SITES:
             #    for x,y in site.visibilityCT:
@@ -798,14 +863,54 @@ class Game(valInit):
         except:
             self.loadInfo.text = "ERRORED!!!"
             raise RuntimeError
+        
+
+    def load_ct_spawn(self, path="training.cfg"):
+        try:
+            with open(path, "r") as f:
+                return float(f.read().strip())
+        except:
+            return 15.0
+        
+    def save_ct_spawn(self, value, path="training.cfg"):
+        with open(path, "w") as f:
+            f.write(f"{value:.3f}")
+
+        print("NEW VALUE!", value)
+
 
 
     def initiateGame(self):
 
         self.now = time.time()
         
-        self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
+        if self.DOREALGAMEMODES:
+            if self.round < len(self.gameModeLineUp):
+                self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
+            else:
+                self.GAMEMODE = "SUDDEN DEATH"
+
+        else:
+
+            self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
         self.gamemode_display.set_gamemode(self.GAMEMODE)
+
+        
+        if self.TRAINCTSPAWNTIME:
+            if self.round == 30:
+                self.round = 0
+                wins = [0,0]
+                for x in self.allTeams:
+                    if x.isCT():
+                        wins[0] += x.wins
+                    else:
+                        wins[1] += x.wins
+                    x.wins = 0
+
+                diff = (wins[0] - wins[1])/30
+
+                spawnTime = self.load_ct_spawn()
+                self.save_ct_spawn(spawnTime + diff)
 
         for x in self.allTeams:
             x.allied.clear()
@@ -842,7 +947,7 @@ class Game(valInit):
         
             
 
-        self.endGameI = 5
+        self.endGameI = 10
         self.skullTimes = []
         for x in range(self.teams):
             self.skullTimes.append(0)
@@ -911,13 +1016,14 @@ class Game(valInit):
             self.giveAllWeapons()
 
         if self.STRESSTEST:
-            for x in self.pawnHelpList:
+            for x in self.getActualPawns():
                 print("Releveling", x.name)
                 x.reLevelPawn(10)
         
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
 
-        #time.sleep(max(0, 5 - (time.time() - self.now)))
+        if not self.AUTOPLAY:
+            time.sleep(max(0, 5 - (time.time() - self.now)))
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -1042,9 +1148,7 @@ class Game(valInit):
 
     def threadedGeneration(self, name, image, client, boss = False):
         self.pawnGenI += 1
-        
-        print("File ready!")
-        
+                
         pawn = Pawn(self, name, image, client, boss = boss)
         #if client:
         
@@ -1071,6 +1175,7 @@ class Game(valInit):
             self.winningTeam = None
             return None  # stalemate
         self.winningTeam = sorted_teams[0]  # clear lead
+        self.maxWins = max(self.winningTeam.wins, self.maxWins)
 
 
     def announceVictory(self: "Game", victoryTeam):
@@ -1079,29 +1184,63 @@ class Game(valInit):
         self.VICTORY = True 
         self.points = []
 
-        if self.victoryTeam == 1:
-            register_gun_kill("COUNTERTERRORIST", path="detonationWins.txt")
-        else:
-            register_gun_kill("TERRORIST", path="detonationWins.txt")
+        
 
         if self.GAMEMODE == "DETONATION":
+
+            if self.victoryTeam == 1:
+                register_gun_kill("COUNTERTERRORIST", path="detonationWins.txt")
+            elif self.victoryTeam == 0:
+                register_gun_kill("TERRORIST", path="detonationWins.txt")
+            else:
+                register_gun_kill("TIE", path="detonationWins.txt")
+
+            register_gun_kill(f"{len(self.SITES)} LEFT", path="detonationWins.txt")
+
+
             for x in self.allTeams:
-                if x.detonationTeam == victoryTeam:
+                if x.detonationTeam == victoryTeam or victoryTeam == -1:
                     x.wins += 1
         else:
             self.allTeams[self.victoryTeam].wins += 1
+
+
+
+        
 
         self.getWinningTeam()
         print("Winning team", self.winningTeam)
 
         self.nextMusic = -1
 
-        for x in self.pawnHelpList:
+        for x in [x for x in self.pawnHelpList if x.isPawn]:
             points, reason_str = x.evaluatePawn()
             self.points.append((x, points, reason_str))
 
         self.points.sort(key=lambda x: x[1], reverse=True)
 
+        self.MVP = sorted(
+            self.getActualPawns(),
+            key=lambda x: x.kills / max(1, x.deaths),
+            reverse=True
+        )[0]
+        self.LVP = sorted(
+            self.getActualPawns(),
+            key=lambda x: x.kills / max(1, x.deaths),
+            reverse=False
+        )[0]
+        self.TEAMKILLER = sorted(
+            self.getActualPawns(),
+            key=lambda x: x.teamKills,
+            reverse=True
+        )[1]
+
+        self.HEATMAP = self.makeDeathHeatmapSurface(8, 3).convert_alpha()
+        self.HEATMAP.set_colorkey((0,0,0))
+
+
+    def getActualPawns(self) -> list:
+        return [x for x in self.pawnHelpList if x.isPawn]
 
     def handleMusic(self):
 
@@ -1219,12 +1358,13 @@ class Game(valInit):
     def debugText(self, text):
         
         t = self.fontSmaller.render(str(text), True, [255,255,255])
-        self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], 500 + self.debugI * 22])
+        self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], max(self.res[1] - 700, 0) + self.debugI * 22])
         self.debugI += 1
 
     def smoothRotationFactor(self, angleVel, gainFactor, diff):
         dir = 1 if diff > 0 else -1
         gainFactor *= min(1, abs(diff) * 3)
+        gainFactor = max(0.1, gainFactor)
 
         # Your original calculation - time needed to decelerate to zero
         if abs(angleVel) < 1e-6:  # Avoid division by zero
@@ -1391,6 +1531,37 @@ class Game(valInit):
             self.screen.blit(t, r.topleft)
             yPos += 40
 
+    def getTurretHead(self, rgb):
+        key = tuple(rgb)
+        if key in self.turretHeadRGB:
+            return self.turretHeadRGB[key]
+
+        base = pygame.image.load("texture/turretColorable.png").convert_alpha()
+        arr = pygame.surfarray.pixels3d(base).astype(np.float32) / 255.0
+        alpha = pygame.surfarray.pixels_alpha(base)
+
+        r, g, b = [c / 255.0 for c in rgb]
+        h_target, _, _ = colorsys.rgb_to_hls(r, g, b)
+        s_target = 0.4
+
+        r0, g0, b0 = arr[..., 0], arr[..., 1], arr[..., 2]
+        l = (np.maximum.reduce([r0, g0, b0]) +
+            np.minimum.reduce([r0, g0, b0])) * 0.5
+
+        hls_to_rgb = np.vectorize(colorsys.hls_to_rgb)
+        rr, gg, bb = hls_to_rgb(h_target, l, s_target)
+
+        out = np.stack([rr, gg, bb], axis=2)
+        out = np.clip(out * 255.0, 0, 255).astype(np.uint8)
+
+        surf = pygame.Surface(base.get_size(), pygame.SRCALPHA)
+        pygame.surfarray.blit_array(surf, out)
+        pygame.surfarray.pixels_alpha(surf)[:] = alpha
+
+        self.turretHeadRGB[key] = surf
+        return surf
+
+
     def setManualPawn(self, name):
 
         if not name:
@@ -1415,7 +1586,7 @@ class Game(valInit):
             elif self.pawnHelpList:
                 
                 if self.filmOnly:
-                    FILMLIST = [x for x in self.pawnHelpList.copy() if x in self.filmOnly]
+                    FILMLIST = [x for x in self.pawnHelpList.copy() if x in self.filmOnly and x.isPawn]
                     e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
 
                 else:
@@ -1445,12 +1616,12 @@ class Game(valInit):
                         l = FILMLIST
                         e = sorted(l, key=lambda p: p.onCameraTime)
 
-                noNPC = [x for x in e if not x.NPC and not x.killed]
+                noNPC = [x for x in e if not x.NPC and not x.killed and x.isPawn]
                 if noNPC:
                     e = noNPC
 
                 for x in e:
-                    if not x.killed:
+                    if not x.killed and x.isPawn:
                         self.cameraLock = x
                         break
 
@@ -1462,7 +1633,7 @@ class Game(valInit):
                 
             else:
 
-                if not self.cameraLock.target and self.cameraLock.currentlyAliveNade:
+                if not self.cameraLock.target and not self.cameraLock.BOSS and self.cameraLock.currentlyAliveNade:
                     self.cameraPos = self.cameraLock.currentlyAliveNade.pos - [0, self.cameraLock.currentlyAliveNade.verticalPos] - self.res/2
                     #self.cameraLinger = 0.4
 
@@ -1492,11 +1663,11 @@ class Game(valInit):
 
 
         if self.VICTORY:
-            I = max(self.endGameI-4, 0)
-            self.SLOWMO = 1 - 0.5*(1-I)
+            I = max(self.endGameI-8, 0)
+            self.SLOWMO = 1 - 0.25*(2-I)
             
             self.cameraLock = max(
-                (x for x in self.pawnHelpList if (x.team == self.victoryTeam and not x.killed)),
+                (x for x in self.getActualPawns() if (x.team.i == self.victoryTeam and not x.killed)),
                 key=lambda x: x.kills,
                 default=None
             )
@@ -1567,37 +1738,95 @@ class Game(valInit):
 
     def bombPlanted(self):
         return self.GAMEMODE == "DETONATION" and self.skull and self.skull.planted
+    
+    def drawAwards(self, endGameI):
+        awards = [
+            ("MVP", self.MVP),
+            ("LVP", self.LVP),
+            ("TEAM KILLER", self.TEAMKILLER),
+        ]
+
+        w, h = self.res
+        n = len(awards)
+        spacing = w // (n + 1)
+        cy = h // 2 + endGameI**2 * 900 - 50
+
+        for i, (label, pawn) in enumerate(awards):
+            cx = spacing * (i + 1)
+
+            img = pawn.levelUpImage
+            rect = img.get_rect(center=(cx, cy))
+            self.screen.blit(img, rect)
+            color = pawn.team.getColor()
+            title = self.fontLarge.render(f"{label}: {pawn.name}", True, color)
+            trect = title.get_rect(center=(cx, rect.top - 45))
+            self.screen.blit(title, trect)
+
+            if label in ["MVP", "LVP"]:
+                line = f"K/D: {pawn.kills/max(1, pawn.deaths):.1f}"
+            else:
+                line = f"Team kills: {pawn.teamKills}"
+
+            txt = self.font.render(line, True, color)
+            lrect = txt.get_rect(center=(cx, rect.bottom + 35))
+            self.screen.blit(txt, lrect)
+
 
     def tickEndGame(self):
         self.endGameI -= self.deltaTimeR
-        I = max(self.endGameI-4, 0)
+        I = max(self.endGameI-8, 0)*0.5
         self.deltaTime *= 0.01 + I*0.99
         
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
+        t = -1 if not self.victoryTeam else 0
         if self.GAMEMODE == "DETONATION":
-            s = "COUNTER TERRORISTS" if self.victoryTeam == 1 else "TERRORISTS"
-            t = -1 if not self.victoryTeam else 0
-            text = self.fontLarge.render(f"{s} WON", True, self.allTeams[t].getColor())
+            if self.victoryTeam == 1:
+                s = "COUNTER TERRORISTS WON"
+                c = self.allTeams[t].getColor()
+            elif self.victoryTeam == 0:
+                s = "TERRORISTS WON"
+                c = self.allTeams[t].getColor()
+            else:
+                s = "TIE"
+                c = [255,255,255]
+            
+            
+            text = self.notificationFont.render(f"{s}", True,c)
 
         else:
-            text = self.fontLarge.render(f"TEAM {self.victoryTeam+1} WON", True, self.allTeams[self.victoryTeam].getColor())
+            text = self.notificationFont.render(f"TEAM {self.victoryTeam+1} WON", True, self.allTeams[self.victoryTeam].getColor())
         text.set_alpha(int(255 * (1-I)))
-        self.screen.blit(text, self.res/2 - [0, 300] - v2(text.get_size())/2)
+        self.screen.blit(text, v2([self.res.x/2, 100]) - v2(text.get_size())/2)
 
-        for i, y in enumerate(self.points):
-            pawn, points, reason_str = y
-            text = self.font.render(f"{pawn.name}: {reason_str}", True, self.getTeamColor(pawn.team.i))
-            text.set_alpha(int(255 * (1-I)))
-            self.screen.blit(text, v2(300,500 + i*40))
+        if self.endGameI > 4.5:
+            I = max(I, 5.5 - self.endGameI)
+            self.drawAwards(I)
+        else:
+            I = max(self.endGameI-3.5, 0)
+            self.screen.blit(self.HEATMAP, self.res/2 - v2(self.HEATMAP.get_size())/2 + [0, I**2 * 900])
 
 
     def endGame(self):
-        self.GAMESTATE = "pawnGeneration"
+
+        t1, t2 = sorted(self.allTeams, key=lambda x: x.wins, reverse=True)[:2]
+
+        if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1:
+            self.GAMESTATE = "end"
+            print("ending game.")
+        else:
+            self.GAMESTATE = "pawnGeneration"
+            print("not ending game.")
+            print(t1.i, t1.wins)
+            print(t2.i, t2.wins)
+            print(self.round >= len(self.gameModeLineUp))
+
+        
         self.GAMEMODE = None
         self.PEACEFUL = True
         self.objectiveCarriedBy = None
-        self.teamInspectIndex = 0
+        self.teamInspectIndex = -1
+        self.nextMusic = 0
         self.mapCreated = False
         self.cameraLock = None
         if self.skull:
@@ -1615,9 +1844,21 @@ class Game(valInit):
             x.defaultPos()
             x.respawnI = 0
 
+            if not x.isPawn:
+                if x in self.ENTITIES:
+                    self.ENTITIES.remove(x)
+                if x in self.pawnHelpList:
+                    self.pawnHelpList.remove(x)
+                x.killed = True
+
         if self.BABLO:
+            self.BABLO.die()
             self.BABLO.killed = True
             self.BABLO.respawnI = 1
+            if self.BABLO in self.ENTITIES:
+                self.ENTITIES.remove(self.BABLO)
+            if self.BABLO in self.pawnHelpList:
+                self.pawnHelpList.remove(self.BABLO)
 
 
         self.refreshShops()
@@ -1734,7 +1975,7 @@ class Game(valInit):
                 t1 = self.font.render(f"RELOADING: {procent}%", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
             else:
-                t1 = self.font.render(f"Bullets: {p.weapon.magazine}/{p.getMaxCapacity()}", True, c2)
+                t1 = self.font.render(f"Bullets: {p.currWeapon.magazine}/{p.getMaxCapacity(p.currWeapon)}", True, c2)
                 self.screen.blit(t1, (230, yPos+35))
 
             t1 = self.font.render(f"KILLS: {p.kills} DEATHS: {p.deaths} (KD:{p.kills/max(1, p.deaths):.1f})", True, c2)
@@ -1753,7 +1994,12 @@ class Game(valInit):
                 t1 = self.font.render(f"Utility: {p.grenadeAmount} {gtype}", True, c2)
                 self.screen.blit(t1, (230, yPos+140))
 
+            t1 = self.font.render(f"STATUS: {p.STATUS}", True, c2)
+            self.screen.blit(t1, (230, yPos+175))
+
             p.hudInfo((600, yPos), screen=self.screen)
+
+            
 
     def cleanUpLevel(self):
 
@@ -1798,6 +2044,8 @@ class Game(valInit):
 
     def giveAllWeapons(self):
         for x in self.pawnHelpList:
+            if x.BOSS or not x.isPawn:
+                continue
             w = random.choice(self.weapons)
             w.give(x)
 
@@ -1809,15 +2057,26 @@ class Game(valInit):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
-        elif self.GAMEMODE in "TEAM DEATHMATCH":
+        elif self.GAMEMODE == "TEAM DEATHMATCH":
             kills = [0 for _ in range(self.teams)]
-            for p in self.pawnHelpList:
+            for p in self.getActualPawns():
                 kills[p.team.i] += p.kills
 
             for i, x in sorted(enumerate(kills), key=lambda pair: pair[1], reverse=True):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} kills", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
+
+        elif self.GAMEMODE == "SUDDEN DEATH":
+            alive = [0 for _ in range(self.teams)]
+            for p in [x for x in self.getActualPawns() if not x.killed]:
+                alive[p.team.i] += 1
+
+            for i, x in sorted(enumerate(alive), key=lambda pair: pair[1], reverse=True):
+                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} alive", self.getTeamColor(i), font=self.fontSmaller)
+                self.screen.blit(t, [10, y])
+                y += 22
+
         
         elif self.GAMEMODE == "1v1":
             kills = [0 for _ in range(len(self.duelPawns))]
@@ -1840,16 +2099,33 @@ class Game(valInit):
 
             for i, x in sorted(enumerate(rooms), key=lambda pair: pair[1], reverse=True):
 
-                all_enslaved = all(x.enslaved for x in self.pawnHelpList if x.originalTeam == i)
+                all_enslaved = all(x.enslaved for x in self.getActualPawns() if x.originalTeam == i)
 
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} rooms" if not all_enslaved else "ORJUUTETTU", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
+        elif self.GAMEMODE == "FINAL SHOWDOWN" and not self.BABLO.killed:
+            damage = [0 for _ in range(self.teams)]
+
+            for i, d in enumerate(self.BABLO.damageTakenPerTeam.values()):
+                if i >= len(damage):
+                    continue
+                damage[i] = d
+
+            for i, x in sorted(enumerate(damage), key=lambda pair: pair[1], reverse=True):
+
+                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} damage dealt", self.getTeamColor(i), font=self.fontSmaller)
+                self.screen.blit(t, [10, y])
+                y += 22
+        else:
+            return
+
 
         y += 22
 
-        for x in sorted(self.pawnHelpList.copy(), key = lambda p: p.kills, reverse=True):
+        for x in sorted([x for x in self.pawnHelpList if x.isPawn], key = lambda p: p.kills, reverse=True):
+
 
             t = combinedText(f"{x.name}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
             r = t.get_rect()
@@ -2128,6 +2404,9 @@ class Game(valInit):
         while True:
             self.SLOWMO = 1
 
+
+            self.debugCells.clear()
+
             if self.SLOWMO_FOR > 0:
 
                 self.SLOWMO = 1 - 0.9 * min(1, self.SLOWMO_FOR * 2)
@@ -2156,6 +2435,9 @@ class Game(valInit):
 
             if self.GAMESTATE == "settings":
                 settingsTick(self)
+
+            elif self.GAMESTATE == "end":
+                gameEndTick(self)
 
             elif self.GAMESTATE == "pawnGeneration":
                 preGameTick(self)
@@ -2227,7 +2509,7 @@ class Game(valInit):
             #self.screen.fill((0, 0, 0))
             elapsed = time.time() - self.now
 
-            if self.currNotification:
+            if self.currNotification and self.RENDERING:
                 if self.draw_notification(self.currNotification[0], self.res.x/2, self.res.y/4, 
                                           self.notificationTime, color=self.currNotification[1]):
                     self.currNotification = None
@@ -2252,8 +2534,16 @@ class Game(valInit):
             if self.consoleOpen:
                 runConsole(self)
 
-            pygame.display.update()
+            if self.STRESSTEST and not self.PEACEFUL:
+                if self.stressTestFpsClock >= 1/60:
+                    pygame.display.update()
+                    self.stressTestFpsClock = 0
+            else:
+                pygame.display.update()
             self.t1 = time.time() - tickStartTime
+
+            if self.STRESSTEST:
+                self.stressTestFpsClock += self.t1
             
             if self.STRESSTEST:
                 self.clock.tick()
@@ -2294,11 +2584,24 @@ def heat_color(v):
         b = 0
     return (r, g, b)
 
-def run():
-    game = Game()
-    #time.sleep(1)
-    #getCodeSuggestions(game)
-    game.run()
+import traceback
+
+def run_forever():
+    while True:
+        try:
+            game = Game()
+            game.run()
+            print("Program exited Normally!")
+            break  # normal exit → stop restarting
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            with open("crash.log", "a", encoding="utf-8") as f:
+                f.write("\n" + "="*60 + "\n")
+                f.write(time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
+                traceback.print_exc(file=f)
+                traceback.print_exc()
+            time.sleep(2)
 
 if __name__ == "__main__":
-    run()
+    run_forever()

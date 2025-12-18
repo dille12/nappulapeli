@@ -89,7 +89,7 @@ def make_handler(app: "Game"):
                     pawn_name = data.get("pawn")
                     item_name = data.get("item")
 
-                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+                    pawn = [pawn for pawn in app.getActualPawns() if pawn.name == pawn_name][0]
                     if pawn:
                         chosen_item = next((i for i in pawn.nextItems if i.name == item_name), None)
                         if chosen_item:
@@ -98,9 +98,12 @@ def make_handler(app: "Game"):
                 if data.get("type") == "registerDrink":
                     print(data)
                     pawn_name = data.get("pawnName")
-                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
-                    pawn.team.currency += data.get("drinkValue")
+                    pawn = [pawn for pawn in app.getActualPawns() if pawn.name == pawn_name][0]
+
                     am = data.get("drinkValue")
+                    pawn.team.currency += am
+                    pawn.stats["amountDrank"] += am
+                    
                     """Send drink registration response to client"""
                     packet = {
                         "type": "drinkRegistrationResponse",
@@ -123,7 +126,7 @@ def make_handler(app: "Game"):
                     
                     pawn_name = data.get("pawnName")
 
-                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+                    pawn = [pawn for pawn in app.getActualPawns() if pawn.name == pawn_name][0]
 
                     if not pawn.canReroll():
                         p = {
@@ -152,7 +155,7 @@ def make_handler(app: "Game"):
                     pawn_name = data.get("pawnName")
                     
 
-                    pawn = [pawn for pawn in app.pawnHelpList if pawn.name == pawn_name][0]
+                    pawn = [pawn for pawn in app.getActualPawns() if pawn.name == pawn_name][0]
                     if not pawn.canBuy():
                         p = {
                             "type": "purchaseResponse",

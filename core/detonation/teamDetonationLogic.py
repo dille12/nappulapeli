@@ -46,14 +46,14 @@ def tickDetonationLogic(self: "Team"):
         # Terrorists:
         # everyone ready except bomb carrier (or dead)
         ready = all(
-            p.attackInPosition() or p.isBombCarrier() or p.killed
+            p.attackInPosition() or p.isBombCarrier() or p.killed or p.target
             for p in pawns
         )
     else:
         # Counter-terrorists:
         # everyone ready (or dead)
         ready = all(
-            p.attackInPosition() or p.killed
+            p.attackInPosition() or p.killed or p.target
             for p in pawns
         )
 
@@ -96,7 +96,17 @@ def tickDetonationLogic(self: "Team"):
         # ==================
 
         if terroristsHoldPlanSite:
+
+            if self.plan["currentAction"] != "defend":
+                self.app.notify("TERRORIST GAIN SITE")
+                for mainPos in plan["site"].room.defensivePositions:
+                    self.addNadePos(mainPos, "defensive")
+
+            if not self.utilityPos["defensive"]:
+                self.addNadePos(plan["site"].room.randomCell(), "defensive")
+
             plan["currentAction"] = "defend" # Terrorist will only defend when bomb is down.
+            
 
         # ---------
         # DEFEND
@@ -120,7 +130,7 @@ def tickDetonationLogic(self: "Team"):
 
                 if plan["site"]: 
                     for _ in range(5): 
-                        self.addNadePos(plan["site"].room.randomCell())
+                        self.addNadePos(plan["site"].room.randomCell(), "aggr")
 
         # ---------
         # EXECUTE
@@ -130,6 +140,7 @@ def tickDetonationLogic(self: "Team"):
             if terroristsHoldPlanSite:
                 plan["currentAction"] = "defend" # Extra check. Make the terrorist hold the site.
                 resetTeamRoutes(self)
+                
 
             if plan["planTimer"] <= 0:
                 plan["currentAction"] = "prepare" # Do another attack if fail to hold the site.
@@ -146,6 +157,12 @@ def tickDetonationLogic(self: "Team"):
 
         if not terroristsHoldPlanSite:
             plan["currentAction"] = "defend" # Terrorist will only defend when bomb is down.
+
+        if not self.utilityPos["defensive"]:
+            for x in self.app.SITES:
+                if x.controlledByT():
+                    continue
+                self.addNadePos(x.room.randomCell(), "defensive")
 
         # ---------
         # DEFEND
@@ -168,7 +185,7 @@ def tickDetonationLogic(self: "Team"):
 
                 if plan["site"]: 
                     for _ in range(5): 
-                        self.addNadePos(plan["site"].room.randomCell())
+                        self.addNadePos(plan["site"].room.randomCell(), "aggr")
 
         # ---------
         # EXECUTE

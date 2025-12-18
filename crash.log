@@ -1,0 +1,1325 @@
+
+============================================================
+2025-12-18 04:36:00
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2410, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 212, in battleTick
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 1458, in tick
+    self.think()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 39, in think
+    self.pickWalkingTarget()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 248, in pickWalkingTarget
+    detonationTarget(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\detonationTarget.py", line 67, in detonationTarget
+    terroristSiteTarget(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\detonationTarget.py", line 14, in terroristSiteTarget
+    self.getRouteTo(endPosGrid=site.room.randomCell(), movement_type=MovementType.GROUND)
+                               ^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'room'
+
+============================================================
+2025-12-18 04:58:17
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2410, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 204, in battleTick
+    self.allTeams[-1].tickDetonation()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 182, in tickDetonation
+    tickDetonationLogic(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\teamDetonationLogic.py", line 69, in tickDetonationLogic
+    plan["site"] = self.getClosestSite()
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 167, in getClosestSite
+    if len(route) < m[1]:
+       ^^^^^^^^^^
+TypeError: object of type 'NoneType' has no len()
+
+============================================================
+2025-12-18 05:51:14
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2410, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 204, in battleTick
+    self.allTeams[-1].tickDetonation()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 182, in tickDetonation
+    tickDetonationLogic(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\teamDetonationLogic.py", line 69, in tickDetonationLogic
+    plan["site"] = self.getClosestSite()
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 167, in getClosestSite
+    if len(route) < m[1]:
+       ^^^^^^^^^^
+TypeError: object of type 'NoneType' has no len()
+
+============================================================
+2025-12-18 06:34:02
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2410, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 204, in battleTick
+    self.allTeams[-1].tickDetonation()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 182, in tickDetonation
+    tickDetonationLogic(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\teamDetonationLogic.py", line 69, in tickDetonationLogic
+    plan["site"] = self.getClosestSite()
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 167, in getClosestSite
+    if len(route) < m[1]:
+       ^^^^^^^^^^
+TypeError: object of type 'NoneType' has no len()
+
+============================================================
+2025-12-18 06:54:56
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2268, in run
+    preGameTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\pawnGeneration.py", line 155, in preGameTick
+    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
+                                   ~~~~~~~^~~~~~~~
+ZeroDivisionError: float division by zero
+
+============================================================
+2025-12-18 06:55:47
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2362, in run
+    if self.STRESSTEST and not self.PEACEFUL:
+                               ^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'PEACEFUL'
+
+============================================================
+2025-12-18 06:55:49
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2362, in run
+    if self.STRESSTEST and not self.PEACEFUL:
+                               ^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'PEACEFUL'
+
+============================================================
+2025-12-18 06:55:52
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2362, in run
+    if self.STRESSTEST and not self.PEACEFUL:
+                               ^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'PEACEFUL'
+
+============================================================
+2025-12-18 06:55:54
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2362, in run
+    if self.STRESSTEST and not self.PEACEFUL:
+                               ^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'PEACEFUL'
+
+============================================================
+2025-12-18 06:55:57
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2362, in run
+    if self.STRESSTEST and not self.PEACEFUL:
+                               ^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'PEACEFUL'
+
+============================================================
+2025-12-18 07:10:02
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2268, in run
+    preGameTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\pawnGeneration.py", line 155, in preGameTick
+    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
+                                   ~~~~~~~^~~~~~~~
+ZeroDivisionError: float division by zero
+
+============================================================
+2025-12-18 07:10:05
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2268, in run
+    preGameTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\pawnGeneration.py", line 155, in preGameTick
+    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
+                                   ~~~~~~~^~~~~~~~
+ZeroDivisionError: float division by zero
+
+============================================================
+2025-12-18 07:11:22
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 204, in battleTick
+    self.allTeams[-1].tickDetonation()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 182, in tickDetonation
+    tickDetonationLogic(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\detonation\teamDetonationLogic.py", line 69, in tickDetonationLogic
+    plan["site"] = self.getClosestSite()
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 167, in getClosestSite
+    if len(route) < m[1]:
+       ^^^^^^^^^^
+TypeError: object of type 'NoneType' has no len()
+
+============================================================
+2025-12-18 07:11:25
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2268, in run
+    preGameTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\pawnGeneration.py", line 155, in preGameTick
+    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
+                                   ~~~~~~~^~~~~~~~
+ZeroDivisionError: float division by zero
+
+============================================================
+2025-12-18 07:50:30
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:32
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:34
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:36
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:38
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:40
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:42
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:44
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:45
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:46
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:47
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:48
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:49
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:50
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:51
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:52
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:53
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:54
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:55
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:56
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:57
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:58
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:50:59
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:00
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:01
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:02
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:03
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:04
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:05
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:06
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:07
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:08
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:09
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:10
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:11
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:12
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:13
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:14
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:15
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:16
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:17
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:18
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    self.saveConfig(self, path)
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:19
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    print("Loading config...")
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    if not os.path.exists(path):
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:20
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    print("Loading config...")
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    if not os.path.exists(path):
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:21
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    print("Loading config...")
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    if not os.path.exists(path):
+        ^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:51:22
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2417, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 71, in __init__
+    print("Loading config...")
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 614, in autoloadConfig
+    # create default autoload target if missing
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: valInit.saveConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 07:54:43
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:45
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:47
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:49
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:51
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:53
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:55
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:57
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:54:59
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 07:55:01
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 72, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 619, in autoloadConfig
+    self.saveConfig(path)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 582, in saveConfig
+    self.log(f"Config {path} created")
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2198, in log
+    self.consoleLog.append(str(text))
+    ^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'consoleLog'
+
+============================================================
+2025-12-18 08:24:12
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2416, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2281, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 131, in battleTick
+    victoryCondition = self.BABLO.damageTakenPerTeam
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Pawn' object has no attribute 'damageTakenPerTeam'
+
+============================================================
+2025-12-18 08:29:39
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:29:41
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:29:43
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:29:45
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:29:47
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:29:49
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2415, in run_forever
+    game = Game()
+           ^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 138, in __init__
+    super().__init__()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 78, in __init__
+    self.autoloadConfig()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\core\valInit.py", line 629, in autoloadConfig
+    self.loadConfig(self, path)
+TypeError: valInit.loadConfig() takes 2 positional arguments but 3 were given
+
+============================================================
+2025-12-18 08:35:40
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2418, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2283, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 142, in battleTick
+    max_index = victoryCondition.index(max(victoryCondition))
+                ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'dict' object has no attribute 'index'
+
+============================================================
+2025-12-18 09:04:41
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2427, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2292, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 278, in battleTick
+    if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist and not self.cameraLock.BOSS:
+                                                                                   ^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'BOSS'
+
+============================================================
+2025-12-18 09:28:59
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2475, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2340, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 373, in battleTick
+    self.tickEndGame()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 1732, in tickEndGame
+    self.drawAwards(I)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 1696, in drawAwards
+    line = f"K/D: {pawn.kills/pawn.deaths:.1f}"
+                   ~~~~~~~~~~^~~~~~~~~~~~
+ZeroDivisionError: division by zero
+
+============================================================
+2025-12-18 10:25:01
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2536, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2401, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 212, in battleTick
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 1466, in tick
+    self.shoot()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 490, in shoot
+    self.searchEnemies(WEAPON)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 689, in searchEnemies
+    if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
+           ^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\getStat.py", line 219, in revengeHunt
+    if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    self.app.allTeams[self.enslavedTo].hostile(other)
+TypeError: Team.hostile() missing 1 required positional argument: 'other'
+
+============================================================
+2025-12-18 10:25:29
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2536, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2401, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 212, in battleTick
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 1466, in tick
+    self.shoot()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 490, in shoot
+    self.searchEnemies(WEAPON)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 689, in searchEnemies
+    if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
+           ^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\getStat.py", line 219, in revengeHunt
+    if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    self.app.allTeams[self.enslavedTo].hostile(P, other)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Team.hostile() missing 1 required positional argument: 'other'
+
+============================================================
+2025-12-18 10:44:54
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2536, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2401, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 212, in battleTick
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 1472, in tick
+    self.shoot()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 490, in shoot
+    self.searchEnemies(WEAPON)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 689, in searchEnemies
+    if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
+           ^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\getStat.py", line 219, in revengeHunt
+    if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  [Previous line repeated 989 more times]
+RecursionError: maximum recursion depth exceeded
+
+============================================================
+2025-12-18 10:45:10
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2536, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2401, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 212, in battleTick
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 1472, in tick
+    self.shoot()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\behaviour.py", line 490, in shoot
+    self.searchEnemies(WEAPON)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\pawn.py", line 689, in searchEnemies
+    if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
+           ^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\getStat.py", line 219, in revengeHunt
+    if self.lastKiller and not self.team.hostile(self, self.lastKiller) and "allyProtection" in self.itemEffects:
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\pawn\teamLogic.py", line 337, in hostile
+    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  [Previous line repeated 989 more times]
+RecursionError: maximum recursion depth exceeded
+
+============================================================
+2025-12-18 12:04:03
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2589, in run_forever
+    try:
+        ^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2454, in run
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 394, in battleTick
+    self.tickScoreBoard()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2112, in tickScoreBoard
+    damage[i] = d
+    ~~~~~~^^^
+IndexError: list assignment index out of range
+
+============================================================
+2025-12-18 12:06:51
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2591, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2456, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 394, in battleTick
+    self.tickScoreBoard()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2112, in tickScoreBoard
+    damage[i] = d
+    ~~~~~~^^^
+IndexError: list assignment index out of range
+
+============================================================
+2025-12-18 12:09:37
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2593, in run_forever
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2458, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 394, in battleTick
+    self.tickScoreBoard()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2114, in tickScoreBoard
+    damage[i] = d
+    ~~~~~~^^^
+IndexError: list assignment index out of range

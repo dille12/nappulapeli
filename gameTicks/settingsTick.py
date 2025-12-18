@@ -107,7 +107,7 @@ def settingsTick(self: "Game"):
                 x.stop()
 
         if self.musicChoice.get_selected() == "Bablo":
-            self.music = self.loadSound("audio/bar", volume=0, asPygame=True)
+            self.music = self.loadSound("audio/bar", volume=0.2, asPygame=True)
             print("Loaded")
 
         elif self.musicChoice.get_selected() == "Bablo >:)":
@@ -138,13 +138,13 @@ def settingsTick(self: "Game"):
 
 
 
-    if self.giveRandomWeapons.draw(self.screen, "Anna aseita", font = self.font):
+    if self.giveRandomWeapons.draw(self.screen, "Anna aseita", font = self.font) or self.AUTOPLAY:
         self.giveWeapons = True
         for pawn in self.pawnHelpList:
             w = random.choice(self.weapons)
             w.give(pawn)
 
-    if not (self.playerFilesToGen or self.pawnGenI) and self.playButton.draw(self.screen, "Peliä", font = self.fontLarge):
+    if not (self.playerFilesToGen or self.pawnGenI) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY):
         self.GAMESTATE = "pawnGeneration"
 
         #self.MANUALPAWN = self.pawnHelpList[0]

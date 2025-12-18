@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 from pygame.math import Vector2 as v2
 import pygame
 import time
-from core.AI import constructTeamVisibility, drawGridMiniMap
+#from core.AI import constructTeamVisibility, drawGridMiniMap
 import math
 from utilities.bullet import raycast_grid
 from core.drawRectPerimeter import draw_rect_perimeter
@@ -13,6 +13,8 @@ def battleTick(self: "Game"):
 
     self.PEACEFUL = False
     self.BFGLasers = []
+
+    self.debugCells = []
 
     # Sort entities by their y position for correct rendering order into a separate list to prevent modifying the list while iterating
 
@@ -32,7 +34,7 @@ def battleTick(self: "Game"):
 
         elif self.GAMEMODE == "TEAM DEATHMATCH":
             victoryCondition = [0 for _ in range(self.teams)]
-            for p in self.pawnHelpList:
+            for p in self.getActualPawns():
                 victoryCondition[p.team.i] += p.kills
             
             for i, x in enumerate(victoryCondition):
@@ -64,11 +66,27 @@ def battleTick(self: "Game"):
         elif self.GAMEMODE == "DETONATION":
             victoryCondition = [0 for _ in range(2)]
             if self.SITES:
-                victoryCondition[1] = 1
+                if len(self.SITES) == 1:
+                    victoryCondition[1] = 1 # TIE
+                    victoryCondition[0] = 1
+                else:
+                    victoryCondition[1] = 1
                 
             else:
                 victoryCondition[0] = 1
                 self.announceVictory(0)
+
+        elif self.GAMEMODE == "SUDDEN DEATH":
+            alive = [0] * self.teams
+
+            for p in self.getActualPawns():
+                if not p.killed:
+                    alive[p.team.i] += 1
+
+            alive_teams = [i for i, n in enumerate(alive) if n > 0]
+
+            if len(alive_teams) == 1:
+                self.announceVictory(alive_teams[0])
                 
                     
                 
@@ -100,7 +118,7 @@ def battleTick(self: "Game"):
             for p in self.pawnHelpList
         ) or self.bombPlanted()
     
-    if not combat:
+    if not combat and self.GAMEMODE != "FINAL SHOWDOWN" and not self.VICTORY:
         self.fastForwardI += self.deltaTimeR
         self.fastForwardI = min(3, self.fastForwardI)
     else:
@@ -122,6 +140,7 @@ def battleTick(self: "Game"):
         if self.GAMEMODE == "FINAL SHOWDOWN":
             if self.currMusic == 1:
                 self.roundTime -= self.deltaTime
+            victoryCondition = list(self.BABLO.damageTakenPerTeam.values())
 
         elif self.GAMEMODE == "DETONATION":
             if not self.skull.planted:
@@ -133,6 +152,10 @@ def battleTick(self: "Game"):
         if self.roundTime <= 0:
             # Pick out from the victoryCondition the highest index
             max_index = victoryCondition.index(max(victoryCondition))
+            
+            if self.GAMEMODE == "DETONATION":
+                if victoryCondition[0] == victoryCondition[1]:
+                    max_index = -1
             self.announceVictory(max_index)
 
     
@@ -211,7 +234,7 @@ def battleTick(self: "Game"):
     self.handleTurfWar()
 
 
-    if self.GAMEMODE == "TEAM DEATHMATCH" or True:
+    if self.GAMEMODE != "FINAL SHOWDOWN":
         self.commonRoomSwitchI += self.deltaTime
         if self.commonRoomSwitchI >= 10:
             self.commonRoomSwitchI = 0
@@ -264,7 +287,7 @@ def battleTick(self: "Game"):
 
         max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
 
-        if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist:
+        if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist and self.cameraLock and not self.cameraLock.BOSS:
             DUAL = True
 
     self.DUALVIEWACTIVE = DUAL
@@ -322,7 +345,8 @@ def battleTick(self: "Game"):
 
             self.particle_system.render_all(self.DRAWTO)
 
-            
+            for x in self.debugCells:
+                self.highLightCell(x)
 
             if DUAL and i == 1:
                 self.cameraPosDelta = SAVECAMPOS.copy()
@@ -333,6 +357,7 @@ def battleTick(self: "Game"):
         self.screen.fill((0,0,0))
 
 
+    
     
         
 
@@ -364,7 +389,8 @@ def battleTick(self: "Game"):
             #self.endGame()
             
     else:
-        if self.GAMEMODE != "FINAL SHOWDOWN":
+        if self.RENDERING:
+            #if self.GAMEMODE != "FINAL SHOWDOWN":
             self.tickScoreBoard()
 
     if not self.VICTORY:
@@ -442,8 +468,8 @@ def battleTick(self: "Game"):
 
     #debugRay(self)
 
-
-    self.handleHud()
+    if self.RENDERING:
+        self.handleHud()
 
 
 
@@ -481,6 +507,12 @@ def battleTick(self: "Game"):
         self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].plan["planTimer"]:.1f}")
         self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].plan["planTimer"]:.1f}")
         self.debugText(f"Site controlled: {self.allTeams[0].terroristsHoldPlanSite()}")
+
+    if self.GAMEMODE == "TURF WARS":
+        for x in self.allTeams:
+            self.debugText(f"TEAM {x.i}: {x.enslavedTo}")
+
+    self.debugText(f"ENT: {len(self.pawnHelpList)}, {len([x for x in self.pawnHelpList if not x.isPawn])}")
 
 
     #self.drawFPS()

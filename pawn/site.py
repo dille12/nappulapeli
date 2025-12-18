@@ -168,7 +168,7 @@ class Site:
 
     def tickSite(self):
         inhabited = [0,0]
-        for x in self.app.pawnHelpList:
+        for x in self.app.getActualPawns():
             dx, dy = x.getOwnCell()
             if self.room.contains(dx, dy):
                 inhabited[x.team.getDetI()] += 1

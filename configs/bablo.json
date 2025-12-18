@@ -1,0 +1,14 @@
+{
+  "AUTOPLAY": true,
+  "TRAINCTSPAWNTIME": false,
+  "STRESSTEST": false,
+  "RENDERING": true,
+  "FIXED_FRAMERATE": 20,
+  "midRoundTime": 0,
+  "stressTestFpsClock": 0,
+  "PEACEFUL": true,
+  "gameModeLineUp": [
+    "FINAL SHOWDOWN"
+  ],
+  "maxWins": 5
+}

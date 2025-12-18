@@ -1,0 +1,16 @@
+{
+  "AUTOPLAY": false,
+  "TRAINCTSPAWNTIME": false,
+  "STRESSTEST": false,
+  "RENDERING": true,
+  "FIXED_FRAMERATE": 20,
+  "midRoundTime": 10,
+  "stressTestFpsClock": 0,
+  "PEACEFUL": true,
+  "gameModeLineUp": [
+    "TEAM DEATHMATCH",
+    "ODDBALL",
+    "DETONATION",
+    "FINAL SHOWDOWN"
+  ]
+}

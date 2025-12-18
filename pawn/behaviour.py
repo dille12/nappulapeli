@@ -8,7 +8,7 @@ from pygame.math import Vector2 as v2
 from levelGen.mapGen import CellType
 from utilities.shit import Shit
 from utilities.building import Building
-from core.AI import runAI
+#from core.AI import runAI
 import pygame
 from levelGen.numbaPathFinding import MovementType
 from utilities.bullet import raycast_grid
@@ -31,8 +31,8 @@ class PawnBehaviour:
             c = self.app.randomWeighted(0.2, 1, 0)
             if c == 0:
                 if not self.target and not self.buildingTarget:
-                    if not self.weapon.isReloading() and self.weapon.magazine < self.getMaxCapacity()/2 and not self.carryingSkull():
-                        self.weapon.reload()
+                    if not self.currWeapon.isReloading() and self.currWeapon.magazine < self.getMaxCapacity(self.currWeapon)/2 and not self.carryingSkull():
+                        self.currWeapon.reload()
 
             if c == 1:
                 if self.walkTo is None and not self.buildingTarget:
@@ -77,7 +77,7 @@ class PawnBehaviour:
 
     def turfWarWalkingTarget(self):
 
-        teamI = self.team.getI()
+        teamI = self.team.i if not self.enslaved else self.team.enslavedTo
 
         if self.app.teamSpawnRooms[teamI].turfWarTeam != teamI:
             self.getRouteTo(endPosGrid=self.app.teamSpawnRooms[teamI].randomCell())
@@ -110,8 +110,9 @@ class PawnBehaviour:
         
 
     def gatherRoundBablo(self):
-        pawnIndex = self.app.pawnHelpList.index(self)
-        totalPawns = len(self.app.pawnHelpList)
+        l = self.app.getActualPawns()
+        pawnIndex = l.index(self)
+        totalPawns = len(l) - 1
         targetCell = self.app.commonRoom.center()
 
         radius = 5
@@ -240,7 +241,7 @@ class PawnBehaviour:
                     self.oddballWalkingTarget()
                 elif self.app.GAMEMODE == "TURF WARS":
                     self.turfWarWalkingTarget()
-                elif self.app.GAMEMODE == "TEAM DEATHMATCH":
+                elif self.app.GAMEMODE in ["TEAM DEATHMATCH", "SUDDEN DEATH"]:
                     self.deathMatchWalkingTarget()
                 elif self.app.GAMEMODE == "FINAL SHOWDOWN":
                     self.bossWalkingTarget()
@@ -290,7 +291,7 @@ class PawnBehaviour:
             if not self.target:
                 self.facingRight = self.walkTo[0] <= self.pos[0]
 
-            speed = self.getSpeed()
+            speed = self.getSpeed(self.currWeapon)
 
             # Component-wise acceleration
             diff = self.walkTo - self.pos
@@ -405,7 +406,7 @@ class PawnBehaviour:
                 self.facingRight = self.walkTo[0] <= self.pos[0]
 
             direction = self.walkTo - self.pos
-            if direction.length() > self.getSpeed() * self.app.deltaTime:
+            if direction.length() > self.getSpeed(self.currWeapon) * self.app.deltaTime:
                 direction = direction.normalize()
                 #newPosX = self.pos[0] + direction.x * self.getSpeed() * self.app.deltaTime
                 #newPosY = self.pos[1] + direction.y * self.getSpeed() * self.app.deltaTime
@@ -419,8 +420,8 @@ class PawnBehaviour:
                 #if not hasattr(self.app, "map") or self.app.map.grid[c[1], c[0]] != CellType.WALL.value:
                 #    self.pos.y = newPosY
 
-                self.pos += direction * self.getSpeed() * self.app.deltaTime
-                self.stepI += self.app.deltaTime * self.getSpeed() / 300
+                self.pos += direction * self.getSpeed(self.currWeapon) * self.app.deltaTime
+                self.stepI += self.app.deltaTime * self.getSpeed(self.currWeapon) / 300
 
                 if self.lastStep != self.stepI // self.takeStepEvery:
                     self.lastStep = self.stepI // self.takeStepEvery
@@ -478,29 +479,31 @@ class PawnBehaviour:
             if self.loseTargetI <= 0:
                 if self.target:
                     self.say("Karkas saatana", 0.1)
-                    self.team.addNadePos(self.target.getOwnCell())  #.marchCells(-self.target.aimAt + math.pi, 5)
+                    self.team.addNadePos(self.target.getOwnCell(), "aggr")  #.marchCells(-self.target.aimAt + math.pi, 5)
 
                 self.target = None
                 self.loseTargetI = 1
 
             
             if not self.target:
-                self.searchEnemies()
+                self.STATUS = "NO TARGET" 
+                self.searchEnemies(WEAPON)
             if not self.target:
                 return
             
             if self.target.killed:
                 self.target = None
                 return
+            
             dist = self.pos.distance_to(self.target.pos)
-            if dist > self.getRange():
+            if dist > self.getRange(WEAPON):
                 self.loseTargetI -= self.app.deltaTime
-                self.searchEnemies()
+                self.searchEnemies(WEAPON)
                 return
             
             if not self.sees(self.target):
                 self.loseTargetI -= self.app.deltaTime
-                self.searchEnemies()
+                self.searchEnemies(WEAPON)
                 return
             
             self.facingRight = self.target.pos[0] <= self.pos[0]

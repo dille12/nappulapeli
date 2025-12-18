@@ -66,6 +66,8 @@ class EspeakTTS:
             time.sleep(random.uniform(0.1,0.5))
 
             self.sound = self.owner.app.playPositionalAudio(source, pos=self.owner.pos)
+            if not self.sound:
+                return
             self.sound.base_volume = 1
             
             self.generating = False

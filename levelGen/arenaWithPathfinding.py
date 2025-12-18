@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import time
 from levelGen.numbaPathFinding import Pathfinder, MovementType
 #from levelGen.numbaPathFinding import NumbaPathfinder
-from levelGen.mapGen import ArenaGenerator, CellType
+from levelGen.mapGen import ArenaGenerator, CellType, Room
 import math
 from itertools import combinations
 
@@ -103,9 +103,8 @@ class ArenaWithPathfinding:
         print("Combo found", best_combo, "iterations", iters)
         return best_combo
     
-    
 
-    def find_detonation_sites(self, ct_spawn, t_spawn):
+    def find_detonation_sites_old(self, ct_spawn, t_spawn):
         rooms = self.arena_gen.rooms
 
         # Precompute centers for speed
@@ -162,6 +161,104 @@ class ArenaWithPathfinding:
 
         print("Site combo found:", best_combo, "iterations:", iters)
         return best_combo
+    
+    
+
+    def find_detonation_sites(self, ct_spawn, t_spawn):
+        rooms = self.arena_gen.rooms
+
+        roomDict = {}
+        spawnRoomIndex = {}
+
+        ct_center = ct_spawn.center()
+        t_center = t_spawn.center()
+
+        for k, room in enumerate(rooms):
+            vis = set()
+            for x, y in room.allCells():
+                for cx, cy in self.arena_gen.get_visible_cells(x, y, 40):
+                    vis.add((int(cx), int(cy)))
+
+            routeFromCT = self.pathfinder.find_path(ct_center, room.center())
+            routeFromT = self.pathfinder.find_path(t_center, room.center())
+
+            if room == ct_spawn:
+                spawnRoomIndex["CT"] = k
+            elif room == t_spawn:
+                spawnRoomIndex["T"] = k
+
+            roomDict[k] = {
+                "room": room,
+                "vis": vis,
+                "spawnRoom": room in (ct_spawn, t_spawn),
+                "routeFromCT": routeFromCT,
+                "routeFromT": routeFromT,
+            }
+
+        spawn_vis = (
+            roomDict[spawnRoomIndex["CT"]]["vis"]
+            | roomDict[spawnRoomIndex["T"]]["vis"]
+        )
+
+        candidates = []
+        for r in roomDict.values():
+            if r["spawnRoom"]:
+                print("Not picking room. Is spawnroom")
+                continue
+            if r["routeFromCT"] is None or r["routeFromT"] is None:
+                print("Not picking room. No routes?")
+                print(r["routeFromCT"], r["routeFromT"])
+                continue
+            if len(r["routeFromCT"]) >= len(r["routeFromT"]):
+                print("Not picking room. Ct route is longer than T route?")
+                
+                continue
+            if r["vis"] & spawn_vis:
+                print("Not picking room. Can be seen from spawn?")
+                continue
+
+            print("Candidate found!")
+            candidates.append(r)
+
+        print("Amount of site candidates:", len(candidates))
+
+        def dist(a, b):
+            p = self.pathfinder.find_path(
+                a["room"].center(), b["room"].center()
+            )
+            return float("inf") if p is None else len(p)
+
+        best_score = -1
+        best_triplet = None
+
+        n = len(candidates)
+        for i in range(n):
+            a = candidates[i]
+            for j in range(i + 1, n):
+                b = candidates[j]
+                if a["vis"] & b["vis"]:
+                    continue
+                for k in range(j + 1, n):
+                    c = candidates[k]
+                    if (a["vis"] & c["vis"]) or (b["vis"] & c["vis"]):
+                        continue
+
+                    score = (
+                        dist(a, b)
+                        + dist(b, c)
+                        + dist(c, a)
+                    )
+
+                    if score > best_score:
+                        best_score = score
+                        best_triplet = (a, b, c)
+
+        if best_triplet is None:
+            print("No sites found :=)")
+            return self.find_detonation_sites_old(ct_spawn, t_spawn)
+
+        return [r["room"] for r in best_triplet]
+
 
 
     

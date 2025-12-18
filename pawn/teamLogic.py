@@ -11,7 +11,7 @@ from core.detonation.teamDetonationLogic import tickDetonationLogic
 class NadePos:
     def __init__(self, pos):
         self.pos = pos
-        self.lifetime = 4
+        self.lifetime = 10
 
     def equal(self, pos):
         return self.pos[0] == pos[0] and self.pos[1] == pos[1]
@@ -36,7 +36,7 @@ class Team:
         self.bombCarrier = None
 
         self.utilityPos = {
-            "smoke": [],
+            "defensive": [],
             "aggr": [],
         }
 
@@ -67,6 +67,8 @@ class Team:
                      "viableSites": [], 
                      "site": None,
                      "planTimer": 30}
+        self.utilityPos["aggr"].clear()
+        self.utilityPos["defensive"].clear()
 
     def refreshCarrier(self):
 
@@ -133,7 +135,10 @@ class Team:
         p = []
         for x in self.app.allTeams:
             if x.detonationTeam == self.detonationTeam:
-                p += x.pawns
+                pawns = x.pawns
+                for x in pawns:
+                    if x.isPawn:
+                        p.append(x)
         return p
 
 
@@ -176,29 +181,34 @@ class Team:
     def tickDetonation(self):
         tickDetonationLogic(self)
 
-    def addNadePos(self, pos):
-        self.utilityPos["aggr"].append(NadePos(pos))
+    def addNadePos(self, pos, nadeType = "aggr"):
+        self.utilityPos[nadeType].append(NadePos(pos))
 
-    def getRandomNadePos(self):
-        if not self.utilityPos["aggr"]:
+    def getRandomNadePos(self, nadeType = "aggr"):
+        if not self.utilityPos[nadeType]:
             return
-        return random.choice(self.utilityPos["aggr"]).pos
+        return random.choice(self.utilityPos[nadeType]).pos
 
-    def deleteNadePos(self, delPos):
-        for obj in self.utilityPos["aggr"]:
+    def deleteNadePos(self, delPos, nadeType = "aggr"):
+        for obj in self.utilityPos[nadeType]:
             if obj.equal(delPos):
-                self.utilityPos["aggr"].remove(obj)
+                self.utilityPos[nadeType].remove(obj)
                 break
 
     def tickNadePos(self):
         dt = self.app.deltaTime
-        to_remove = []
-        for obj in self.utilityPos["aggr"]:
-            obj.lifetime -= dt
-            if obj.lifetime <= 0:
-                to_remove.append(obj)
-        for obj in to_remove:
-            self.utilityPos["aggr"].remove(obj)
+        to_remove = {"aggr": [], "defensive": []}
+
+        for kind in ("aggr", "defensive"):
+            for obj in self.utilityPos[kind]:
+                obj.lifetime -= dt
+                if obj.lifetime <= 0:
+                    to_remove[kind].append(obj)
+
+        for kind in ("aggr", "defensive"):
+            for obj in to_remove[kind]:
+                self.utilityPos[kind].remove(obj)
+
             
 
     def getGodTeam(self):
@@ -211,16 +221,18 @@ class Team:
         else:
             return self.app.allTeams[-1]
         
+    def _getPawns(self):
+        return [x for x in self.pawns if x.isPawn]
 
     def getPawns(self):
         if self.app.GAMEMODE == "DETONATION":
             p = []
             for x in self.app.allTeams:
                 if x.detonationTeam == self.detonationTeam:
-                    p += x.pawns
+                    p += x._getPawns()
             return p
         else:
-            return self.pawns
+            return self._getPawns()
 
     
     def takeCoverFromFlash(self, landingCell):
@@ -261,14 +273,16 @@ class Team:
         i = 0
         for x in self.app.allTeams:
 
+            teamPawns = [x for x in x.pawns if x.isPawn]
+
             if x.detonationTeam != self.detonationTeam:
                 continue
 
             if x == self:
-                i += self.pawns.index(p)
+                i += teamPawns.index(p)
                 return i
             else:
-                i += len(x.pawns)
+                i += len(teamPawns)
 
     def getCurrentSite(self):
         return self.getTerroristTeam().plan["site"]
@@ -318,6 +332,10 @@ class Team:
         
     
     def hostile(self, P: "Pawn", other: "Pawn"):
+
+        #if P.enslaved and self == P.team and self.isEnslaved():
+        #    return self.app.allTeams[self.enslavedTo].hostile(P, other)
+            
         
         if self.app.PEACEFUL:
             return False
@@ -329,7 +347,7 @@ class Team:
             return True
         
         if P.enslaved and self.enslavedTo == other.team.i:
-                return False
+            return False
         if other.enslaved and other.team.enslavedTo == self.i:
             return False
 
@@ -339,13 +357,18 @@ class Team:
         
     def slaveTo(self, other: "Team"):
         self.enslavedTo = other.i
+
+    def isEnslaved(self):
+        return self.enslavedTo != self.i
     
     def emancipate(self):
         self.enslavedTo = self.i
+        for x in self.getPawns():
+            x.enslaved = False
 
 
     def updateCurrency(self):
-        for x in self.pawns:
+        for x in self._getPawns():
             if not x.client:
                 continue
 

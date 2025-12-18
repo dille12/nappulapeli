@@ -178,6 +178,9 @@ def detonationTargetArchive(self: "Pawn"):
         if bombDropped and isCT:
             route(self.app.skull.cell, MovementType.COUNTERTERRORIST)
             return
+        
+        if not isCT:
+            route(site.room.randomCell(), MovementType.GROUND)
 
         return
 

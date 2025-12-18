@@ -9,10 +9,13 @@ if TYPE_CHECKING:
 from utilities.explosion import Explosion
 from enum import Enum
 from utilities.textParticle import TextParticle
+from pawn.turret import Turret
+from levelGen.mapGen import CellType
 # Original enums for API compatibility
 class GrenadeType(Enum):
     FLASH = 0
     FRAG = 1
+    TURRET = 2
 
 
 
@@ -23,10 +26,8 @@ class Grenade:
         self.angle = self.app.getAngleFrom(fromCell, toCell)
         diff = v2(toCell) - v2(fromCell)
 
-        
         if not owner.currentlyAliveNade:
             owner.currentlyAliveNade = self
-
 
         self.type = grenadeType
 
@@ -42,6 +43,10 @@ class Grenade:
         elif self.type == GrenadeType.FRAG:
             self.imageKillFeed = self.app.fragKillFeed
             self.name = "Frag Grenade"
+
+        elif self.type == GrenadeType.TURRET:
+            self.imageKillFeed = self.app.turretGrenadeKillFeed
+            self.name = "Turret Grenade"
         
 
         self.MAXLIFE = 1.5
@@ -54,6 +59,8 @@ class Grenade:
         self.verticalPos = 0
         self.rotation = random.randint(0,360)
         self.rotationVel = 720
+
+        self.landingCell = toCell
         
         self.imageR = pygame.transform.rotate(self.image, self.rotation)
 
@@ -74,7 +81,7 @@ class Grenade:
 
         self.verticalPos = math.sin(math.pi * (self.lifetime / self.MAXLIFE)) * 300
 
-        if self.lifetime <= 0:
+        if self.lifetime <= 0 and not self.app.PEACEFUL:
             self.detonate()
 
 
@@ -86,6 +93,8 @@ class Grenade:
             self.flash()
         elif self.type == GrenadeType.FRAG:
             self.explode()
+        elif self.type == GrenadeType.TURRET:
+            self.createTurret()
 
         if self.isNadeFilmed():
             self.app.cameraLinger = 0.5
@@ -93,12 +102,21 @@ class Grenade:
         if self.owner.currentlyAliveNade == self:
             self.owner.currentlyAliveNade = None
 
-        
-
 
     def explode(self):
         Explosion(self.app, self.pos, self, 75 * self.owner.itemEffects["weaponDamage"] * self.owner.itemEffects["utilityUsage"])
 
+    def createTurret(self):
+        x,y = self.landingCell
+        if 0 <= y < self.app.map.grid.shape[0] and 0 <= x < self.app.map.grid.shape[1]:
+            if self.app.map.grid[y, x] == CellType.WALL:
+                print("Turret landed in a wall?")
+                return
+        else:
+            print("turret landed out of bounds")
+            return
+
+        Turret(self.app, self.landingCell, self.owner.team, self.owner)
 
     def flash(self):
         
@@ -178,7 +196,8 @@ class Grenade:
 
                 color = (
                     [255,255,255],
-                    [255,0,0],
+                    [255,100,100],
+                    [100,100,255],
                 )[self.type.value]
 
                 pos = self.pos - self.app.cameraPosDelta - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * 10

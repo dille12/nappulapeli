@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
     from pawn.pawn import Pawn
+    from pawn.weapon import Weapon
 import random
 import math
 from pygame.math import Vector2 as v2
@@ -187,8 +188,8 @@ class getStat:
 
 
     @ult_multiplier
-    def getSpeed(self):
-        s = self.speed * self.itemEffects["speedMod"] * (1 + 1.0*self.weapon.runOffset * self.itemEffects["tacticalSprintSpeed"])
+    def getSpeed(self, WEAPON: "Weapon"):
+        s = self.speed * self.itemEffects["speedMod"] * (1 + 1.0 * WEAPON.runOffset * self.itemEffects["tacticalSprintSpeed"])  # 
         if self.revengeHunt():
             s *= 2
         return s
@@ -203,15 +204,17 @@ class getStat:
     def getHealthCap(self):
         if self.enslaved:
             return self.healthCap * 0.5 * self.itemEffects["healthCapMult"]
+        elif self.app.GAMEMODE == "SUDDEN DEATH":
+            return self.healthCap * self.itemEffects["healthCapMult"] * 2
         return self.healthCap * self.itemEffects["healthCapMult"]
     
     @ult_multiplier
     def getWeaponHandling(self):
         return self.itemEffects["weaponHandling"]
-    def getRange(self):
-        if self.carryingSkull():
-            return self.skullWeapon.range * self.itemEffects["weaponRange"]
-        return self.weapon.range * self.itemEffects["weaponRange"]
+    
+    def getRange(self, WEAPON):
+
+        return WEAPON.range * self.itemEffects["weaponRange"]
     
     def revengeHunt(self):
 
@@ -241,24 +244,24 @@ class getStat:
             s *= 5
         return s
     
-    def getSpread(self):
-        return (self.weapon.spread + self.weapon.recoil * 0.5) / self.itemEffects["accuracy"]
+    def getSpread(self, WEAPON):
+        return (WEAPON.spread + WEAPON.recoil * 0.5) / self.itemEffects["accuracy"] # self.weapon.spread
 
     @ult_multiplier
-    def getDamage(self):
-        return self.weapon.damage * self.itemEffects["weaponDamage"]
+    def getDamage(self, WEAPON):
+        return WEAPON.damage * self.itemEffects["weaponDamage"] # self.weapon.damage
     
     @ult_multiplier
-    def getMaxCapacity(self):
-        return int(self.weapon.magazineSize * self.itemEffects["weaponAmmoCap"])
+    def getMaxCapacity(self, WEAPON):
+        return int(WEAPON.magazineSize * self.itemEffects["weaponAmmoCap"]) #self.weapon.magazineSize
     
     @ult_multiplier
     def getFireRateMod(self):
         return 1 / self.itemEffects["weaponFireRate"]
 
     @ult_division
-    def getRoundsPerSecond(self):
-        return 1/((self.weapon.firerate+self.weapon.addedFireRate) * self.itemEffects["weaponFireRate"])
+    def getRoundsPerSecond(self, WEAPON):
+        return 1/((WEAPON.firerate + WEAPON.addedFireRate) * self.itemEffects["weaponFireRate"]) # Added firerate self.weapon.firerate+self.weapon.addedFireRate
     
     @ult_multiplier
     def getHandling(self):

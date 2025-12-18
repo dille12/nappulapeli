@@ -172,6 +172,7 @@ class Room:
         self.kills = 0
         self.CENTER = (self.x + self.width // 2, self.y + self.height // 2)
         self.texture = random.choice(self.arena.app.roomTextures)
+        self.defensivePositions = []
         
         
     def getCenter(self):
@@ -453,7 +454,10 @@ class ArenaGenerator:
 
         for x in self.rooms:
             for i in range(random.randint(0,5)):
-                place_obstacle(x, max_tries=1)
+                place_obstacle(x, max_tries=3)
+
+        self._get_room_defensive_positions()
+
         
         # Step 4: Add doors and special features
         #self._add_doors()
@@ -463,6 +467,36 @@ class ArenaGenerator:
         # self._smooth_arena()
         
         return self.grid.copy()
+    
+    def _get_room_defensive_positions(self):
+        grid = self.grid
+        H, W = grid.shape
+
+        for room in self.rooms:
+            positions = set()
+
+            x0, y0 = room.x, room.y
+            x1, y1 = x0 + room.width, y0 + room.height
+
+            for y in range(y0, y1):
+                for x in range(x0, x1):
+                    if grid[y, x] == CellType.WALL:
+                        continue
+
+                    for dx, dy in ((-1,0),(1,0),(0,-1),(0,1)):
+                        nx, ny = x + dx, y + dy
+
+                        if not (0 <= nx < W and 0 <= ny < H):
+                            continue
+
+                        if room.contains(nx, ny):
+                            continue
+
+                        if grid[ny, nx] > 0:
+                            positions.add((nx, ny))
+
+            room.defensivePositions = list(positions)
+
     
     def _generate_rooms(self, count: int, min_size: int, max_size: int):
         """Generate rooms with size and placement constraints."""
@@ -553,7 +587,7 @@ class ArenaGenerator:
             r1.addConnection(r2)
         
         for room1, room2 in connections:
-            self._carve_corridor(room1, room2, width)
+            self._carve_corridor(room1, room2, random.randint(1, width))
     
     def _generate_room_connections(self) -> List[Tuple[Room, Room]]:
         """Generate connections between rooms using MST algorithm with minimum 2 connections per room."""

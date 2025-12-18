@@ -71,15 +71,12 @@ def getLyricTimes():
     for x in fourth:
         total[convToTime(x + 15*4)] = fourth[x]
 
-    print(total)
-
     totalAsList = []
     for x in total:
         totalAsList.append([x, total[x]])
     
     totalAsList.sort(key=lambda x: x[0])
 
-    print(totalAsList)
     return totalAsList
 
 

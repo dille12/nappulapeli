@@ -1,0 +1,20 @@
+{
+  "AUTOPLAY": false,
+  "TRAINCTSPAWNTIME": false,
+  "STRESSTEST": false,
+  "RENDERING": true,
+  "FIXED_FRAMERATE": 20,
+  "midRoundTime": 3,
+  "stressTestFpsClock": 0,
+  "PEACEFUL": true,
+  "gameModeLineUp": [
+    "TEAM DEATHMATCH",
+    "ODDBALL",
+    "TURF WARS",
+    "DETONATION",
+    "FINAL SHOWDOWN"
+  ],
+  "maxWins": 3,
+  "DOREALGAMEMODES": true,
+  "XPBASE": 5
+}

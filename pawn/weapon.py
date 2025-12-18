@@ -251,7 +251,7 @@ class Weapon:
 
     def reload(self):
         self.currReload = self.getReloadTime()
-        self.magazine = self.owner.getMaxCapacity()
+        self.magazine = self.owner.getMaxCapacity(self)
 
         self.app.playPositionalAudio("audio/reload.wav", self.owner.pos)
 
@@ -265,7 +265,7 @@ class Weapon:
 
     
     def skull(self):
-        self.magazine = self.owner.getMaxCapacity()
+        self.magazine = self.owner.getMaxCapacity(self)
         return
     
     
@@ -347,7 +347,7 @@ class Weapon:
         #if self.owner.onScreen():
         self.app.playPositionalAudio(self.app.energySound, self.owner.pos)
         self.magazine -= 1
-        self.fireTick = self.owner.getRoundsPerSecond()
+        self.fireTick = self.owner.getRoundsPerSecond(self)
 
         r = math.radians(-self.ROTATION)
         gun_x, gun_y = self.getBulletSpawnPoint()
@@ -371,15 +371,15 @@ class Weapon:
             r = self.adjustToAccuracy(r)
 
             endPos = [
-                startPos[0] + math.cos(r) * self.owner.getRange(),
-                startPos[1] + math.sin(r) * self.owner.getRange()
+                startPos[0] + math.cos(r) * self.owner.getRange(self),
+                startPos[1] + math.sin(r) * self.owner.getRange(self)
             ]
             
             self.app.BFGLasers.append([startPos, endPos, self.owner.teamColor])
             
             self.lazerTimer -= self.app.deltaTime
             if self.lazerTimer <= 0:
-                self.lazerTimer += self.owner.getRoundsPerSecond()
+                self.lazerTimer += self.owner.getRoundsPerSecond(self)
 
                 
 
@@ -402,7 +402,7 @@ class Weapon:
                     )
                     if collides:
                         x.takeDamage(
-                            self.owner.getDamage() * self.owner.getRoundsPerSecond(),  # fixed time step damage
+                            self.owner.getDamage(self) * self.owner.getRoundsPerSecond(self),  # fixed time step damage
                             fromActor=self,
                             typeD="energy",
                             bloodAngle=-math.radians(self.ROTATION)
@@ -431,7 +431,7 @@ class Weapon:
         #if self.owner.onScreen():
         self.app.playPositionalAudio(self.app.rocketSound, self.owner.pos)
 
-        self.fireTick = self.owner.getRoundsPerSecond()
+        self.fireTick = self.owner.getRoundsPerSecond(self)
         r = math.radians(-self.ROTATION)
 
         gun_x, gun_y = self.getBulletSpawnPoint()
@@ -442,7 +442,7 @@ class Weapon:
         r = self.adjustToAccuracy(r)
 
         for x in range(self.owner.itemEffects["multiShot"]):
-            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(self), rocket=True, type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.4)
         self.addRecoil(3)
 
@@ -491,7 +491,7 @@ class Weapon:
                 for x in range(self.owner.itemEffects["multiShot"]):
                     self.createBullet(0.25)
                 self.magazine -= 1
-                self.fireTick += self.owner.getRoundsPerSecond()
+                self.fireTick += self.owner.getRoundsPerSecond(self)
                 #if self.owner.onScreen():
                 if self.typeD == "energy":
                     self.app.playPositionalAudio(self.app.energySound, self.owner.pos)
@@ -511,7 +511,7 @@ class Weapon:
         
 
         self.magazine -= 1
-        self.fireTick = self.owner.getRoundsPerSecond()
+        self.fireTick = self.owner.getRoundsPerSecond(self)
         r = math.radians(-self.ROTATION)
         gun_x, gun_y = self.getBulletSpawnPoint()
         self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
@@ -522,7 +522,7 @@ class Weapon:
         r = self.adjustToAccuracy(r)
 
         for x in range(10*self.owner.itemEffects["multiShot"]):
-            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
+            Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(self), type=self.typeD, piercing=pierce, homing=homing) #-math.radians(self.FINALROTATION)
             self.addRecoil(0.15)
 
 
@@ -534,6 +534,8 @@ class Weapon:
                 gType = GrenadeType.FLASH
             elif self.name == "Frag Grenade":
                 gType = GrenadeType.FRAG
+            elif self.name == "Turret Grenade":
+                gType = GrenadeType.TURRET
             if self.owner.grenadePos:
                 Grenade(self.app, self.owner.getOwnCell(), self.owner.grenadePos, self.image, self.owner, grenadeType=gType)
                 self.owner.grenadeAmount -= 1
@@ -553,7 +555,7 @@ class Weapon:
         self.app.playPositionalAudio(sounds, self.owner.pos)
 
         self.magazine -= 1
-        self.fireTick = self.owner.getRoundsPerSecond()
+        self.fireTick = self.owner.getRoundsPerSecond(self)
 
 
         r = math.radians(-self.ROTATION)
@@ -582,7 +584,7 @@ class Weapon:
 
         r = self.adjustToAccuracy(r)
 
-        Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(), type=self.typeD, 
+        Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(self), type=self.typeD, 
                piercing=pierce, homing=homing, critChance = critChance * self.owner.itemEffects["accuracy"]) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
 
@@ -597,9 +599,6 @@ class Weapon:
         return True
 
     def canShoot(self):
-
-        
-
         if self.meleeing(): return False
      
         if self.isReloading(): return False
@@ -619,17 +618,33 @@ class Weapon:
 
         if not self.pointingAtTarget(): return False
 
-        x,y = self.owner.getOwnCell()
-        dist = self.app.getDistFrom((x,y), self.owner.target.getOwnCell())
-        allCells = self.app.map.marchRayAll(x,y, -self.owner.aimAt, int(dist)+1)
-        teamPawns = self.owner.team.getPawns()
-        for p in teamPawns:
+        x,y = self.owner.getOwnCellFloat()
+        if self.owner.target:
+            dist = self.app.getDistFrom((x,y), self.owner.target.getOwnCellFloat())
+        else:
+            dist = 10
+
+        allCells = self.app.map.marchRayAll(x,y, -math.degrees(self.owner.aimAt), int(dist)+1)
+        allCells_set = set(map(tuple, allCells))
+
+        #if self.owner == self.app.cameraLock:
+        #    self.app.debugCells += list(allCells)
+
+        #teamPawns = self.owner.team.getPawns()
+        for p in self.app.pawnHelpList:
+            if self.owner.team.hostile(self.owner, p):
+                continue
+            
             if p == self.owner or p.killed:
                 continue
-            if p.getOwnCell() in allCells:
-                #self.owner.say("VÄISTÄ NII MÄ VOIN AMPUA", 0.1)
-                return False
 
+            if p.getOwnCell() in allCells_set:
+                #self.owner.say("VÄISTÄ NII MÄ VOIN AMPUA", 0.1)
+                self.app.debugCells.append(p.getOwnCell())
+                self.owner.STATUS = f"CANNOT SHOOT! own in the way: {p.name}" 
+                return False
+        #self.app.TIMESCALE = 1
+        self.owner.STATUS = "CAN SHOOT" 
         return True
 
 
@@ -638,7 +653,7 @@ class Weapon:
     def pointingAtTarget(self):
         if self.owner.target:
             r = -math.degrees(self.app.getAngleFrom(self.defaultPos, self.owner.target.pos))
-            if abs(angle_diff(self.ROTATION, r)) > 10:
+            if abs(angle_diff(self.ROTATION, r)) > 20:
                 return False
 
         return True

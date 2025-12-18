@@ -45,6 +45,8 @@ from utilities.grenade import GrenadeType
 from gameTicks.pawnExplosion import PawnParticle
 from utilities.textParticle import TextParticle
 from pawn.flyingCorpse import FlyingCorpse
+from pawn.turret import Turret
+
 def debug_draw_alpha(surface):
     alpha_arr = pygame.surfarray.array_alpha(surface)
     alpha_rgb = np.stack([alpha_arr]*3, axis=-1)
@@ -111,6 +113,7 @@ class Pawn(PawnBehaviour, getStat):
         self.GENERATING = True
 
         self.BOSS = boss
+        self.isPawn = True
 
         super().__init__()
 
@@ -215,6 +218,7 @@ class Pawn(PawnBehaviour, getStat):
 
         self.aimAt = 0
 
+        self.damageTakenPerTeam = {}
 
 
         #pygame.draw.circle(self.imagePawn, [255,0,0], self.left_eye_center*100, 5)
@@ -255,7 +259,7 @@ class Pawn(PawnBehaviour, getStat):
         self.speed = 400
 
         self.gType = None
-        self.gType = random.randint(0,1)
+        self.gType = random.randint(0,2)
         #if self.team.i == 0:
         #    self.gType = 1
         self.grenadeAmount = 0
@@ -274,6 +278,8 @@ class Pawn(PawnBehaviour, getStat):
             "assists": 0,
             "flashes": 0,
             "teamFlashes": 0,
+            "amountDrank": 0,
+            "amountSpended": 0,
         }
         self.playerSpecificStats = {}
         self.mostKilled = None
@@ -328,9 +334,10 @@ class Pawn(PawnBehaviour, getStat):
 
         self.flash = self.app.flash.duplicate(self)
         self.frag = self.app.frag.duplicate(self)
+        self.turr = self.app.turretNade.duplicate(self)
 
 
-        self.grenades = [self.flash, self.frag]
+        self.grenades = [self.flash, self.frag, self.turr]
 
         #weapon = self.app.desert
 
@@ -374,7 +381,7 @@ class Pawn(PawnBehaviour, getStat):
         self.buildingBounceOffset = 0
         self.buildingRotationOffset = 0
         
-        
+        self.STATUS = "Idling"
 
         self.getNextItems()
         
@@ -424,13 +431,14 @@ class Pawn(PawnBehaviour, getStat):
             self.itemEffects["noscoping"] = False
             self.itemEffects["weaponReload"] = 1.0
             self.itemEffects["playMusic"] = False
+            self.itemEffects["talking"] = False
             self.health = self.healthCap
 
             #self.itemEffects["defenceNormal"] = 2.0
             #self.itemEffects["defenceEnergy"] = 2.0
             #self.itemEffects["defenceExplosion"] = 5.0
 
-            self.app.BIGASSAK.give(self)
+            self.weapon = self.app.BIGASSAK.duplicate(self)
 
             self.dualWieldWeapon = self.weapon.duplicate(self)
             self.dualwield = True
@@ -459,7 +467,6 @@ class Pawn(PawnBehaviour, getStat):
         #        self.getNextItems()
         #        self.levelUp()
        #
-        print(self.name, "created.")
         self.GENERATING = False
 
     def fullSync(self):
@@ -484,6 +491,9 @@ class Pawn(PawnBehaviour, getStat):
     def reLevelPawn(self, to = 10):
         self.level = 0
         self.xp = 0
+        self.healthCap = 100
+        self.health = self.healthCap
+        self.pastItems.clear()
         self.itemEffects = self.referenceEffects.copy()
         while self.level < to:
             self.getNextItems()
@@ -506,12 +516,14 @@ class Pawn(PawnBehaviour, getStat):
     
     def rerollWeapon(self):
         self.team.currency -= 25
+        self.stats["amountSpended"] += 25
         self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
         self.sendCurrWeaponShop()
     
     def purchaseWeapon(self, weaponName):
         weapon = [weapon for weapon in self.app.weapons if weapon.name == weaponName][0]
         self.team.currency -= weapon.price[0]
+        self.stats["amountSpended"] += weapon.price[0]
         weapon.give(self)
 
         self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
@@ -664,15 +676,15 @@ class Pawn(PawnBehaviour, getStat):
                 if len(self.nextItems) == (4 if self.itemEffects["extraItem"] else 3):
                     break
 
-    def searchEnemies(self):
+    def searchEnemies(self, WEAPON):
         if self.app.PEACEFUL:
             return
         
         if self.flashed > 0:
             return
         
-        x = random.choice(self.app.ENTITIES)
-        if x == self or not isinstance(x, Pawn):
+        x = random.choice(self.app.pawnHelpList)
+        if x == self or not isinstance(x, (Pawn, Turret)):
             return
         
         if not self.revengeHunt() and not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
@@ -687,7 +699,7 @@ class Pawn(PawnBehaviour, getStat):
                 return
         
         dist = self.pos.distance_to(x.pos)
-        if dist > self.getRange():
+        if dist > self.getRange(WEAPON):
             return
         if self.target and dist >= self.pos.distance_to(self.target.pos):
             return
@@ -700,7 +712,7 @@ class Pawn(PawnBehaviour, getStat):
         self.loseTargetI = 1
         self.buildingTarget = None
 
-        self.team.addNadePos(self.target.getOwnCell()) #
+        self.team.addNadePos(self.target.getOwnCell(), "aggr") #
         
         if not self.itemEffects["berserker"] and not self.carryingSkull():
             self.walkTo = v2(self.getOwnCell()) * self.app.tileSize
@@ -738,6 +750,7 @@ class Pawn(PawnBehaviour, getStat):
         
 
         x, y = self.getOwnCell()
+        self.app.killgrid[y,x] += 1
         for r in self.app.map.rooms:
             if r.contains(x, y):
                 r.kills += 1
@@ -761,7 +774,7 @@ class Pawn(PawnBehaviour, getStat):
             self.respawnI = 15
         elif self.app.GAMEMODE == "DETONATION":
             if self.team.isCT():
-                self.respawnI = 10
+                self.respawnI = self.app.load_ct_spawn()
             else:
                 self.respawnI = 2
         else:
@@ -782,7 +795,13 @@ class Pawn(PawnBehaviour, getStat):
 
     def getCellInSpawnRoom(self):
 
-        if self.app.GAMEMODE == "DETONATION":
+        if self.app.GAMEMODE == "TURF WARS":
+            if self.team.isEnslaved() and self.enslaved:
+                SPAWNROOM = self.app.teamSpawnRooms[self.team.enslavedTo]
+            else:
+                SPAWNROOM = self.app.teamSpawnRooms[self.team.i]
+
+        elif self.app.GAMEMODE == "DETONATION":
             SPAWNROOM = self.team.getDetonationSpawnRoom()
         else:
             if self.team.i < len(self.app.teamSpawnRooms):
@@ -798,7 +817,7 @@ class Pawn(PawnBehaviour, getStat):
     def reset(self):
         
         if self.app.GAMEMODE == "TURF WARS" and not self.app.PEACEFUL:
-            self.enslaved = self.team.enslavedTo != self.team.i
+            self.enslaved = self.team.isEnslaved()
         else:
             self.enslaved = False
 
@@ -807,6 +826,7 @@ class Pawn(PawnBehaviour, getStat):
         self.pos = v2(P) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
         self.deltaPos = self.pos.copy()
         self.health = self.getHealthCap()
+            
         self.hurtI = 0
         self.route = None
         self.walkTo = None
@@ -815,6 +835,7 @@ class Pawn(PawnBehaviour, getStat):
         self.tripped = False
         self.grenadePos = None
         self.flashed = 0
+        self.grenadeAmount = 0
 
         if self.defusing():
             self.app.skull.defusedBy = None
@@ -826,8 +847,10 @@ class Pawn(PawnBehaviour, getStat):
 
         self.killsThisLife = 0
         
-        self.weapon.magazine = self.getMaxCapacity()
+        self.weapon.magazine = self.getMaxCapacity(self.weapon)
         self.weapon.currReload = 0
+        self.dualWieldWeapon.magazine = self.getMaxCapacity(self.dualWieldWeapon)
+        self.dualWieldWeapon.currReload = 0
         self.tts.stop()
         self.sendKDStats()
 
@@ -958,7 +981,7 @@ class Pawn(PawnBehaviour, getStat):
 
     def evaluatePawn(self):
 
-        sorted_pawns = sorted(self.app.pawnHelpList.copy(), key=lambda x: x.kills)
+        sorted_pawns = sorted(self.app.getActualPawns(), key=lambda x: x.kills)
         total = len(sorted_pawns)
         try:
             rank = sorted_pawns.index(self)
@@ -1277,30 +1300,41 @@ class Pawn(PawnBehaviour, getStat):
             return
         if self.target:
             return
-        if not self.team.utilityPos["aggr"]:
-            if self.app.GAMEMODE in ["TEAM DEATHMATCH", "ODDBALL", "TURF WARS", "FINAL SHOWDOWN"]:
+        
+        if self.gType in [GrenadeType.FLASH.value, GrenadeType.FRAG.value]:
+            nadeType = "aggr"
+        else:
+            nadeType = "defensive"
+
+        if not self.team.utilityPos[nadeType]:
+            if self.app.GAMEMODE in ["SUDDEN DEATH", "TEAM DEATHMATCH", "ODDBALL", "TURF WARS"]:
                 c = self.app.commonRoom.randomCell()
-                self.team.addNadePos(c)
+                self.team.addNadePos(c, nadeType)
                 return
         
-        pos = self.team.getGodTeam().getRandomNadePos()
+        pos = self.team.getGodTeam().getRandomNadePos(nadeType)
         if not isinstance(pos, (list, tuple)):
             return
         
-        if self.canSeeCell(pos):
-            return
         dist = self.app.getDistFrom(self.getOwnCell(), pos)
-        if 10 > dist or dist > 20 + 10*self.itemEffects["utilityUsage"]:
-            return
+        if dist > 20 + 10*self.itemEffects["utilityUsage"]: return
         
-        teamPawns = self.team.getPawns()
-        for pawn in teamPawns:
-            dist = self.app.getDistFrom(pawn.getOwnCell(), pos)
-            if 8 > dist:
+        if nadeType == "aggr":
+        
+            if self.canSeeCell(pos):
                 return
+            
+            if 10 > dist:
+                return
+            
+            teamPawns = self.team.getPawns()
+            for pawn in teamPawns:
+                dist = self.app.getDistFrom(pawn.getOwnCell(), pos)
+                if 8 > dist:
+                    return
 
         self.grenadePos = pos
-        self.team.deleteNadePos(pos)
+        self.team.deleteNadePos(pos, nadeType)
         #self.gType = random.randint(0,1)
 
         self.say(random.choice([
@@ -1320,7 +1354,7 @@ class Pawn(PawnBehaviour, getStat):
 
         self.ONSCREEN = False
 
-        self.teamColor = self.team.color
+        #self.teamColor = self.team.color
 
         if self.BOSS:
             if self.app.GAMEMODE != "FINAL SHOWDOWN":
@@ -1333,6 +1367,10 @@ class Pawn(PawnBehaviour, getStat):
 
         #########
         if self.respawnI > 0:
+
+            if self.app.GAMEMODE == "SUDDEN DEATH":
+                return
+
             if not self.BOSS:
                 if self.app.objectiveCarriedBy and self.app.objectiveCarriedBy.team == self.team and self.app.GAMEMODE == "ODDBALL":
                     self.respawnI -= self.app.deltaTime*0.25
@@ -1351,13 +1389,13 @@ class Pawn(PawnBehaviour, getStat):
 
         #########
         if self.gType != None:
-            if self.grenadeAmount <= 2 ** self.itemEffects["utilityUsage"]:
+            if self.grenadeAmount <= 1 * self.itemEffects["utilityUsage"]:
                 self.grenadeReloadI += self.app.deltaTime * self.itemEffects["utilityUsage"]
-                if self.grenadeReloadI >= 10:
+                if self.grenadeReloadI >= 20:
                     self.grenadeAmount += 1
                     self.grenadeReloadI = 0
 
-            if not self.app.PEACEFUL:
+            if not self.app.PEACEFUL and self.app.ENABLEGRENADES:
                 self.tryToNade()
 
         #########
@@ -1564,6 +1602,12 @@ class Pawn(PawnBehaviour, getStat):
 
         self.handlePawnAngle()
 
+        #x,y = self.getOwnCellFloat()
+        #dist = 10
+        #if not self.app.PEACEFUL and self is self.app.cameraLock:
+        #    allCells = self.app.map.marchRayAll(x,y, -math.degrees(self.aimAt), int(dist)+1)
+        #    self.app.debugCells += list(allCells)
+
         #self.app.deltaTime = DELTATIMESAVE
 
     def handleSprite(self, head = False):
@@ -1683,7 +1727,7 @@ class Pawn(PawnBehaviour, getStat):
         x, y = self.getOwnCell()
         for r in self.app.map.rooms:
             if r.contains(x, y):
-                r.pawnsPresent.append(self.team.getI())
+                r.pawnsPresent.append(self.team.i if not self.enslaved else self.team.enslavedTo)
                 self.currentRoom = r
                 return
 
@@ -1693,6 +1737,7 @@ class Pawn(PawnBehaviour, getStat):
             return
         if p.killed:
             return
+        if not p.isPawn: return
         cx, cy = self.getOwnCell()
         c2x, c2y = p.getOwnCell()
         if abs(cx - c2x) > 2 or abs(cy - c2y) > 2:
@@ -1884,6 +1929,10 @@ class Pawn(PawnBehaviour, getStat):
     
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
+    
+    def getOwnCellFloat(self):
+        p = (self.pos + [0, self.app.tileSize/2]) / self.app.tileSize
+        return (float(p[0]), float(p[1]))
 
     def getCell(self, pos):
         return self.v2ToTuple((pos + [0, self.app.tileSize/2]) / self.app.tileSize)

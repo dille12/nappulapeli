@@ -121,5 +121,8 @@ class Bomb(Objective):
                 Explosion(self.app, self.pos, None, 500, doFire=True)                
 
                 self.app.getSites()
+
+                for x in self.app.getActualPawns():
+                    x.pickWalkingTarget()
         
         self.defaultTick()

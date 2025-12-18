@@ -18,7 +18,7 @@ def getItems():
         Item("Rage", "Vitutus on voimaa.", fireRateIncrease=["add", 5]),
         Item("Romupanssari", "Teipillä ja toivolla koottu.", defenceNormal=["mult", 1.5], speedMod=["mult", 0.85]),
         Item("Cryo-puku", "Suojaa hyvin energia-ammuksilta.", defenceEnergy=["mult", 2], speedMod=["mult", 0.8]),
-        Item("Kosto elää", "Mä tuun tappaan sut kohta...", revenge=["set", True]),
+        #Item("Kosto elää", "Mä tuun tappaan sut kohta...", revenge=["set", True]),
         Item("Neurosynkronointi", "Ase vispaa ampuessa muttei ladatessa.", weaponHandling=["mult", 1.6], weaponReload=["mult", 0.75]),
         Item("Rumpulipas", "Lipas.", weaponAmmoCap=["mult", 2.0], weaponFireRate=["mult", 0.8]),
         Item("Adderall", "Ylivilkas ja hauras.", weaponHandling=["mult", 2], speedMod=["mult", 1.25], weaponReload=["mult", 0.75], healthCapMult=["mult", 0.5]),
@@ -40,7 +40,7 @@ def getItems():
         Item("Tulkutus", "Kaunis äänesi on kuultavA.", talking=["set", True]),
         #Item("Petturi", "Lojaalisuus on lusmuille.", turnCoat=["set", True]),
         Item("Sahattu Piippu", "Sohii mutta toimii.", weaponDamage=["mult", 2], accuracy=["add", -0.25]),
-        Item("Silmälasit", "Nelisilmä", accuracy=["add", 0.25], weaponHandling=["mult", 0.75]),
+        Item("Silmälasit", "Sokee myyrä", accuracy=["add", 0.25], weaponHandling=["mult", 0.75]),
         Item("Paholaisien munat", "On muuten isot", saveChance=["add", -0.1], healthCapMult=["mult", 0.8], speedMod=["add", 0.2], weaponDamage=["add", 0.25]),
         Item("Virkalakki", "Erittäin fiini.", hat=["set", True], defenceEnergy=["mult", 1.5], defenceNormal=["mult", 1.5], defenceExplosion=["mult", 1.5]),
         Item("360", "Maken vlikki", noscoping=["set", True], weaponDamage=["mult", 1.5], weaponHandling=["mult", 1.2]),
@@ -51,7 +51,7 @@ def getItems():
         Item("Suppressori", "Pibgistä tuttu.", recoilMult = ["mult", 2], weaponDamage=["add", -0.1]),
         Item("AP-Luodit", "Kun äijät ampuu vihuja nii omat on vaa tiellä.", piercing=["set", True]),
         Item("Litra mälliä", "Jos sulle maksettais kaks sataa...", healthCapMult=["add", 0.5]),
-        Item("Rauhan uskonto", "Rauha on paras ase.", detonation=["set", True], defenceExplosion=["mult", 5]),
+        Item("Rauhan uskonto", "Allahu Akbar!", detonation=["set", True], defenceExplosion=["mult", 5]),
         Item("Tankki", "Nää ei oo niitä nopeimpia kavereita.", speedMod=["mult", 0.5], healthCapMult=["mult", 2]),
         Item("Kivimies", "Kivimies on kova mies.", tripChance=["add", 0.01], defenceNormal=["mult", 3], defenceEnergy=["mult", 3], defenceExplosion=["mult", 3]),
         Item("Niken Nyssykkä", "Voi tätä valinnan vaikeutta.", extraItem=["set", True]),
@@ -67,7 +67,7 @@ def getItems():
         Item("Valoshow", "Lentää!", utilityUsage=["add", 1]),
         Item("Ransuexprertti", "Kaljaasi", utilityUsage=["add", 1]),
         Item("Keinosnipu", "Highrollereille", weaponDamage=["mult",1.5], weaponFireRate=["mult", 0.5], recoilMult=["mult", 0.75]),
-        Item("Dualwield", "Kaverille kans", dualWield=["set", True])
+        Item("Dualwield", "Kaverille kans", dualWield=["set", True]),
         #Item("Mag dump", "Mikä vitun firerate", magDump=["set", True]),
     ]
 

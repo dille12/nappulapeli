@@ -19,10 +19,11 @@ from utilities.bosslyrics import getLyricTimes
 from typing import TYPE_CHECKING
 from utilities.fireSystem import FireSystem
 from collections import deque
-
+from pawn.turret import Turret
+from imageprocessing.imageProcessing import trim_surface
 if TYPE_CHECKING:
     from main import Game
-    from pawn.pawn import Pawn
+from pawn.pawn import Pawn
 from gameTicks.pawnExplosion import getFade
 def generate_noise_surface(size):
     width, height = size
@@ -31,12 +32,62 @@ def generate_noise_surface(size):
     pygame.surfarray.blit_array(surface, np.stack([noise_array]*3, axis=-1))
     return surface
 
+import json
+import os
+
+CONFIG_DIR = "configs"
+MAIN_CONFIG_PATH = os.path.join(CONFIG_DIR, "main.json")
+
+DEBUG_VARS = [
+    "AUTOPLAY",
+    "TRAINCTSPAWNTIME",
+    "STRESSTEST",
+    "RENDERING",
+    "FIXED_FRAMERATE",
+    "midRoundTime",
+    "stressTestFpsClock",
+    "PEACEFUL",
+    "gameModeLineUp",
+    "maxWins",
+    "DOREALGAMEMODES",
+    "XPBASE"
+]
+
+
+
+
 class valInit:
     def __init__(self: "Game"):
         self.now = time.time()
 
-        self.res = v2(1920, 1080)
-        self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
+        self.consoleLog = []
+
+        self.DOREALGAMEMODES = True
+        self.AUTOPLAY = True
+        self.TRAINCTSPAWNTIME = False
+        self.STRESSTEST = False
+        self.RENDERING = True
+
+        self.FIXED_FRAMERATE = 20
+        self.midRoundTime = 10
+        self.stressTestFpsClock = 0
+        self.PEACEFUL = True
+        self.XPBASE = 5
+
+        self.maxWins = 5
+
+        self.gameModeLineUp = ["TEAM DEATHMATCH", "ODDBALL", "DETONATION", "FINAL SHOWDOWN"] #["TEAM DEATHMATCH", "ODDBALL", "DETONATION", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN",  #,  "TEAM DEATHMATCH", 
+
+        print("Loading config...")
+        self.autoloadConfig()
+        print("Done")
+
+        if self.STRESSTEST:
+            self.res = v2(854, 480)
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
+        else:
+            self.res = v2(1920, 1080)
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
         self.darken = []
         d = pygame.Surface(self.res).convert_alpha()
         for x in range(20):
@@ -78,6 +129,10 @@ class valInit:
         self.fontName = "texture/agencyb.ttf"
 
         self.CAMERA = Camera(self, (0,0))
+        self.ENABLEGRENADES = True
+
+        self.turretLeg = pygame.image.load("texture/turret_leg.png").convert_alpha()
+        self.turretHead = pygame.image.load("texture/turret.png").convert_alpha()
 
         self.consoleFont = pygame.font.Font("texture/terminal.ttf", 20)
 
@@ -110,6 +165,7 @@ class valInit:
 
         self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
         self.frag = Weapon(self, "Frag Grenade", [0,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.turretNade = Weapon(self, "Turret Grenade", [0,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
 
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
                         self.shotgun, self.mg, self.BFG, self.desert]
@@ -121,7 +177,7 @@ class valInit:
         self.bombW = Weapon(self, "Skull", [0,0], "texture/bomb.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal")
 
 
-        
+        self.shopTimer = self.midRoundTime
 
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
@@ -202,8 +258,10 @@ class valInit:
 
         self.filmOnly = []
         self.winningTeam = None
-        self.maxWins = 100
-        self.RENDERING = True
+        
+        
+
+        self.debugCells = []
         
         self.teamsSave = self.teams
         self.MINIMAPCELLSIZE = 2
@@ -214,9 +272,7 @@ class valInit:
         self.AUDIOVOLUME = 0.3
 
 
-        self.STRESSTEST = False
-        self.FIXED_FRAMERATE = 20
-
+        
         self.MANUALPAWN = None
 
         self.ultCalled = False
@@ -225,7 +281,7 @@ class valInit:
 
         self.bombInfoI = 0
 
-        self.gameModeLineUp = ["DETONATION"] # , ,  "FINAL SHOWDOWN",  #,  "TEAM DEATHMATCH", 
+        
 
         self.babloMusic = self.loadSound("audio/taikakeinu/bar", volume=0.75, asPygame=True)
         self.BABLO = None
@@ -246,7 +302,7 @@ class valInit:
         self.speedlines = SpeedLines(num_lines=120, length=2000, width=10, speed=3)
         self.speedLinesSurf = pygame.Surface(self.res, pygame.SRCALPHA)
 
-        self.teamInspectIndex = 0
+        self.teamInspectIndex = -1
         self.safeToUseCache = True
         self.cacheLock = threading.Lock()
         #self.map.generate_arena(room_count=int(self.teams*1.5)+4, min_room_size=8, max_room_size=20, corridor_width=3)
@@ -280,6 +336,9 @@ class valInit:
 
         self.skullKillFeed = pygame.image.load("texture/death.png").convert_alpha()
         self.skullKillFeed = pygame.transform.scale_by(self.skullKillFeed, 30 / self.skullKillFeed.get_width())
+
+        self.turretGrenadeKillFeed = pygame.image.load("texture/turretNade.png").convert_alpha()
+        self.turretGrenadeKillFeed = pygame.transform.scale_by(self.turretGrenadeKillFeed, 20 / self.turretGrenadeKillFeed.get_width())
         
         
         self.crackAppearTimes = []
@@ -353,7 +412,7 @@ class valInit:
         print("ITEMS:", len(self.items))
         self.cameraLock = None
 
-        self.levelUps = [round(10*(x+1) * (1.1) ** x) for x in range(100)]
+        self.levelUps = [round(self.XPBASE*(x+1) * (1.1) ** x) for x in range(100)]
 
         self.pendingLevelUp = None
         self.levelUpI = 5
@@ -400,12 +459,16 @@ class valInit:
         self.TRANSITION = False
         self.transIndex = 0
 
-        self.midRoundTime = 3
+        
+
+        
+
 
         self.USE_AI = False
         if self.USE_AI:
-            from core.rl_agent import LocalGoalAgent
-            self.AGENT = LocalGoalAgent(80, 120)
+            #from core.rl_agent import LocalGoalAgent
+            #self.AGENT = LocalGoalAgent(80, 120)
+            pass
 
         self.AUTOCAMERA = True
 
@@ -415,8 +478,18 @@ class valInit:
         self.subI = 0
         self.lastSubTime = 0
 
+        self.SHOOTABLE = (Pawn, Turret)
+
         
         self.ARSounds = self.loadSound("audio/assault")
+
+        self.turretHeadRGB = {}
+        self.turretDamageSound = self.loadSound("audio/turretDamage/turretDamage")
+        self.turretFireSound = self.loadSound("audio/turret_fire")
+
+        self.turretKillIcon = pygame.image.load("texture/turretIcon.png").convert_alpha()
+        self.turretKillIcon = trim_surface(self.turretKillIcon)
+        self.turretKillIcon = pygame.transform.scale_by(self.turretKillIcon, 20 / self.turretKillIcon.get_height())
 
         self.deathScreams = os.listdir("audio/screams")
 
@@ -500,7 +573,6 @@ class valInit:
         self.console_input = ""
         self.consoleOpen = False
         self.consoleSuggestionI = 0
-        self.consoleLog = []
         self.lastCommands = []
         self.consoleIndicatorI = 0
         self.consoleIndicator = False
@@ -508,3 +580,54 @@ class valInit:
         self.initAudioEngine()
 
         print("Game initialized")
+
+    def getConfigs(self):
+        for x in os.listdir("configs"):
+            self.log(str(x))
+
+    def saveConfig(self, path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        data = {k: getattr(self, k) for k in DEBUG_VARS}
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+        self.log(f"Config {path} created")
+
+
+    def loadConfig(self, path):
+        with open(path, "r") as f:
+            data = json.load(f)
+        for k, v in data.items():
+            setattr(self, k, v)
+        
+        self.log(f"Config {path} loaded")
+
+    def saveMainConfig(self, autoload_path):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(MAIN_CONFIG_PATH, "w") as f:
+            json.dump({"autoload": autoload_path}, f, indent=2)
+        self.log(f"Config {autoload_path} set to load on startup")
+
+
+    def autoloadConfig(self):
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+
+        # create default config if main config is missing
+        if not os.path.exists(MAIN_CONFIG_PATH):
+            default_cfg_path = os.path.join(CONFIG_DIR, "default")
+            self.saveConfig(default_cfg_path)
+            self.saveMainConfig(default_cfg_path)
+            return
+
+        with open(MAIN_CONFIG_PATH, "r") as f:
+            main = json.load(f)
+
+        path = main.get("autoload")
+        if not path:
+            return
+
+        # create default autoload target if missing
+        if not os.path.exists(path):
+            self.saveConfig(path)
+            return
+
+        self.loadConfig(path)
