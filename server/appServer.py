@@ -11,22 +11,49 @@ import threading
 class ClientHandler:
     def __init__(self, websocket):
         self.ws = websocket
-        self.pending_packets = []
+        # Store pending packets keyed by a dedup signature so only the most
+        # recent packet per key is retained.
+        self.pending_packets = {}
 
     def open(self):
         return True
 
     async def send(self, packet: str):
         """Add packet to queue and try sending."""
-        self.pending_packets.append(packet)
+        key = self._packet_key(packet)
+
+        # Replace any existing packet with the same dedup key instead of
+        # appending a duplicate. This keeps only the latest version while
+        # maintaining the original position for that key.
+        self.pending_packets[key] = packet
         await self._flush_queue()
 
+    def _packet_key(self, packet: str):
+        """Derive a stable key for deduplication (type + optional identifier)."""
+        try:
+            payload = json.loads(packet)
+        except json.JSONDecodeError:
+            # Non-JSON packets are treated as unique by their raw content.
+            return ("raw", packet)
+
+        packet_type = payload.get("type")
+        # Common identifier field to further disambiguate similar packet types.
+        identifier = payload.get("id") or payload.get("identifier")
+        return (packet_type, identifier)
+
     async def _flush_queue(self):
-        """Attempt to send all packets in order."""
+        """Attempt to send all packets in order of their dedup keys."""
         while self.pending_packets:
-            packet = self.pending_packets[0]
+            # Always send the first pending packet by insertion order. Dicts
+            # preserve insertion order, and updates keep the existing position.
+            key, packet = next(iter(self.pending_packets.items()))
             try:
-                t = json.loads(packet).get("type")
+                t = None
+                try:
+                    t = json.loads(packet).get("type")
+                except json.JSONDecodeError:
+                    # Still send raw packets even if they are not JSON.
+                    pass
                 print("Sending", t)
                 
                 await self.ws.send(packet)
@@ -36,7 +63,7 @@ class ClientHandler:
                 break
             else:
                 # Remove successfully sent packet
-                self.pending_packets.pop(0)
+                self.pending_packets.pop(key, None)
 
     async def on_reconnect(self, new_ws):
         """Call when client reconnects to resend pending packets."""
@@ -190,4 +217,3 @@ def make_handler(app: "Game"):
             #app.clients[client_ip] = None
 
     return handler
-
