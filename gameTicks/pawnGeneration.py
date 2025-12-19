@@ -152,7 +152,8 @@ def preGameTick(self: "Game"):
     self.debugText(f"BENT: {len(self.particle_list):.0f}")
     self.debugText(f"CAM: {self.cameraPosDelta}")
     self.debugText(f"PLU: {self.pendingLevelUp}")
-    self.debugText(f"IDLE: {100*(1-self.t1/self.t2):.0f}")
+    self.debugText(f"IDLE: {100*(1-self.t1/max(self.t2, 0.0001)):.0f}")
+
     self.debugText(f"INSP: {self.teamInspectIndex}")
     
     self.genPawns()

@@ -533,7 +533,30 @@ class Pawn(PawnBehaviour, getStat):
         
         p = self.shopCurrWeapon.getPacket()
 
-        p = {"type": "shopUpdate", "nextWeapon": p}
+        items = [
+            {
+            "name": "Grenade",
+            "price": 300,
+            "image": self.app.frag.encodedImage,
+            "description": "Frag grenades for extra explosive damage.",
+            "backgroundColor": [100,100,255]
+            },
+            {
+            "name": "Item 2",
+            "price": 300,
+            "image": None,
+            "description": "String (optional)",
+            "backgroundColor": [255,100,100]
+            },
+            
+        ]
+
+        
+
+        p = {"type": "shopUpdate", "nextWeapon": p, "items" : items}
+
+        print("Shop update:", p)
+
         self.dumpAndSend(p)
 
         

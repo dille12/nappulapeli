@@ -182,6 +182,8 @@ class Grenade:
                 TextParticle(self.app, f"{totalFlashed} flashed!", self.pos)
             else:
                 TextParticle(self.app, f"{totalFlashed} flashed!", self.owner.pos)
+
+            self.owner.updateStats({"Total players flashed": self.owner.stats["flashes"], "Total team flashes": self.owner.stats["teamFlashes"]})
                 
 
         

@@ -2534,16 +2534,16 @@ class Game(valInit):
             if self.consoleOpen:
                 runConsole(self)
 
-            if self.STRESSTEST and not self.PEACEFUL:
-                if self.stressTestFpsClock >= 1/60:
-                    pygame.display.update()
-                    self.stressTestFpsClock = 0
-            else:
-                pygame.display.update()
+           #if self.STRESSTEST and not self.PEACEFUL:
+           #    if self.stressTestFpsClock >= 1/60:
+           #        pygame.display.update()
+           #        self.stressTestFpsClock = 0
+           #else:
+            pygame.display.update()
             self.t1 = time.time() - tickStartTime
 
-            if self.STRESSTEST:
-                self.stressTestFpsClock += self.t1
+            #if self.STRESSTEST:
+            #    self.stressTestFpsClock += self.t1
             
             if self.STRESSTEST:
                 self.clock.tick()

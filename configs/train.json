@@ -1,0 +1,16 @@
+{
+  "AUTOPLAY": true,
+  "TRAINCTSPAWNTIME": true,
+  "STRESSTEST": true,
+  "RENDERING": false,
+  "FIXED_FRAMERATE": 20,
+  "midRoundTime": 3,
+  "stressTestFpsClock": 0,
+  "PEACEFUL": true,
+  "gameModeLineUp": [
+    "DETONATION"
+  ],
+  "maxWins": 100,
+  "DOREALGAMEMODES": false,
+  "XPBASE": 5
+}

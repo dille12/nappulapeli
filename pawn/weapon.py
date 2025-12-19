@@ -202,7 +202,10 @@ class Weapon:
     def getPacket(self):
         p = {"name": self.name,
              "price": self.price[0],
-             "image": self.encodedImage}
+             "image": self.encodedImage, 
+             "description": "Bitch.",
+             "backgroundColor": [100,255,0]
+        }
         return p
     
 
