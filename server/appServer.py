@@ -180,10 +180,11 @@ def make_handler(app: "Game"):
                     item_type = data.get("itemType")
                     item_name = data.get("itemName")
                     pawn_name = data.get("pawnName")
+                    item_price = data.get("price")
                     
-
+                    
                     pawn = [pawn for pawn in app.getActualPawns() if pawn.name == pawn_name][0]
-                    if not pawn.canBuy():
+                    if not pawn.canBuy(item_price):
                         p = {
                             "type": "purchaseResponse",
                             "success": False,
@@ -192,7 +193,10 @@ def make_handler(app: "Game"):
                             }
                         
                     else:
-                        pawn.purchaseWeapon(item_name)
+                        if item_type == "weapon":
+                            pawn.purchaseWeapon(item_name, item_price)
+                        else:
+                            pawn.purchaseItem(item_name, item_price)
                         p = {
                             "type": "purchaseResponse",
                             "success": True,

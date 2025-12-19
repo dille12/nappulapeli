@@ -37,7 +37,10 @@ def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
 
     t = self.fontLarge.render("ASETUKSET", True, [255]*3)
-    self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 200])
+    self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 5])
+
+    t = self.fontLarge.render(f"{self.local_ip}", True, [255]*3)
+    self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 100])
     
     self.npcType.tick()
     self.teamAmount.tick()

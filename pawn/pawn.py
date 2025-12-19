@@ -111,6 +111,8 @@ class Pawn(PawnBehaviour, getStat):
         self.name = pawnName
         self.client = client
         self.GENERATING = True
+        self.itemsInStock = []
+        self.shopItems = []
 
         self.BOSS = boss
         self.isPawn = True
@@ -371,7 +373,10 @@ class Pawn(PawnBehaviour, getStat):
         self.getUpI = 0
         self.tripRot = random.choice([-90, 90])  # fall direction
 
+        self.nextItems = []
+
         self.shopCurrWeapon = random.choice(self.app.weapons)
+        self.rerollWeapon()
 
         self.building = False
         self.buildingTarget = None  # Building object being constructed
@@ -509,8 +514,8 @@ class Pawn(PawnBehaviour, getStat):
         return random.choice(candidates)
 
 
-    def canBuy(self):
-        return self.shopCurrWeapon.price[0] <= self.team.currency
+    def canBuy(self, price):
+        return price <= self.team.currency
     def canReroll(self):
         return self.team.currency >= 25
     
@@ -518,42 +523,88 @@ class Pawn(PawnBehaviour, getStat):
         self.team.currency -= 25
         self.stats["amountSpended"] += 25
         self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
+
+        self.shopItems = []
+        self.itemsInStock = []
+        while len(self.shopItems) < 2:
+            self.getRandomItem()
+
         self.sendCurrWeaponShop()
+
+    def getRandomItem(self):
+        
+        i = self.app.randomWeighted(0.1, 0.3, 0.6)
+        if i == 0: # ULT
+
+            self.shopItems.append({"name": "ULT",
+                               "price": 100,
+                               "image": None,
+                               "description": "Ultaa 30 sekunniksi.",
+                               "backgroundColor": [155,0,0]})
+
+
+        elif i == 1: # GRENADE
+            gtype = self.app.randomWeighted(0.4, 0.4, 0.2)
+            grenade = self.grenades[gtype]
+            self.shopItems.append({"name": grenade.name,
+                               "price": 200,
+                               "image": grenade.encodedImage,
+                               "description": "Kranaatti.",
+                               "backgroundColor": [20,120,20]})
+            
+
+        else: # RANDOM ITEM
+            items = [item for item in self.app.items if item not in self.nextItems and item not in self.itemsInStock and item.name not in self.pastItems]
+            item = random.choice(items)
+            self.shopItems.append({"name": item.name,
+                               "price": int(random.randint(2,8)*25),
+                               "image": None,
+                               "description": item.desc,
+                               "backgroundColor": [20,20,120]})
+            
+            self.itemsInStock.append(item)
+
+    def purchaseItem(self, name, price):
+        print(name)
+        gnames = [x.name for x in self.grenades]
+        if name in gnames:
+            print("Grenade purchased")
+            self.gType = gnames.index(name)
+            print(self.gType, name)
+
+        elif name == "ULT":
+            self.ULT_TIME = 30
+            print("Ulted for 30 seconds")
+
+        else:
+            item = [item for item in self.app.items if item.name == name]
+            print("Possible items:", len(item), "should be one?")
+            item[0].apply(self)
+            print("applied")
+
+        self.sendHudInfo()
+        
+        self.stats["amountSpended"] += price
+        self.team.currency -= price
+
+
+
+
     
-    def purchaseWeapon(self, weaponName):
+    def purchaseWeapon(self, weaponName, price):
         weapon = [weapon for weapon in self.app.weapons if weapon.name == weaponName][0]
-        self.team.currency -= weapon.price[0]
-        self.stats["amountSpended"] += weapon.price[0]
+        self.team.currency -= price
+        self.stats["amountSpended"] += price
         weapon.give(self)
 
-        self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
+        #self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
         self.sendCurrWeaponShop()
 
     def sendCurrWeaponShop(self):
         
         p = self.shopCurrWeapon.getPacket()
-
-        items = [
-            {
-            "name": "Grenade",
-            "price": 300,
-            "image": self.app.frag.encodedImage,
-            "description": "Frag grenades for extra explosive damage.",
-            "backgroundColor": [100,100,255]
-            },
-            {
-            "name": "Item 2",
-            "price": 300,
-            "image": None,
-            "description": "String (optional)",
-            "backgroundColor": [255,100,100]
-            },
-            
-        ]
-
-        
-
-        p = {"type": "shopUpdate", "nextWeapon": p, "items" : items}
+       
+        p = {"type": "shopUpdate", "nextWeapon": p, "items" : self.shopItems}
 
         print("Shop update:", p)
 
@@ -694,7 +745,7 @@ class Pawn(PawnBehaviour, getStat):
         self.nextItems = []
         while True:
             item = random.choice(self.app.items)
-            if item not in self.nextItems and item.name not in self.pastItems:
+            if item not in self.nextItems and item.name not in self.pastItems and item not in self.itemsInStock:
                 self.nextItems.append(item)
                 if len(self.nextItems) == (4 if self.itemEffects["extraItem"] else 3):
                     break

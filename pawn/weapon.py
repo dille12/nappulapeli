@@ -204,7 +204,7 @@ class Weapon:
              "price": self.price[0],
              "image": self.encodedImage, 
              "description": "Bitch.",
-             "backgroundColor": [100,255,0]
+             "backgroundColor": self.get_rarity_color()
         }
         return p
     
@@ -590,6 +590,37 @@ class Weapon:
         Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread + self.recoil * 0.25, damage = self.owner.getDamage(self), type=self.typeD, 
                piercing=pierce, homing=homing, critChance = critChance * self.owner.itemEffects["accuracy"]) #-math.radians(self.FINALROTATION)
         self.addRecoil(recoil)
+
+    import math
+
+    def get_rarity_color(self, max_price=300):
+        p = max(float(self.price[0]), 1.0)
+        m = max(float(max_price), 1.0)
+
+        x = p/m
+        x = max(0.0, min(x, 1.0))
+
+        if x < 0.2:
+            t = x / 0.2
+            c0, c1 = (120,120,120), (50,200,50)
+        elif x < 0.4:
+            t = (x-0.2) / 0.2
+            c0, c1 = (50,200,50), (80,120,255)
+        elif x < 0.6:
+            t = (x-0.4) / 0.2
+            c0, c1 = (80,120,255), (180,80,220)
+        elif x < 0.8:
+            t = (x-0.6) / 0.2
+            c0, c1 = (180,80,220), (255,140,40)
+        else:
+            t = (x-0.8) / 0.2
+            c0, c1 = (255,140,40), (255,215,80)
+
+        return [
+            int(c0[i] + (c1[i] - c0[i]) * t * 0.25)
+            for i in range(3)
+        ]
+
 
 
     def checkIfCanAddFireRate(self):

@@ -34,6 +34,7 @@ def generate_noise_surface(size):
 
 import json
 import os
+from core.ipManager import get_local_ip
 
 CONFIG_DIR = "configs"
 MAIN_CONFIG_PATH = os.path.join(CONFIG_DIR, "main.json")
@@ -45,12 +46,11 @@ DEBUG_VARS = [
     "RENDERING",
     "FIXED_FRAMERATE",
     "midRoundTime",
-    "stressTestFpsClock",
-    "PEACEFUL",
     "gameModeLineUp",
     "maxWins",
     "DOREALGAMEMODES",
-    "XPBASE"
+    "XPBASE",
+    "MAKEDEBUGPAWNS"
 ]
 
 
@@ -73,6 +73,7 @@ class valInit:
         self.stressTestFpsClock = 0
         self.PEACEFUL = True
         self.XPBASE = 5
+        self.MAKEDEBUGPAWNS = True
 
         self.maxWins = 5
 
@@ -81,6 +82,8 @@ class valInit:
         print("Loading config...")
         self.autoloadConfig()
         print("Done")
+
+        self.local_ip = get_local_ip()
 
         if self.STRESSTEST:
             self.res = v2(854, 480)
@@ -116,7 +119,7 @@ class valInit:
         for i in range(self.teams):
             self.allTeams.append(Team(self, i))
 
-        if True:
+        if self.MAKEDEBUGPAWNS:
             for x in os.listdir("players"):
                 playerName = os.path.splitext(x)[0]
                 file_path = os.path.join("players", x)
@@ -631,3 +634,4 @@ class valInit:
             return
 
         self.loadConfig(path)
+        self.saveConfig(path)

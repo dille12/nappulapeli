@@ -5,8 +5,6 @@
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 3,
-  "stressTestFpsClock": 0,
-  "PEACEFUL": true,
   "gameModeLineUp": [
     "TEAM DEATHMATCH",
     "ODDBALL",
@@ -16,5 +14,6 @@
   ],
   "maxWins": 3,
   "DOREALGAMEMODES": true,
-  "XPBASE": 5
+  "XPBASE": 5,
+  "MAKEDEBUGPAWNS": false
 }
