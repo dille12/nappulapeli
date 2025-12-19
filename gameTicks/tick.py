@@ -472,7 +472,6 @@ def battleTick(self: "Game"):
         self.handleHud()
 
 
-
     if self.pendingLevelUp and not self.VICTORY:
         self.levelUpScreen()
     else:

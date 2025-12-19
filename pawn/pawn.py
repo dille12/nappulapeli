@@ -495,6 +495,8 @@ class Pawn(PawnBehaviour, getStat):
 
         self.sendCurrWeaponShop()
 
+        self.sendGamemodeInfo()
+
         #for x in self.shopSuccessPackets:
         #    print(x)
         #    self.dumpAndSend(x)
@@ -1231,6 +1233,15 @@ class Pawn(PawnBehaviour, getStat):
             })
         packet = {"type": "hudInfo", "lines": hud_data}
         self.dumpAndSend(packet)
+
+    def sendGamemodeInfo(self):
+        if not self.client: return
+        if self.app.GAMEMODE not in self.app.gameModeDescriptions:
+            packet = {"type":"gamemodeInfo", "text": "Kyllä viinnaa pittääpi juua."}
+            self.dumpAndSend(packet)
+        else:
+            packet = {"type":"gamemodeInfo", "text": self.app.GAMEMODE + "\n" + self.app.gameModeDescriptions[self.app.GAMEMODE]}
+            self.dumpAndSend(packet)
 
     def dumpAndSend(self, packet):
         if not self.client:

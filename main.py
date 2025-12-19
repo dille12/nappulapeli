@@ -895,6 +895,9 @@ class Game(valInit):
             self.GAMEMODE = self.gameModeLineUp[self.round % len(self.gameModeLineUp)]
         self.gamemode_display.set_gamemode(self.GAMEMODE)
 
+        for x in self.getActualPawns():
+            x.sendGamemodeInfo()
+
         
         if self.TRAINCTSPAWNTIME:
             if self.round == 30:
@@ -1201,12 +1204,15 @@ class Game(valInit):
             for x in self.allTeams:
                 if x.detonationTeam == victoryTeam or victoryTeam == -1:
                     x.wins += 1
+                else:
+                    x.currency += 100
         else:
             self.allTeams[self.victoryTeam].wins += 1
+            for x in self.allTeams:
+                if x.i == self.victoryTeam:
+                    continue
+                x.currency += 100
 
-
-
-        
 
         self.getWinningTeam()
         print("Winning team", self.winningTeam)
