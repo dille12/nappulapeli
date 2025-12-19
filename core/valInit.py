@@ -50,7 +50,9 @@ DEBUG_VARS = [
     "maxWins",
     "DOREALGAMEMODES",
     "XPBASE",
-    "MAKEDEBUGPAWNS"
+    "MAKEDEBUGPAWNS",
+    "DISABLEDEBUGTEXT",
+    "NPC_WEAPONS_PURCHASE"
 ]
 
 
@@ -74,6 +76,8 @@ class valInit:
         self.PEACEFUL = True
         self.XPBASE = 5
         self.MAKEDEBUGPAWNS = True
+        self.DISABLEDEBUGTEXT = True
+        self.NPC_WEAPONS_PURCHASE = True
 
         self.maxWins = 5
 

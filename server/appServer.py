@@ -54,10 +54,10 @@ class ClientHandler:
                 except json.JSONDecodeError:
                     # Still send raw packets even if they are not JSON.
                     pass
-                print("Sending", t)
+                #print("Sending", t)
                 
                 await self.ws.send(packet)
-                print("Done")
+                #print("Done")
             except Exception:
                 # Stop sending if connection fails
                 break
@@ -203,6 +203,7 @@ def make_handler(app: "Game"):
                             "itemName": item_name,
                             "message": "Weapon purchased successfully!"
                             }
+                        pawn.shopSuccessPackets.append(p)
                     
                     await ws.send(json.dumps(p))
 

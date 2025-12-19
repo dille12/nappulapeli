@@ -489,6 +489,9 @@ def battleTick(self: "Game"):
 
         self.screen.blit(t, self.res/2 - v2(t.get_size())/2)
 
+    if self.roundTime < 4:
+        self.nextMusic = -1
+
     self.debugText(f"FPS: {self.FPS:.0f} (+/-{self.STD*1000:.1f}ms)")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
     self.debugText(f"GEN: {self.pawnGenI:.0f}")

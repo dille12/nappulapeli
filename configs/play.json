@@ -15,5 +15,7 @@
   "maxWins": 3,
   "DOREALGAMEMODES": true,
   "XPBASE": 5,
-  "MAKEDEBUGPAWNS": false
+  "MAKEDEBUGPAWNS": false,
+  "DISABLEDEBUGTEXT": true,
+  "NPC_WEAPONS_PURCHASE": true
 }

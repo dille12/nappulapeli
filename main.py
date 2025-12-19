@@ -1356,6 +1356,9 @@ class Game(valInit):
         
 
     def debugText(self, text):
+
+        if self.DISABLEDEBUGTEXT:
+            return
         
         t = self.fontSmaller.render(str(text), True, [255,255,255])
         self.screen.blit(t, [self.res[0] - 20 - t.get_size()[0], max(self.res[1] - 700, 0) + self.debugI * 22])
@@ -1776,6 +1779,9 @@ class Game(valInit):
         self.endGameI -= self.deltaTimeR
         I = max(self.endGameI-8, 0)*0.5
         self.deltaTime *= 0.01 + I*0.99
+
+        if self.nextMusic == -1:
+            self.nextMusic = 0
         
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
@@ -1805,6 +1811,22 @@ class Game(valInit):
         else:
             I = max(self.endGameI-3.5, 0)
             self.screen.blit(self.HEATMAP, self.res/2 - v2(self.HEATMAP.get_size())/2 + [0, I**2 * 900])
+
+    def handleNPCWeaponPurchase(self):
+        NPCS = [x for x in self.pawnHelpList if x.NPC and x.isPawn]
+        maxPrice = (self.round + 1)*75
+        for pawn in NPCS:
+            w = random.choice(self.weapons)
+            if pawn.weapon.price[0] < w.price[0] <= maxPrice:
+                w.give(pawn)
+
+            if pawn.gType == None:
+                gtype = self.randomWeighted(0.25, 0.25, 0.25, 3/(self.round+1))
+                if gtype == 3:
+                    continue
+                pawn.gType = gtype
+
+
 
 
     def endGame(self):
@@ -1867,6 +1889,9 @@ class Game(valInit):
         if self.round == 2 and False:
             self.judgePawns()
         self.LAZER.deactivate()
+
+        if self.NPC_WEAPONS_PURCHASE:
+            self.handleNPCWeaponPurchase()
 
 
     def mapTime(self, curr, maximum, inverse = False):
@@ -2057,7 +2082,7 @@ class Game(valInit):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
-        elif self.GAMEMODE == "TEAM DEATHMATCH":
+        elif self.GAMEMODE in ["TEAM DEATHMATCH", "DETONATION"]:
             kills = [0 for _ in range(self.teams)]
             for p in self.getActualPawns():
                 kills[p.team.i] += p.kills
@@ -2587,7 +2612,7 @@ def heat_color(v):
 import traceback
 
 def run_forever():
-    while True:
+    for i in range(1):
         try:
             game = Game()
             game.run()

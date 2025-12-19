@@ -51,6 +51,7 @@ class KillFeed:
             
             assist.gainXP(assist.getKillXP(killed)/2)
             assist.stats["assists"] += 1
+            assist.updateStats({"Flashes led to kills": assist.stats["assists"]})
 
             plus_surf = self.app.font.render("+", True, (255, 255, 255))
 

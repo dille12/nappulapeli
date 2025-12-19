@@ -175,6 +175,8 @@ class Pawn(PawnBehaviour, getStat):
         
 
         #pygame.draw.circle(self.imagePawn, [255,0,0], self.apexPawn, 10)
+
+        self.shopSuccessPackets = []
         
         
 
@@ -261,7 +263,7 @@ class Pawn(PawnBehaviour, getStat):
         self.speed = 400
 
         self.gType = None
-        self.gType = random.randint(0,2)
+        #self.gType = random.randint(0,2)
         #if self.team.i == 0:
         #    self.gType = 1
         self.grenadeAmount = 0
@@ -493,6 +495,10 @@ class Pawn(PawnBehaviour, getStat):
 
         self.sendCurrWeaponShop()
 
+        #for x in self.shopSuccessPackets:
+        #    print(x)
+        #    self.dumpAndSend(x)
+
     def reLevelPawn(self, to = 10):
         self.level = 0
         self.xp = 0
@@ -523,7 +529,7 @@ class Pawn(PawnBehaviour, getStat):
         self.team.currency -= 25
         self.stats["amountSpended"] += 25
         self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
-
+        self.shopSuccessPackets = []
         self.shopItems = []
         self.itemsInStock = []
         while len(self.shopItems) < 2:
@@ -540,7 +546,8 @@ class Pawn(PawnBehaviour, getStat):
                                "price": 100,
                                "image": None,
                                "description": "Ultaa 30 sekunniksi.",
-                               "backgroundColor": [155,0,0]})
+                               "backgroundColor": [155,0,0],
+                               "owned": False})
 
 
         elif i == 1: # GRENADE
@@ -550,7 +557,8 @@ class Pawn(PawnBehaviour, getStat):
                                "price": 200,
                                "image": grenade.encodedImage,
                                "description": "Kranaatti.",
-                               "backgroundColor": [20,120,20]})
+                               "backgroundColor": [20,120,20],
+                               "owned": False})
             
 
         else: # RANDOM ITEM
@@ -560,32 +568,35 @@ class Pawn(PawnBehaviour, getStat):
                                "price": int(random.randint(2,8)*25),
                                "image": None,
                                "description": item.desc,
-                               "backgroundColor": [20,20,120]})
+                               "backgroundColor": [20,20,120],
+                               "owned": False})
             
             self.itemsInStock.append(item)
 
     def purchaseItem(self, name, price):
-        print(name)
         gnames = [x.name for x in self.grenades]
         if name in gnames:
-            print("Grenade purchased")
             self.gType = gnames.index(name)
-            print(self.gType, name)
 
         elif name == "ULT":
             self.ULT_TIME = 30
-            print("Ulted for 30 seconds")
+            self.app.notify(f"{self.name} IS ULTING", self.team.getColor())
 
         else:
             item = [item for item in self.app.items if item.name == name]
-            print("Possible items:", len(item), "should be one?")
             item[0].apply(self)
-            print("applied")
 
+        for itemPacket in self.shopItems:
+            if itemPacket["name"] == name:
+                itemPacket["owned"] = True
+                
+                break
         self.sendHudInfo()
         
         self.stats["amountSpended"] += price
         self.team.currency -= price
+
+        self.sendCurrWeaponShop()
 
 
 
@@ -602,11 +613,10 @@ class Pawn(PawnBehaviour, getStat):
 
     def sendCurrWeaponShop(self):
         
-        p = self.shopCurrWeapon.getPacket()
+        pWeapon = self.shopCurrWeapon.getPacket()
+        pWeapon["owned"] = self.shopCurrWeapon.name == self.weapon.name
        
-        p = {"type": "shopUpdate", "nextWeapon": p, "items" : self.shopItems}
-
-        print("Shop update:", p)
+        p = {"type": "shopUpdate", "nextWeapon": pWeapon, "items" : self.shopItems}
 
         self.dumpAndSend(p)
 
@@ -620,7 +630,8 @@ class Pawn(PawnBehaviour, getStat):
         
         kd = self.stats["kills"] / max(1, self.stats["deaths"])
 
-        self.updateStats({"Kills": self.stats["kills"], "Deaths" : self.stats["deaths"], "KD" : f"{kd:.1f}"})
+        self.updateStats({"Kills": self.stats["kills"], "Deaths" : self.stats["deaths"], "KD" : f"{kd:.1f}",
+                          "Amount drank": self.stats["amountDrank"], "Amount spent": self.stats["amountSpended"]})
 
         
 
@@ -923,10 +934,14 @@ class Pawn(PawnBehaviour, getStat):
         
         self.weapon.magazine = self.getMaxCapacity(self.weapon)
         self.weapon.currReload = 0
-        self.dualWieldWeapon.magazine = self.getMaxCapacity(self.dualWieldWeapon)
+        self.dualWieldWeapon.magazine = self. getMaxCapacity(self.dualWieldWeapon)
         self.dualWieldWeapon.currReload = 0
         self.tts.stop()
         self.sendKDStats()
+        if self.killed:
+            self.dumpAndSend({"type": "teamSwitch", "newTeamColor": [30,30,30]})
+        else:
+            self.dumpAndSend({"type": "teamSwitch", "newTeamColor": self.teamColor})
 
     def takeDamage(self, damage, fromActor = None, thornDamage = False, typeD = "normal", bloodAngle = None):
 
@@ -1456,6 +1471,7 @@ class Pawn(PawnBehaviour, getStat):
             return
         
         if self.killed:
+            self.killed = False
             self.reset()
             self.app.particle_system.create_healing_particles(self.pos[0], self.pos[1])
 
