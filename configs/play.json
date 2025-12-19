@@ -4,7 +4,7 @@
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
-  "midRoundTime": 3,
+  "midRoundTime": 30,
   "gameModeLineUp": [
     "TEAM DEATHMATCH",
     "ODDBALL",

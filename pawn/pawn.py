@@ -378,7 +378,7 @@ class Pawn(PawnBehaviour, getStat):
         self.nextItems = []
 
         self.shopCurrWeapon = random.choice(self.app.weapons)
-        self.rerollWeapon()
+        self.rerollWeapon(price=0)
 
         self.building = False
         self.buildingTarget = None  # Building object being constructed
@@ -525,9 +525,9 @@ class Pawn(PawnBehaviour, getStat):
     def canReroll(self):
         return self.team.currency >= 25
     
-    def rerollWeapon(self):
-        self.team.currency -= 25
-        self.stats["amountSpended"] += 25
+    def rerollWeapon(self, price = 25):
+        self.team.currency -= price
+        self.stats["amountSpended"] += price
         self.shopCurrWeapon = self.pickAnother([self.shopCurrWeapon, self.weapon], self.app.weapons)
         self.shopSuccessPackets = []
         self.shopItems = []
@@ -818,7 +818,8 @@ class Pawn(PawnBehaviour, getStat):
             self.health = self.getHealthCap()
             return
 
-    
+        self.team.currency += 5
+        self.team.updateCurrency()
 
         #if self.app.cameraLock == self and self.target:
         #    self.app.cameraLock = self.target

@@ -234,8 +234,11 @@ class PawnBehaviour:
         elif not self.target:
         #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
             if self.ULT:
-                p = random.choice([x for x in self.app.pawnHelpList if self.team.hostile(x, self) and not x.killed])
-                self.getRouteTo(endPosGrid=p.getOwnCell())
+                p = [x for x in self.app.pawnHelpList if self.team.hostile(x, self) and not x.killed]
+                if p:
+                    self.getRouteTo(endPosGrid=random.choice(p).getOwnCell())
+                else:
+                    self.deathMatchWalkingTarget()
             
             elif self.revengeHunt():
                 self.getRouteTo(endPosGrid=self.lastKiller.getOwnCell())
