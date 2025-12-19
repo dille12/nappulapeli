@@ -1786,8 +1786,10 @@ class Game(valInit):
         I = max(self.endGameI-8, 0)*0.5
         self.deltaTime *= 0.01 + I*0.99
 
-        if self.nextMusic == -1:
+        if self.currMusic == -1:
             self.nextMusic = 0
+        else:
+            self.nextMusic = -1
         
         d = self.darken[round((1-I)*19)]
         self.screen.blit(d, (0,0))
