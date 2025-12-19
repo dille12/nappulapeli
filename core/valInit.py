@@ -116,6 +116,15 @@ class valInit:
 
         self.preConfiguredTeamNames = []
 
+        self.gameModeDescriptions = {
+            "TEAM DEATHMATCH": "Tiimit taistelevat toisiaan vastaan. Ensimmäinen 100 tappoa kerännyt joukkue, tai eniten tappoja saanut joukkue kierrosajan kuluessa voittaa. Tiimitappoja ei lasketa.",
+            "ODDBALL": "Tiimit taistelevat pääkallon omistajuudesta. Pääkallon kantaja ei saa käyttää asettansa kalloa kantaessaan, mutta saa väliaikaisen pistoolin. Joukkue joka kantaa kalloa pisimpään voittaa kierroksen.",
+            "TURF WARS": "Joukkueiden tulee vallata eniten kartan huoneista. Jos toisen joukkueen kotihuone vallataan, tämän joukkueen pelaajat orjuutetaan valtaajajoukkueen puolelle. Pelaaja muuttuu orjaksi kuollessaan, jos ja vain kun kotihuone on vallattu. Jos joukkueen pelaajat onnistuvat valtaamaan huoneensa takaisin, orjuutetut pelaajat vapautetaan. Eniten huoneita vallannut joukkue voittaa.",
+            "DETONATION": "Joukkueet jaetaan kahteen joukkueeseen, terroristeihin ja vastaterroristeihin. Pelin alussa kolme huonetta merkitään pommikohteiksi. Terroristit ottavat yhden kohteista hyökkäyskohteekseen, ja yrittävät vallata sen puolustavilta vastaterroristeilta. Pommi asetetaan kohteeseen jos kohde vallataan, ja se räjähtää 40 sekunnissa. Vastaterroristit yrittävät vallata kohteen takaisin ja purkaa pommin, joka vie 10 sekuntia. Pommi ei voi räjähtää purun aikana. Jos terroristit räjäyttävät kaksi kohdetta, peli päättyy tasapeliin, kaikki joukkueet saavat pisteen. Jos terroristit saavat räjäytettyä kaikki kohteet, vain terroristit ansaitsevat pisteen. Jos terroristit räjäyttävät yhden tai alle kohdetta, vastaterroristit saavat yhden pisteen.",
+            "FINAL SHOWDOWN": "error",
+            "SUDDEN DEATH": "Pelaajilla on kaksinkertaiset HP:t ja vain yksi elämä. Viimeinen joukkue eloonjääneenä voittaa."
+        }
+
         self.SCALE = 1
 
         self.teams = 2
@@ -189,7 +198,7 @@ class valInit:
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
 
-        self.GAMEMODE = "TURF WARS"
+        self.GAMEMODE = None
         self.podiumPawn = None
         self.judgementIndex = 0
         self.judgementTime = 0
