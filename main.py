@@ -900,7 +900,7 @@ class Game(valInit):
 
         
         if self.TRAINCTSPAWNTIME:
-            if self.round == 30:
+            if self.round == self.TRAIN_TIME:
                 self.round = 0
                 wins = [0,0]
                 for x in self.allTeams:
@@ -910,7 +910,7 @@ class Game(valInit):
                         wins[1] += x.wins
                     x.wins = 0
 
-                diff = (wins[0] - wins[1])/30
+                diff = (wins[0] - wins[1])/self.TRAIN_TIME
 
                 spawnTime = self.load_ct_spawn()
                 self.save_ct_spawn(spawnTime + diff)
@@ -943,8 +943,26 @@ class Game(valInit):
 
                 x.defaultPlan()
 
-        self.loadInfo.text = "Generating level"
+
+        seed = random.randrange(2**32 - 1)
+        if self.SET_SEED == None:
+            self.LEVELSEED = seed
+        else:
+            self.LEVELSEED = self.SET_SEED
+
+        state = random.getstate()
+        np_state = np.random.get_state()
+
+        random.seed(self.LEVELSEED)
+        np.random.seed(self.LEVELSEED)
+
+        self.loadInfo.text = f"Generating level. Seed: {self.LEVELSEED}"
+
         self.genLevel()
+
+        random.setstate(state)
+        np.random.set_state(np_state)
+
         self.resetLevelUpScreen()
     
         
@@ -1083,26 +1101,28 @@ class Game(valInit):
             #random.choice(self.pawnHelpList).say(babloBreak(), 0.5)
 
             self.cameraLinger = 2
-            self.cameraLock = None
+            self.CAMERA.cameraLock = None
             self.cameraPos = POS.copy() - self.res/2
             self.CAMERA.vibrate(25)
         
         
     def onScreen(self, pos):
-        r = pygame.Rect(self.cameraPosDelta, self.res)
-       
-        onDualScreen = False
 
-        if self.DUALVIEWACTIVE:
-            r2 = pygame.Rect(self.posToTargetTo2, self.res)
-            onDualScreen = r2.collidepoint(pos)
-        #r2.inflate_ip(self.app.res)
+        for camera in self.CAMERAS:
 
+            r = pygame.Rect(camera.pos, self.res)
         
+            onDualScreen = False
 
-        if not r.collidepoint(pos) and not onDualScreen:
-            return False
-        return True
+            if self.DUALVIEWACTIVE:
+                r2 = pygame.Rect(camera.posToTargetTo2, self.res)
+                onDualScreen = r2.collidepoint(pos)
+            #r2.inflate_ip(self.app.res)
+
+            if not r.collidepoint(pos) and not onDualScreen:
+                continue
+            return True
+        return False
         
 
 
@@ -1494,7 +1514,7 @@ class Game(valInit):
                 self.pendingLevelUp = None
                 self.resetLevelUpScreen()
                 self.cameraVel = v2([0,0])
-                self.cameraLock = None
+                self.CAMERA.cameraLock = None
                 return
             
 
@@ -1533,7 +1553,6 @@ class Game(valInit):
                 t = self.font.render(pawn.name, True, [255,255,255])
                 if "mouse0" in self.keypress:
                     self.ultCalled = False
-                    self.cameraLock = pawn
                     pawn.ULT_TIME = 30
                     self.clicks[1].play()
 
@@ -1585,12 +1604,12 @@ class Game(valInit):
     def handleCameraLock(self):
 
 
-        if not self.cameraLock and self.cameraLinger <= 0:
+        if not self.CAMERA.cameraLock and self.CAMERA.cameraLinger <= 0:
             #if self.objectiveCarriedBy:
-            #    self.cameraLock = self.objectiveCarriedBy
+            #    self.CAMERA.cameraLock = self.objectiveCarriedBy
 
             if self.BABLO and not self.BABLO.killed:
-                self.cameraLock = self.BABLO
+                self.CAMERA.cameraLock = self.BABLO
 
             elif self.pawnHelpList:
                 
@@ -1599,31 +1618,32 @@ class Game(valInit):
                     e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
 
                 else:
-                    FILMLIST = self.pawnHelpList.copy()
+                    FILMLIST = [x for x in self.pawnHelpList.copy() if x.team.i == self.CAMERA.cameraIndex]
+                    e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
 
-                    if self.GAMEMODE == "DETONATION":
-                        if self.skull.plantedAt:
-                            l = [x for x in FILMLIST.copy() if self.skull.plantedAt.room.contains(*x.getOwnCell())]
-                            e = sorted(l, key=lambda p: p.onCameraTime)
-                        else:
-                            l = [x for x in FILMLIST.copy() if not x.team.detonationTeam]
-                            site = self.allTeams[0].getCurrentSite()
-                            if site:
-                                sitePos = self.allTeams[0].getCurrentSite().room.center()
-                                e = sorted(l, key=lambda p: self.getDistFrom(p.getOwnCell(), sitePos))
-                            else:
-                                e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
-
-                        #e = sorted(l, key=lambda p: p.onCameraTime)
-                    elif self.GAMEMODE == "ODDBALL":
-                        if self.objectiveCarriedBy:
-                            l = [x for x in FILMLIST.copy() if x.team.i == self.objectiveCarriedBy.team.i]
-                        else:
-                            l = FILMLIST
-                        e = sorted(l, key=lambda p: p.onCameraTime)
-                    else:
-                        l = FILMLIST
-                        e = sorted(l, key=lambda p: p.onCameraTime)
+                    #if self.GAMEMODE == "DETONATION":
+                    #    if self.skull.plantedAt:
+                    #        l = [x for x in FILMLIST.copy() if self.skull.plantedAt.room.contains(*x.getOwnCell())]
+                    #        e = sorted(l, key=lambda p: p.onCameraTime)
+                    #    else:
+                    #        l = [x for x in FILMLIST.copy() if not x.team.detonationTeam]
+                    #        site = self.allTeams[0].getCurrentSite()
+                    #        if site:
+                    #            sitePos = self.allTeams[0].getCurrentSite().room.center()
+                    #            e = sorted(l, key=lambda p: self.getDistFrom(p.getOwnCell(), sitePos))
+                    #        else:
+                    #            e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
+#
+                    #    #e = sorted(l, key=lambda p: p.onCameraTime)
+                    #elif self.GAMEMODE == "ODDBALL":
+                    #    if self.objectiveCarriedBy:
+                    #        l = [x for x in FILMLIST.copy() if x.team.i == self.objectiveCarriedBy.team.i]
+                    #    else:
+                    #        l = FILMLIST
+                    #    e = sorted(l, key=lambda p: p.onCameraTime)
+                    #else:
+                    #    l = FILMLIST
+                    #    e = sorted(l, key=lambda p: p.onCameraTime)
 
                 noNPC = [x for x in e if not x.NPC and not x.killed and x.isPawn]
                 if noNPC:
@@ -1631,51 +1651,54 @@ class Game(valInit):
 
                 for x in e:
                     if not x.killed and x.isPawn:
-                        self.cameraLock = x
+                        print("Locking camera", self.CAMERA.cameraIndex, "to", x.name)
+                        self.CAMERA.cameraLock = x
                         break
 
 
-        elif self.cameraLinger <= 0:
-            if self.cameraLock.killed:
-                self.cameraLock = None
-                self.cameraLinger = 1
+        elif self.CAMERA.cameraLinger <= 0:
+            if self.CAMERA.cameraLock.killed:
+                self.CAMERA.cameraLock = None
+                self.CAMERA.cameraLinger = 1
                 
             else:
 
-                if not self.cameraLock.target and not self.cameraLock.BOSS and self.cameraLock.currentlyAliveNade:
-                    self.cameraPos = self.cameraLock.currentlyAliveNade.pos - [0, self.cameraLock.currentlyAliveNade.verticalPos] - self.res/2
+                if not self.CAMERA.cameraLock.target and not self.CAMERA.cameraLock.BOSS and self.CAMERA.cameraLock.currentlyAliveNade:
+                    self.CAMERA.cameraPos = self.CAMERA.cameraLock.currentlyAliveNade.pos - [0, self.CAMERA.cameraLock.currentlyAliveNade.verticalPos] - self.res/2
                     #self.cameraLinger = 0.4
 
                 else:
-                    self.cameraPos = self.cameraLock.pos - self.res/2
-                    self.cameraLock.onCameraTime += self.deltaTime
+                    self.CAMERA.cameraPos = self.CAMERA.cameraLock.pos - self.res/2
+                    self.CAMERA.cameraLock.onCameraTime += self.deltaTime
 
 
-                if self.cameraLock.target:
-                    self.cameraIdleTime = 0
+                if self.CAMERA.cameraLock.target:
+                    self.CAMERA.cameraIdleTime = 0
                     if not self.pendingLevelUp and not self.VICTORY:
                         self.CREATEDUAL = True
-                        self.cameraLockTarget = self.cameraLock.target.pos.copy() * 0.1 + self.cameraLockTarget * 0.9
-                        self.cameraLockOrigin = self.cameraLock.pos.copy()
+                        self.CAMERA.cameraLockTarget = self.CAMERA.cameraLock.target.pos.copy() * 0.1 + self.CAMERA.cameraLockTarget * 0.9
+                        self.CAMERA.cameraLockOrigin = self.CAMERA.cameraLock.pos.copy()
                 else:
-                    self.cameraIdleTime += self.deltaTimeR
+                    self.CAMERA.cameraIdleTime += self.deltaTimeR
 
-                if self.cameraIdleTime > 5:
-                    self.cameraLock = None
-                    self.cameraLinger = 0
-                    self.cameraIdleTime = 3
+                if self.CAMERA.cameraIdleTime > 5:
+                    self.CAMERA.cameraLock = None
+                    self.CAMERA.cameraLinger = 0
+                    self.CAMERA.cameraIdleTime = 3
                     
         
         else:
-            self.cameraLinger -= self.deltaTime
-            self.cameraIdleTime = 0
+            self.CAMERA.cameraLinger -= self.deltaTime
+            self.CAMERA.cameraIdleTime = 0
+
+        return
 
 
         if self.VICTORY:
             I = max(self.endGameI-8, 0)
             self.SLOWMO = 1 - 0.25*(2-I)
             
-            self.cameraLock = max(
+            self.CAMERA.cameraLock = max(
                 (x for x in self.getActualPawns() if (x.team.i == self.victoryTeam and not x.killed)),
                 key=lambda x: x.kills,
                 default=None
@@ -1683,12 +1706,17 @@ class Game(valInit):
 
         
         elif self.pendingLevelUp:
-            #self.cameraLockOrigin = self.pendingLevelUp.pos.copy() - self.res/2
+            #self.CAMERA.cameraLockOrigin = self.pendingLevelUp.pos.copy() - self.res/2
 
             I = self.levelUpTimeFreeze()
 
             self.SLOWMO = 1 - 0.5*(1-I)
-            self.cameraLock = self.pendingLevelUp
+            self.CAMERA.cameraLock = self.pendingLevelUp
+
+    def isCameraLocked(self, pawn: "Pawn"):
+        for x in self.CAMERAS:
+            if x.cameraLock == pawn:
+                return x
 
     def handleCameraManual(self):
         if not self.MANUALPAWN.killed:
@@ -1699,40 +1727,40 @@ class Game(valInit):
         
         if self.CREATEDUAL and not self.STRESSTEST:
 
-            self.splitI += self.deltaTimeR
-            self.splitI = min(1, self.splitI)
+            self.CAMERA.splitI += self.deltaTimeR * 3
+            self.CAMERA.splitI = min(1, self.CAMERA.splitI)
         else:
-            self.splitI -= self.deltaTimeR
-            self.splitI = max(0, self.splitI)
+            self.CAMERA.splitI -= self.deltaTimeR * 3
+            self.CAMERA.splitI = max(0, self.CAMERA.splitI)
 
-        if self.splitI > 0:
+        if self.CAMERA.splitI > 0:
 
-            shiftI = (1-self.splitI)**2
+            shiftI = (1-self.CAMERA.splitI)**2
 
             maxX = 1000 * shiftI
 
-            if self.cameraLock and not self.cameraLock.killed:
-                self.cameraLockOrigin = self.cameraLock.pos.copy()
+            if self.CAMERA.cameraLock and not self.CAMERA.cameraLock.killed:
+                self.CAMERA.cameraLockOrigin = self.CAMERA.cameraLock.pos.copy()
 
-            angle = self.getAngleFrom(self.cameraLockOrigin, self.cameraLockTarget) + math.pi/2
+            angle = self.getAngleFrom(self.CAMERA.cameraLockOrigin, self.CAMERA.cameraLockTarget) + math.pi/2
 
             shift = v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-maxX)
 
-            raw_dist = self.cameraLockOrigin.distance_to(self.cameraLockTarget)
+            raw_dist = self.CAMERA.cameraLockOrigin.distance_to(self.CAMERA.cameraLockTarget)
             max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
 
             shiftAmount = min(max_dist, raw_dist) / 2
 
-            self.line1 = v2(math.cos(angle), math.sin(angle))*1920 + self.res/2 + shift
-            self.line2 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*1920 + self.res/2 + shift
-            self.line3 = v2(math.cos(angle), math.sin(angle))*1920 + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
-            self.line4 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*1920 + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
-            self.posToTargetTo = self.cameraLockOrigin + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-shiftAmount * (1-shiftI)) - self.res/2
-            self.posToTargetTo2 = self.cameraLockTarget + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(shiftAmount+0.7*maxX) - self.res/2
+            self.line1 = v2(math.cos(angle), math.sin(angle))*self.res.x + self.res/2 + shift
+            self.line2 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*self.res.x + self.res/2 + shift
+            self.line3 = v2(math.cos(angle), math.sin(angle))*self.res.x + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
+            self.line4 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*self.res.x + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
+            self.CAMERA.posToTargetTo = self.CAMERA.cameraLockOrigin + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-shiftAmount * (1-shiftI)) - self.res/2
+            self.CAMERA.posToTargetTo2 = self.CAMERA.cameraLockTarget + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(shiftAmount+0.7*maxX) - self.res/2
 
-    def splitScreen(self):
+    def splitScreen(self, screen):
         #self.screen.fill((0,0,0))
-        self.screen.blit(self.screenCopy1, (0, 0))
+        screen.blit(self.screenCopy1, (0, 0))
 
         self.mask.fill((0, 0, 0, 0))
         pygame.draw.polygon(self.mask, [255, 255, 255, 255], (self.line1, self.line2, self.line4, self.line3))
@@ -1741,9 +1769,9 @@ class Game(valInit):
         self.screenCopy2.blit(self.mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
         # True alpha blending
-        self.screen.blit(self.screenCopy2, (0, 0))  # This now honors alpha channel
+        screen.blit(self.screenCopy2, (0, 0))  # This now honors alpha channel
 
-        pygame.draw.line(self.screen, [255, 255, 255], self.line1, self.line2, 3)
+        pygame.draw.line(screen, [255, 255, 255], self.line1, self.line2, 3)
 
     def bombPlanted(self):
         return self.GAMEMODE == "DETONATION" and self.skull and self.skull.planted
@@ -1858,7 +1886,7 @@ class Game(valInit):
         self.teamInspectIndex = -1
         self.nextMusic = 0
         self.mapCreated = False
-        self.cameraLock = None
+        self.CAMERA.cameraLock = None
         if self.skull:
             self.skull.kill()
 
@@ -1924,7 +1952,7 @@ class Game(valInit):
 
 
     def handleHud(self):
-        if self.currHud == self.cameraLock and self.currHud and not self.VICTORY:
+        if self.currHud == self.CAMERA.cameraLock and self.currHud and not self.VICTORY:
             self.hudChange += self.deltaTimeR
             self.hudChange = min(1, self.hudChange)
 
@@ -1938,8 +1966,8 @@ class Game(valInit):
                 self.ekg_accum = 0.0
                 self.ekg_points.clear()
 
-                if not self.currHud and self.cameraLock:
-                    self.currHud = self.cameraLock
+                if not self.currHud and self.CAMERA.cameraLock:
+                    self.currHud = self.CAMERA.cameraLock
 
         if self.hudChange > 0 and self.currHud:
             
@@ -2172,7 +2200,7 @@ class Game(valInit):
                     else:
                         self.filmOnly.remove(x)
 
-                    self.cameraLock = None
+                    self.CAMERA.cameraLock = None
                     self.cameraLinger = 0
 
             elif x in self.filmOnly:
@@ -2518,7 +2546,7 @@ class Game(valInit):
                 self.BABLO.pos = v2(P) * self.tileSize + [self.tileSize/2, self.tileSize/2] 
                 self.BABLO.killed = False
                 self.notify("SURVIVE")
-                self.cameraLock = self.BABLO
+                self.CAMERA.cameraLock = self.BABLO
                 self.BABLO.damageTakenPerTeam = {}
                 self.SLOWMO_FOR = 3.36
                 self.particle_system.create_explosion(self.BABLO.pos.x, self.BABLO.pos.y, count = 100)
@@ -2634,7 +2662,7 @@ def run_forever():
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S") + "\n")
                 traceback.print_exc(file=f)
                 traceback.print_exc()
-            time.sleep(2)
+            #time.sleep(2)
 
 if __name__ == "__main__":
     run_forever()

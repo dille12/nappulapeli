@@ -52,7 +52,10 @@ DEBUG_VARS = [
     "XPBASE",
     "MAKEDEBUGPAWNS",
     "DISABLEDEBUGTEXT",
-    "NPC_WEAPONS_PURCHASE"
+    "NPC_WEAPONS_PURCHASE",
+    "REGISTER_WEAPON_KILLS",
+    "SET_SEED",
+    "TRAIN_TIME"
 ]
 
 
@@ -78,6 +81,9 @@ class valInit:
         self.MAKEDEBUGPAWNS = True
         self.DISABLEDEBUGTEXT = True
         self.NPC_WEAPONS_PURCHASE = True
+        self.REGISTER_WEAPON_KILLS = True
+        self.SET_SEED = None
+        self.TRAIN_TIME = 100
 
         self.maxWins = 5
 
@@ -87,6 +93,8 @@ class valInit:
         self.autoloadConfig()
         print("Done")
 
+        self.LEVELSEED = 1
+
         self.local_ip = get_local_ip()
 
         if self.STRESSTEST:
@@ -95,6 +103,7 @@ class valInit:
         else:
             self.res = v2(1920, 1080)
             self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
+        self.originalRes = self.res.copy()
         self.darken = []
         d = pygame.Surface(self.res).convert_alpha()
         for x in range(20):
@@ -144,7 +153,14 @@ class valInit:
 
         self.fontName = "texture/agencyb.ttf"
 
-        self.CAMERA = Camera(self, (0,0))
+        self.CAMERAS = [Camera(self, (0,0)), Camera(self, (0,0))]
+        self.CAMERAS[0].mainCamera = True
+
+        for x in self.CAMERAS:
+            x.cameraIndex = self.CAMERAS.index(x)
+
+        self.CAMERA = self.CAMERAS[0]
+
         self.ENABLEGRENADES = True
 
         self.turretLeg = pygame.image.load("texture/turret_leg.png").convert_alpha()
@@ -379,7 +395,6 @@ class valInit:
             self.cracks.append(c)
 
 
-        self.cameraLinger = 2
         self.TTS_ON = True
         self.ITEM_AUTO = False
 
@@ -388,9 +403,7 @@ class valInit:
 
         self.FPS = 0
 
-        self.splitI = 0
-        self.cameraLockTarget = v2(0,0)
-        self.cameraLockOrigin = v2(0,0)
+        
         self.endGameI = 5
         self.victoryTeam = -1
         self.musicSwitch = False
@@ -407,12 +420,12 @@ class valInit:
 
 
         self.MINIMAPTEMP = None
-        self.cameraPos = v2(0, 0)
-        self.cameraPosDelta = self.cameraPos.copy()
+        
+        self.cameraPosDelta = v2(0,0)
         self.cameraVel = v2(0,0)
 
         self.dualCameraPos = v2(0, 0)
-        self.dualCameraPosDelta = self.cameraPos.copy()
+        self.dualCameraPosDelta = v2(0,0)
         self.dualCameraVel = v2(0,0)
 
 
@@ -426,7 +439,6 @@ class valInit:
         self.explosion = load_animation("texture/expl1", 0, 31, size = [500,500])
         self.items = getItems()
         print("ITEMS:", len(self.items))
-        self.cameraLock = None
 
         self.levelUps = [round(self.XPBASE*(x+1) * (1.1) ** x) for x in range(100)]
 
@@ -445,12 +457,20 @@ class valInit:
         self.TRUCE = False
         self.FFA = False
 
-        
-
         self.objectiveCarriedBy = None
 
-        self.screenCopy1 = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
-        self.screenCopy2 = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+
+        self.splitViews = []
+
+        self.sp = pygame.Surface([self.res.x/2, self.res.y], pygame.SRCALPHA)
+        self.splitViews.append(self.sp.copy())
+        self.splitViews.append(self.sp.copy())
+
+        self.screenCopy1 = pygame.Surface(self.sp.get_size(), pygame.SRCALPHA)
+        self.screenCopy2 = pygame.Surface(self.sp.get_size(), pygame.SRCALPHA)
+
+        
+
         self.skull = None
         self.skullVictoryTime = 100
 

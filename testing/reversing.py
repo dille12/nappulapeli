@@ -20,7 +20,7 @@ pipe.safety_checker = lambda images, **kwargs: (images, [False] * len(images))
 
 
 pipe = pipe.to(device)
-pipe.enable_attention_slicing()  # saves VRAM
+#pipe.enable_attention_slicing()  # saves VRAM
 
 lms = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear")
 pipe.scheduler = lms
@@ -29,23 +29,23 @@ pipe.scheduler = lms
 
 # Load your front-face sprite (PIL image)
 
-im = "untexturedLevel.png"
+im = "backUpImages/Aapo69.png"
 
 
 img = Image.open(im)
-front_face = img.resize((1200, 800))
+front_face = img.resize((256, 256))
 #front_face.show()
 
 
 # Prompt describing the back of head
 prompt = (
-    "A detailed top-down view of a factory floor"
+    "A back view of this character. No face detectable, same clothes"
 )
 
 negative = ("blurry, low-resolution, distorted hands, deformed face, poorly drawn anatomy, no face")
 
 # Generate
-output = pipe(prompt=prompt, negative_prompt=negative, image=front_face, strength=0.9, guidance_scale=7.5).images[0]
+output = pipe(prompt=prompt, negative_prompt=negative, image=front_face, strength=0.4, guidance_scale=7.5).images[0]
 
 # Save
 output.save("back_of_head.png")

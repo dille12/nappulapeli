@@ -251,10 +251,6 @@ class ArenaGenerator:
         self.grid = np.zeros((height, width), dtype=int)
         self.rooms: List[Room] = []
         
-        if seed is not None:
-            random.seed(seed)
-            np.random.seed(seed)
-
 
 
     def to_pygame_surface(self, cell_size: int = 16, colors: Optional[Dict[int, Tuple[int, int, int]]] = None) -> pygame.Surface:

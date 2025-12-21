@@ -11,6 +11,19 @@ class Camera:
         self.vibration_amp = 0.0
         self.vibration_decay = 4.0  # higher = faster decay
         self.vibration_offset = v2(0, 0)
+        self.mainCamera = False
+        self.cameraIndex = 0
+
+        self.cameraLinger = 2
+        self.cameraIdleTime = 0
+        self.cameraLock = None
+
+        self.splitI = 0
+        self.cameraLockTarget = v2(0,0)
+        self.cameraLockOrigin = v2(0,0)
+        self.posToTargetTo = v2(0,0)
+        self.posToTargetTo2 = v2(0,0)
+        self.cameraPos = v2(0, 0)
 
     def vibrate(self, strength: float):
         strength = min(strength, 40)

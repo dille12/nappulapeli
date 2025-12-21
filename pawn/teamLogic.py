@@ -8,6 +8,8 @@ import numpy as np
 import random
 import math
 from core.detonation.teamDetonationLogic import tickDetonationLogic
+from utilities.register import register_gun_kill
+
 class NadePos:
     def __init__(self, pos):
         self.pos = pos
@@ -164,6 +166,12 @@ class Team:
         for x in self.plan["viableSites"]:
             cell = x.room.randomCell()
             route = self.app.arena.pathfinder.find_path(startPos, x.room.randomCell())
+
+            if not route:
+                print("JOKU BUGI!")
+                register_gun_kill(f"no route bug: {self.app.LEVELSEED}", path = "levelbugs.txt")
+                route = [1] * 30
+
             if len(route) < m[1]:
                 m = [x, len(route)]
 

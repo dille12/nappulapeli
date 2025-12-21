@@ -5,12 +5,16 @@
   "RENDERING": false,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 3,
-  "stressTestFpsClock": 0,
-  "PEACEFUL": true,
   "gameModeLineUp": [
     "DETONATION"
   ],
   "maxWins": 100,
   "DOREALGAMEMODES": false,
-  "XPBASE": 5
+  "XPBASE": 5,
+  "MAKEDEBUGPAWNS": true,
+  "DISABLEDEBUGTEXT": false,
+  "NPC_WEAPONS_PURCHASE": false,
+  "REGISTER_WEAPON_KILLS": false,
+  "SET_SEED": null,
+  "TRAIN_TIME": 100
 }

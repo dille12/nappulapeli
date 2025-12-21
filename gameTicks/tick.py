@@ -2,24 +2,111 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
     from pawn.pawn import Pawn
+
 from pygame.math import Vector2 as v2
 import pygame
 import time
-#from core.AI import constructTeamVisibility, drawGridMiniMap
 import math
+
 from utilities.bullet import raycast_grid
 from core.drawRectPerimeter import draw_rect_perimeter
+
+
+# --------------------------
+# Public entry
+# --------------------------
+
 def battleTick(self: "Game"):
+    _battle_pretick(self)
+
+    victoryCondition = _battle_victory_logic(self)
+
+    entities_temp = _battle_prepare_entities(self)
+
+    FF, TIMESCALE = _battle_timescale(self)
+
+    _battle_roundtime_and_timeout(self, victoryCondition)
+
+    _battle_minimap_begin(self)
+
+    _battle_particle_and_world_updates(self)
+
+    _battle_mode_specific_world_updates(self)
+
+    _battle_tick_entities(self, entities_temp)
+
+    _battle_post_entity_logic(self)
+
+    x1,y1 = self.CAMERAS[0].pos
+    x2,y2 = self.CAMERAS[1].pos
+    rect1 = pygame.Rect(x1,y1, 0, 0) 
+    rect2 = pygame.Rect(x2,y2, 0, 0) 
+    rect1.inflate_ip(self.originalRes.x, self.originalRes.y)
+    rect2.inflate_ip(self.originalRes.x, self.originalRes.y)
+    if rect1.colliderect(rect2):
+        amountOfScreens = 1
+    else:
+        amountOfScreens = 2
+    amountOfScreens = 2
+
+
+    self.res = self.originalRes.copy()
+    self.res.x /= amountOfScreens
+
+    for SPLITSCREENI in range(amountOfScreens):
+
+        self.CAMERA = self.CAMERAS[SPLITSCREENI]
+
+        #print("HANDLING CAMERA", self.CAMERA.cameraIndex)
+
+        _battle_handle_cameras(self)
+
+        _battle_update_camera_and_cleanup(self)
+
+        DUAL = _battle_compute_dual_view(self)
+
+        _battle_render_world(self, entities_temp, DUAL, SPLITSCREENI, amountOfScreens)
+
+    self.res = self.originalRes.copy()
+
+    _battle_render_overlays_and_ui(self, FF)
+
+    _battle_debug_and_metrics(self)
+
+
+# --------------------------
+# PRE / SETUP
+# --------------------------
+
+def _battle_pretick(self: "Game"):
+    
 
     self.PEACEFUL = False
     self.BFGLasers = []
-
     self.debugCells = []
 
-    # Sort entities by their y position for correct rendering order into a separate list to prevent modifying the list while iterating
 
-    #if self.skull:
-    #    self.cameraPos = self.skull.pos - self.res/2
+def _battle_prepare_entities(self: "Game"):
+    entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
+
+    if self.GAMEMODE == "1v1":
+        for x in self.pawnHelpList:
+            if x in self.duelPawns:
+                continue
+            x.respawnI = 5
+            x.killed = True
+
+    return entities_temp
+
+
+# --------------------------
+# VICTORY LOGIC
+# --------------------------
+
+def _battle_victory_logic(self: "Game"):
+    # ensures victoryCondition exists for later timeout handling
+    victoryCondition = None
+
     if not self.VICTORY:
 
         if self.GAMEMODE == "ODDBALL":
@@ -28,7 +115,6 @@ def battleTick(self: "Game"):
 
             for i, x in enumerate(self.skullTimes):
                 if x >= self.skullVictoryTime:
-                    #print(f"Team {i+1} WON")
                     self.announceVictory(i)
                     break
 
@@ -36,17 +122,17 @@ def battleTick(self: "Game"):
             victoryCondition = [0 for _ in range(self.teams)]
             for p in self.getActualPawns():
                 victoryCondition[p.team.i] += p.kills
-            
+
             for i, x in enumerate(victoryCondition):
                 if x >= 100:
                     self.announceVictory(i)
                     break
-        
+
         elif self.GAMEMODE == "1v1":
             victoryCondition = [0 for _ in range(len(self.duelPawns))]
             for i, p in enumerate(self.duelPawns):
                 victoryCondition[i] = p.kills
-            
+
             for i, x in enumerate(victoryCondition):
                 if x >= 10:
                     self.announceVictory(self.duelPawns[i].team.i)
@@ -57,21 +143,20 @@ def battleTick(self: "Game"):
             for r in self.map.rooms:
                 if r.turfWarTeam is not None:
                     victoryCondition[r.turfWarTeam] += 1
-            
+
             for i, x in enumerate(victoryCondition):
                 if x == len(self.map.rooms):
                     self.announceVictory(i)
                     break
-        
+
         elif self.GAMEMODE == "DETONATION":
             victoryCondition = [0 for _ in range(2)]
             if self.SITES:
                 if len(self.SITES) == 1:
-                    victoryCondition[1] = 1 # TIE
+                    victoryCondition[1] = 1  # TIE
                     victoryCondition[0] = 1
                 else:
                     victoryCondition[1] = 1
-                
             else:
                 victoryCondition[0] = 1
                 self.announceVictory(0)
@@ -87,22 +172,17 @@ def battleTick(self: "Game"):
 
             if len(alive_teams) == 1:
                 self.announceVictory(alive_teams[0])
-                
-                    
-                
-        
-                
+
     self.roundTime = max(0, self.roundTime)
 
-    entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
-    if self.GAMEMODE == "1v1":
-        for x in self.pawnHelpList:
-            if x in self.duelPawns:
-                continue
-            x.respawnI = 5
-            x.killed = True
+    return victoryCondition
 
 
+# --------------------------
+# CAMERA & TIMESCALE
+# --------------------------
+
+def _battle_handle_cameras(self: "Game"):
     self.CREATEDUAL = False
 
     if not self.MANUALPAWN:
@@ -113,11 +193,12 @@ def battleTick(self: "Game"):
         self.handleCameraManual()
 
 
+def _battle_timescale(self: "Game"):
     combat = any(
-            p.target or p.grenadePos
-            for p in self.pawnHelpList
-        ) or self.bombPlanted()
-    
+        p.target or p.grenadePos
+        for p in self.pawnHelpList
+    ) or self.bombPlanted()
+
     if not combat and self.GAMEMODE != "FINAL SHOWDOWN" and not self.VICTORY:
         self.fastForwardI += self.deltaTimeR
         self.fastForwardI = min(3, self.fastForwardI)
@@ -126,86 +207,97 @@ def battleTick(self: "Game"):
         self.fastForwardI = max(0, self.fastForwardI)
 
     FF = max(1, self.fastForwardI)
-    
     TIMESCALE = self.TIMESCALE * FF
-
-
-    #self.handleUltingCall()
 
     self.deltaTime *= self.SLOWMO
     self.deltaTime *= TIMESCALE
 
-    if not self.VICTORY:
+    return FF, TIMESCALE
 
-        if self.GAMEMODE == "FINAL SHOWDOWN":
-            if self.currMusic == 1:
-                self.roundTime -= self.deltaTime
-            victoryCondition = list(self.BABLO.damageTakenPerTeam.values())
 
-        elif self.GAMEMODE == "DETONATION":
-            if not self.skull.planted:
-                self.roundTime -= self.deltaTime
+def _battle_roundtime_and_timeout(self: "Game", victoryCondition):
+    if self.VICTORY:
+        return
 
-        else:
-
+    if self.GAMEMODE == "FINAL SHOWDOWN":
+        if self.currMusic == 1:
             self.roundTime -= self.deltaTime
-        if self.roundTime <= 0:
-            # Pick out from the victoryCondition the highest index
-            max_index = victoryCondition.index(max(victoryCondition))
-            
-            if self.GAMEMODE == "DETONATION":
-                if victoryCondition[0] == victoryCondition[1]:
-                    max_index = -1
-            self.announceVictory(max_index)
+        victoryCondition = list(self.BABLO.damageTakenPerTeam.values())
 
-    
-    
+    elif self.GAMEMODE == "DETONATION":
+        if not self.skull.planted:
+            self.roundTime -= self.deltaTime
 
-    #self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
+    else:
+        self.roundTime -= self.deltaTime
+
+    if self.roundTime <= 0:
+        # Pick out from the victoryCondition the highest index
+        max_index = victoryCondition.index(max(victoryCondition))
+
+        if self.GAMEMODE == "DETONATION":
+            if victoryCondition[0] == victoryCondition[1]:
+                max_index = -1
+        self.announceVictory(max_index)
+
+
+# --------------------------
+# MINIMAP PREP
+# --------------------------
+
+def _battle_minimap_begin(self: "Game"):
+    # self.MINIMAP = self.map.to_pygame_surface(cell_size=self.MINIMAPCELLSIZE)
     self.MINIMAPTEMP = self.MINIMAP.copy()
 
-    
 
+# --------------------------
+# WORLD UPDATES (non-entity)
+# --------------------------
+
+def _battle_particle_and_world_updates(self: "Game"):
     self.particle_system.update_all()
-
 
     if self.GAMEMODE == "TURF WARS":
         for r in self.map.rooms:
             r.pawnsPresent = []
             if r.turfWarTeam is not None:
-                pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(r.turfWarTeam, 0.25), (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
-                                                                                      r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
-                
+                pygame.draw.rect(
+                    self.MINIMAPTEMP,
+                    self.getTeamColor(r.turfWarTeam, 0.25),
+                    (r.x * self.MINIMAPCELLSIZE, r.y * self.MINIMAPCELLSIZE,
+                     r.width * self.MINIMAPCELLSIZE, r.height * self.MINIMAPCELLSIZE)
+                )
+
             if r in self.teamSpawnRooms:
                 i = self.teamSpawnRooms.index(r)
                 r2 = self.teamSpawnRooms[i]
-                pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(i, 1), (r2.x*self.MINIMAPCELLSIZE, r2.y*self.MINIMAPCELLSIZE, 
-                                                                                      r2.width*self.MINIMAPCELLSIZE, r2.height*self.MINIMAPCELLSIZE), width=1)
-                
+                pygame.draw.rect(
+                    self.MINIMAPTEMP,
+                    self.getTeamColor(i, 1),
+                    (r2.x * self.MINIMAPCELLSIZE, r2.y * self.MINIMAPCELLSIZE,
+                     r2.width * self.MINIMAPCELLSIZE, r2.height * self.MINIMAPCELLSIZE),
+                    width=1
+                )
+
     if self.GAMEMODE == "DETONATION":
-
-        
-
         for site in self.SITES:
-
-            pos = v2(site.room.center())*self.MINIMAPCELLSIZE
-            t = self.fontSmaller.render(site.name, True, [155,0,0])
-            self.MINIMAPTEMP.blit(t, pos - v2(t.get_size())/2)
+            pos = v2(site.room.center()) * self.MINIMAPCELLSIZE
+            t = self.fontSmaller.render(site.name, True, [155, 0, 0])
+            self.MINIMAPTEMP.blit(t, pos - v2(t.get_size()) / 2)
             room = site.room
-            rect = pygame.Rect(room.x*self.MINIMAPCELLSIZE, room.y*self.MINIMAPCELLSIZE, room.width*self.MINIMAPCELLSIZE, room.height*self.MINIMAPCELLSIZE)
-            color = [255,0,0] if site == self.allTeams[0].getCurrentSite() else [255,255,255]
-            draw_rect_perimeter(self.MINIMAPTEMP, rect, time.time()-self.now, 20, 2, color, width=1)
+            rect = pygame.Rect(
+                room.x * self.MINIMAPCELLSIZE,
+                room.y * self.MINIMAPCELLSIZE,
+                room.width * self.MINIMAPCELLSIZE,
+                room.height * self.MINIMAPCELLSIZE
+            )
+            color = [255, 0, 0] if site == self.allTeams[0].getCurrentSite() else [255, 255, 255]
+            draw_rect_perimeter(self.MINIMAPTEMP, rect, time.time() - self.now, 20, 2, color, width=1)
+
+    # constructTeamVisibility(self)
 
 
-
-
-        #    color = [51,42,13] if site.controlledByT() else [15, 26, 51]
-        #    r = site.room
-        #    pygame.draw.rect(self.MINIMAPTEMP, color, (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
-        #                                                                              r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
-    #constructTeamVisibility(self)
-        
-
+def _battle_mode_specific_world_updates(self: "Game"):
     self.FireSystem.update()
 
     if self.GAMEMODE == "DETONATION":
@@ -218,6 +310,12 @@ def battleTick(self: "Game"):
     for x in self.allTeams:
         x.tickNadePos()
 
+
+# --------------------------
+# ENTITY TICK
+# --------------------------
+
+def _battle_tick_entities(self: "Game", entities_temp):
     for x in entities_temp:
         if hasattr(x, "itemEffects"):
             self.deltaTime *= x.itemEffects["timeScale"]
@@ -234,6 +332,7 @@ def battleTick(self: "Game"):
     self.handleTurfWar()
 
 
+def _battle_post_entity_logic(self: "Game"):
     if self.GAMEMODE != "FINAL SHOWDOWN":
         self.commonRoomSwitchI += self.deltaTime
         if self.commonRoomSwitchI >= 10:
@@ -243,20 +342,23 @@ def battleTick(self: "Game"):
             if self.commonRoom != r2:
                 print("COMMON ROOM SWITCHED!", self.commonRoom.kills)
 
-
-
     self.doBabloCracks()
-
 
     if self.objectiveCarriedBy and self.GAMEMODE == "ODDBALL":
         self.skullTimes[self.objectiveCarriedBy.team.i] += self.deltaTime
 
+
+# --------------------------
+# CAMERA UPDATE & CLEANUP
+# --------------------------
+
+def _battle_update_camera_and_cleanup(self: "Game"):
     if self.AUTOCAMERA:
-        if self.splitI > 0:
-            self.cameraPos = self.posToTargetTo.copy()
-            self.dualCameraPos = self.posToTargetTo2.copy()
+        if self.CAMERA.splitI > 0:
+            self.cameraPos = self.CAMERA.posToTargetTo.copy()
+            self.dualCameraPos = self.CAMERA.posToTargetTo2.copy()
         else:
-            self.dualCameraPos = self.cameraPos.copy()
+            self.dualCameraPos = self.CAMERA.cameraPos.copy()
     else:
         if "w" in self.keypress_held_down:
             self.cameraPos.y -= 10
@@ -269,45 +371,55 @@ def battleTick(self: "Game"):
             self.cameraPos.x += 10
 
     CAMPANSPEED = 500000 * self.deltaTimeR
-    #self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
-    #self.cameraVel[1] += self.smoothRotationFactor(self.cameraVel[1], CAMPANSPEED, self.cameraPos[1] - self.cameraPosDelta[1]) * self.deltaTimeR
-    #self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
-    #self.cameraPosDelta += self.cameraVel * self.deltaTimeR
+    # self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
+    # self.cameraVel[1] += self.smoothRotationFactor(self.cameraVel[1], CAMPANSPEED, self.cameraPos[1] - self.cameraPosDelta[1]) * self.deltaTimeR
+    # self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
+    # self.cameraPosDelta += self.cameraVel * self.deltaTimeR
 
-    self.CAMERA.update(self.cameraPos, self.deltaTimeR, smooth_time=0.1)
+    self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.1)
     self.cameraPosDelta = self.CAMERA.pos.copy()
-    self.AUDIOORIGIN = self.cameraPosDelta.copy() + self.res/2
+
+    self.AUDIOORIGIN = self.CAMERAS[0].pos + self.originalRes / 2
 
     self.cleanUpLevel()
 
+
+def _battle_compute_dual_view(self: "Game"):
     DUAL = False
-    if self.splitI > 0:
-        
-        angle = self.getAngleFrom(self.cameraLockOrigin, self.cameraLockTarget) + math.pi/2
+    if self.CAMERA.splitI > 0:
+        angle = self.getAngleFrom(self.CAMERA.cameraLockOrigin, self.CAMERA.cameraLockTarget) + math.pi / 2
+        max_dist = 300 + 300 * abs(math.sin(angle))  # ensures 300–600 range
 
-        max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
-
-        if self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist and self.cameraLock and not self.cameraLock.BOSS:
+        if self.CAMERA.cameraLockOrigin.distance_to(self.CAMERA.cameraLockTarget) > max_dist and self.CAMERA.cameraLock and not self.CAMERA.cameraLock.BOSS:
             DUAL = True
 
     self.DUALVIEWACTIVE = DUAL
+    return DUAL
 
+
+# --------------------------
+# RENDER
+# --------------------------
+
+def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI = 0, amountOfScreens = 2):
     if self.RENDERING:
         for i in range(1 if not DUAL else 2):
 
             if not DUAL:
-                self.DRAWTO = self.screen
-                
+                if amountOfScreens == 2:
+                    self.DRAWTO = self.sp
+                else:
+                    self.DRAWTO = self.screen
             elif i == 0:
                 self.DRAWTO = self.screenCopy1
             else:
                 self.DRAWTO = self.screenCopy2
 
-            self.DRAWTO.fill((0,0,0))
+            self.DRAWTO.fill((0, 0, 0))
 
             if i == 1:
                 SAVECAMPOS = self.cameraPosDelta.copy()
-                self.cameraPosDelta = self.posToTargetTo2.copy()
+                self.cameraPosDelta = self.CAMERA.posToTargetTo2.copy()
 
             self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
 
@@ -315,17 +427,15 @@ def battleTick(self: "Game"):
                 alpha = int(255 * min(max(self.SLOWMO_FOR * 2, 0.5), 1.0))
                 self.speedLinesSurf.fill((0, 0, 0, alpha))
                 self.speedlines.draw(self.speedLinesSurf, self.BABLO.pos - self.cameraPosDelta)
-                self.DRAWTO.blit(self.speedLinesSurf, (0,0))
+                self.DRAWTO.blit(self.speedLinesSurf, (0, 0))
 
-            #self.renderParallax2()
-            #self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
+            # self.renderParallax2()
+            # self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
             self.drawTurfs()
             self.drawDetonation()
 
-            #if self.cameraLock:
-            #    self.cameraLock.visualizeVis()
-
-            
+            # if self.cameraLock:
+            #     self.cameraLock.visualizeVis()
 
             for x in self.shitDict.values():
                 x.render()
@@ -341,7 +451,7 @@ def battleTick(self: "Game"):
             self.drawBFGLazers()
 
             for x in self.bulletImpactPositions:
-                pygame.draw.circle(self.DRAWTO, [255,0,0], v2(x) - self.cameraPosDelta, 10, )
+                pygame.draw.circle(self.DRAWTO, [255, 0, 0], v2(x) - self.cameraPosDelta, 10, )
 
             self.particle_system.render_all(self.DRAWTO)
 
@@ -352,45 +462,38 @@ def battleTick(self: "Game"):
                 self.cameraPosDelta = SAVECAMPOS.copy()
 
         if DUAL:
-            self.splitScreen()
+
+            splitScreen = self.screen if amountOfScreens == 1 else self.sp
+
+            self.splitScreen(splitScreen)
     else:
-        self.screen.fill((0,0,0))
+        self.screen.fill((0, 0, 0))
 
-
+    if amountOfScreens == 2:
+        self.screen.blit(self.sp, (SPLITSCREENI * self.originalRes.x/2, 0))
     
-    
-        
-
-    #if self.currMusic == 0:
-    #    t = self.fontLarge.render(f"Peli alkaa: {self.musicLength - (time.time()-self.musicStart):.0f}", True, [255,255,255])
-    #    self.screen.blit(t, v2(self.res[0]/2, 300) - v2(t.get_size())/2)
-                    
-
-    #self.drawWalls()
 
 
-    
+def _battle_render_overlays_and_ui(self: "Game", FF: float):
+    # onscreen count
     onscreen = 0
     for x in self.pawnHelpList:
-        if x.onScreen():
+        if self.onScreen(x.pos):
             onscreen += 1
-    
 
     for x in self.killfeed:
         x.tick()
 
-    
     if self.VICTORY:
         if self.endGameI >= 0:
             self.tickEndGame()
         else:
             if not self.TRANSITION:
                 self.transition(lambda: self.endGame())
-            #self.endGame()
-            
+            # self.endGame()
     else:
         if self.RENDERING:
-            #if self.GAMEMODE != "FINAL SHOWDOWN":
+            # if self.GAMEMODE != "FINAL SHOWDOWN":
             self.tickScoreBoard()
 
     if not self.VICTORY:
@@ -399,11 +502,10 @@ def battleTick(self: "Game"):
         else:
             self.drawRoundInfoDetonation()
 
-    ox, oy = self.MINIMAPCELLSIZE*self.cameraPosDelta/(self.tileSize)
-    w, h = self.MINIMAPCELLSIZE*self.res/(self.tileSize)
-    
-    pygame.draw.rect(self.MINIMAPTEMP, [255,0,0], (ox, oy, w, h), width=1)
+    ox, oy = self.MINIMAPCELLSIZE * self.cameraPosDelta / (self.tileSize)
+    w, h = self.MINIMAPCELLSIZE * self.res / (self.tileSize)
 
+    pygame.draw.rect(self.MINIMAPTEMP, [255, 0, 0], (ox, oy, w, h), width=1)
 
     if self.skull:
         if self.objectiveCarriedBy:
@@ -411,15 +513,11 @@ def battleTick(self: "Game"):
         else:
             skullpos = self.skull.pos.copy()
 
-        pygame.draw.circle(self.MINIMAPTEMP, [255,255,255], self.MINIMAPCELLSIZE*skullpos/self.tileSize, 6, width=1)
+        pygame.draw.circle(self.MINIMAPTEMP, [255, 255, 255], self.MINIMAPCELLSIZE * skullpos / self.tileSize, 6, width=1)
 
-    MINIMAP_POS = self.res - self.MINIMAP.get_size() - [10,10]
-    
+    MINIMAP_POS = self.res - self.MINIMAP.get_size() - [10, 10]
+
     self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
-
-
-    #t = self.font.render("Points", True, [255,255,255])
-    #self.screen.blit(t, [self.res.x - 10 - t.get_width(), MINIMAP_POS.y - 45 - t.get_height()])
 
     w = self.MINIMAP.get_width()
     h = 40
@@ -427,50 +525,43 @@ def battleTick(self: "Game"):
     x = 0
 
     for team in self.allTeams:
-
         rect1 = pygame.Rect(MINIMAP_POS + [x, -h], [w_r, h])
 
         pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.2), rect1)
 
         rect2 = rect1.copy()
-        rect2.height = (team.wins/self.maxWins) * h
+        rect2.height = (team.wins / self.maxWins) * h
         rect2.bottom = rect1.bottom
         pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.5), rect2)
 
-        
         pygame.draw.rect(self.screen, self.getTeamColor(team.i, 1), rect1, width=2)
-        
+
         x += w_r
 
         center = rect1.center
-        t = self.font.render(f"{team.wins}", True, [255,255,255])
-        self.screen.blit(t, v2(center) - v2(t.get_size())/2)
+        t = self.font.render(f"{team.wins}", True, [255, 255, 255])
+        self.screen.blit(t, v2(center) - v2(t.get_size()) / 2)
 
         if self.winningTeam != None and team == self.winningTeam:
-            # draw a yellow crown on top of the rect
             crown_width = w_r * 0.6
             crown_height = h * 0.6
             crown_top = rect1.top - crown_height * 0.8
             crown_center_x = rect1.centerx
 
             points = [
-                (crown_center_x - crown_width/2, rect1.top),                # bottom-left
-                (crown_center_x - crown_width/2 - 5, crown_top),                # left spike
-                (crown_center_x - crown_width/5, crown_top + crown_height*0.33),
-                (crown_center_x, crown_top - crown_height*0.5),                                # middle spike
-                (crown_center_x + crown_width/5, crown_top + crown_height*0.33),
-                (crown_center_x + crown_width/2 + 5, crown_top),                # right spike
-                (crown_center_x + crown_width/2, rect1.top)                 # bottom-right
+                (crown_center_x - crown_width / 2, rect1.top),  # bottom-left
+                (crown_center_x - crown_width / 2 - 5, crown_top),  # left spike
+                (crown_center_x - crown_width / 5, crown_top + crown_height * 0.33),
+                (crown_center_x, crown_top - crown_height * 0.5),  # middle spike
+                (crown_center_x + crown_width / 5, crown_top + crown_height * 0.33),
+                (crown_center_x + crown_width / 2 + 5, crown_top),  # right spike
+                (crown_center_x + crown_width / 2, rect1.top)  # bottom-right
             ]
             pygame.draw.polygon(self.screen, (255, 255, 0), points)
             pygame.draw.polygon(self.screen, (200, 200, 0), points, width=2)  # outline
 
-
-    #debugRay(self)
-
     if self.RENDERING:
         self.handleHud()
-
 
     if self.pendingLevelUp and not self.VICTORY:
         self.levelUpScreen()
@@ -481,15 +572,26 @@ def battleTick(self: "Game"):
         self.handleUlting()
 
     if FF > 1:
-        t = self.fontLarge.render("FAST FORWARDING", True, [255,255,255])
+        t = self.fontLarge.render("FAST FORWARDING", True, [255, 255, 255])
 
-        alpha = 255*(FF-1)/2
+        alpha = 255 * (FF - 1) / 2
         t.set_alpha(int(alpha))
 
-        self.screen.blit(t, self.res/2 - v2(t.get_size())/2)
+        self.screen.blit(t, self.res / 2 - v2(t.get_size()) / 2)
 
     if self.roundTime < 4:
         self.nextMusic = -1
+
+    # keep onscreen for debug
+    self._onscreen_cache = onscreen
+
+
+# --------------------------
+# DEBUG / METRICS
+# --------------------------
+
+def _battle_debug_and_metrics(self: "Game"):
+    onscreen = getattr(self, "_onscreen_cache", 0)
 
     self.debugText(f"FPS: {self.FPS:.0f} (+/-{self.STD*1000:.1f}ms)")
     self.debugText(f"MAXFR: {self.MAXFRAMETIME*1000:.1f}ms")
@@ -500,14 +602,17 @@ def battleTick(self: "Game"):
     self.debugText(f"MUSIC: {self.currMusic} -> {self.nextMusic}")
     self.debugText(f"CAM: {self.CAMERA.vibration_amp}")
     self.debugText(f"{self.cameraLinger:.2f}")
-    if self.cameraLock:
-        self.debugText(f"{self.cameraLock.name}")
-    else:
-        self.debugText(f"{self.cameraLock}")
+
+    for camera in self.CAMERAS:
+
+        if camera.cameraLock:
+            self.debugText(f"{camera.cameraLock.name}")
+        else:
+            self.debugText(f"{camera.cameraLock}")
 
     if self.GAMEMODE == "DETONATION":
-        self.debugText(f"T: {self.allTeams[-1].plan["currentAction"]}, {self.allTeams[-1].plan["planTimer"]:.1f}")
-        self.debugText(f"CT: {self.allTeams[0].plan["currentAction"]}, {self.allTeams[0].plan["planTimer"]:.1f}")
+        self.debugText(f"T: {self.allTeams[-1].plan['currentAction']}, {self.allTeams[-1].plan['planTimer']:.1f}")
+        self.debugText(f"CT: {self.allTeams[0].plan['currentAction']}, {self.allTeams[0].plan['planTimer']:.1f}")
         self.debugText(f"Site controlled: {self.allTeams[0].terroristsHoldPlanSite()}")
 
     if self.GAMEMODE == "TURF WARS":
@@ -515,12 +620,13 @@ def battleTick(self: "Game"):
             self.debugText(f"TEAM {x.i}: {x.enslavedTo}")
 
     self.debugText(f"ENT: {len(self.pawnHelpList)}, {len([x for x in self.pawnHelpList if not x.isPawn])}")
+    self.debugText(f"SOUND ORIGIN: {self.AUDIOORIGIN}")
 
 
-    #self.drawFPS()
-    
-    #self.genPawns()
 
+# --------------------------
+# DEBUG RAY (unchanged)
+# --------------------------
 
 def debugRay(self):
     ray_origin = self.cameraPosDelta + self.res / 2

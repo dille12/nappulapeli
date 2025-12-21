@@ -665,26 +665,12 @@ class Pawn(PawnBehaviour, getStat):
 
     def defaultPos(self):
         if random.randint(0, 1) == 0:
-            self.pos = v2(random.randint(0, 1920), random.choice([-200, self.app.res[1] + 200]))
+            self.pos = v2(random.randint(0, 1920), random.choice([-200, self.app.originalRes[1] + 200]))
         else:
-            self.pos = v2(random.choice([-200, self.app.res[0] + 200]), random.randint(0, 1080))
+            self.pos = v2(random.choice([-200, self.app.originalRes[0] + 200]), random.randint(0, 1080))
         self.deltaPos = self.pos.copy()
 
-    def onScreen(self):
-        r = pygame.Rect(self.app.cameraPosDelta, self.app.res)
-       
-        onDualScreen = False
 
-        if self.app.DUALVIEWACTIVE:
-            r2 = pygame.Rect(self.app.posToTargetTo2, self.app.res)
-            onDualScreen = r2.collidepoint(self.pos)
-        #r2.inflate_ip(self.app.res)
-
-        
-
-        if not r.collidepoint(self.pos) and not onDualScreen:
-            return False
-        return True
 
     def say(self, t, chanceToSay = 0.2):
         if not self.itemEffects["talking"]:
@@ -1521,7 +1507,7 @@ class Pawn(PawnBehaviour, getStat):
         #DELTATIMESAVE = self.app.deltaTime
         #self.app.deltaTime *= self.itemEffects["timeScale"]
 
-        self.ONSCREEN = self.onScreen()
+        self.ONSCREEN = self.app.onScreen(self.pos)
 
         if self.ULT_TIME > 0:
             self.ULT_TIME -= self.app.deltaTime
@@ -1605,8 +1591,8 @@ class Pawn(PawnBehaviour, getStat):
                 self.say("Meikäläisen kallopallo!", 1)
                 if self.app.GAMEMODE == "ODDBALL":
                     self.app.notify(f"TEAM {self.team.i + 1} PICKED UP SKULL", self.team.getColor())
-                    self.app.cameraLinger = 0
-                    self.app.cameraLock = self
+                    #self.app.cameraLinger = 0
+                    #self.app.cameraLock = self
                 else:
                     self.team.getGodTeam().bombCarrier = self
                 self.route = None
@@ -1908,7 +1894,9 @@ class Pawn(PawnBehaviour, getStat):
 
         self.arcRect.inflate_ip(imwidth, imwidth/2)
 
-        if self.app.cameraLock == self:
+        camera = self.app.isCameraLocked(self)
+
+        if camera:
             I = self.cameraLockI*2
 
             arcRectI = self.arcRect.copy()
@@ -1921,7 +1909,7 @@ class Pawn(PawnBehaviour, getStat):
             dy = self.pos.y + 50 - self.app.cameraPosDelta[1] - math.sin(self.aimAt + aPlus) * self.arcRect.height/2
             pygame.draw.line(self.app.DRAWTO, self.teamColor, self.arcRect.center, (dx,dy))
 
-        if self.app.cameraLock == self:
+        if camera:
             pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi)
 
             #cell = self.marchCells(-self.aimAt, 5)

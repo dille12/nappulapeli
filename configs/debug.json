@@ -1,14 +1,20 @@
 {
-  "AUTOPLAY": false,
+  "AUTOPLAY": true,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 0,
-  "stressTestFpsClock": 0,
-  "PEACEFUL": true,
   "gameModeLineUp": [
-    "SUDDEN DEATH"
+    "TEAM DEATHMATCH"
   ],
-  "maxWins": 5
+  "maxWins": 5,
+  "DOREALGAMEMODES": true,
+  "XPBASE": 5,
+  "MAKEDEBUGPAWNS": true,
+  "DISABLEDEBUGTEXT": false,
+  "NPC_WEAPONS_PURCHASE": false,
+  "REGISTER_WEAPON_KILLS": true,
+  "SET_SEED": null,
+  "TRAIN_TIME": 100
 }

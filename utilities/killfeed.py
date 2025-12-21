@@ -33,7 +33,12 @@ class KillFeed:
             self.gunIcon = self.gun.imageKillFeed
 
             name = self.gun.name
-            register_gun_kill(name)
+
+            if self.gun == self.killer.dualWieldWeapon:
+                name += " (SECONDARY)"
+
+            if self.app.REGISTER_WEAPON_KILLS:
+                register_gun_kill(name)
 
         assist = None
         if getattr(self.killed, "flashedBy", None):

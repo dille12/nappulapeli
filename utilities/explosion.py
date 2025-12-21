@@ -7,7 +7,7 @@ class Explosion:
         self.app = app
         self.im = self.app.explosion[0]
         self.pos = v2(pos)
-        if self.onScreen():
+        if self.app.onScreen(self.pos):
             self.app.CAMERA.vibrate(damage/10)
         self.app.playPositionalAudio(self.app.explosionSound, self.pos)
         self.app.visualEntities.append(self)
@@ -53,22 +53,6 @@ class Explosion:
     def v2ToTuple(self, p):
         return (int(p[0]), int(p[1]))
 
-
-    def onScreen(self):
-        r = pygame.Rect(self.app.cameraPosDelta, self.app.res)
-       
-        onDualScreen = False
-
-        if self.app.DUALVIEWACTIVE:
-            r2 = pygame.Rect(self.app.posToTargetTo2, self.app.res)
-            onDualScreen = r2.collidepoint(self.pos)
-        #r2.inflate_ip(self.app.res)
-
-        
-
-        if not r.collidepoint(self.pos) and not onDualScreen:
-            return False
-        return True
 
 
     def tick(self):
