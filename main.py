@@ -1735,28 +1735,10 @@ class Game(valInit):
 
         if self.CAMERA.splitI > 0:
 
-            shiftI = (1-self.CAMERA.splitI)**2
-
-            maxX = 1000 * shiftI
-
             if self.CAMERA.cameraLock and not self.CAMERA.cameraLock.killed:
                 self.CAMERA.cameraLockOrigin = self.CAMERA.cameraLock.pos.copy()
 
-            angle = self.getAngleFrom(self.CAMERA.cameraLockOrigin, self.CAMERA.cameraLockTarget) + math.pi/2
-
-            shift = v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-maxX)
-
-            raw_dist = self.CAMERA.cameraLockOrigin.distance_to(self.CAMERA.cameraLockTarget)
-            max_dist = 300 + 300 * abs(math.sin(angle))   # ensures 300–600 range
-
-            shiftAmount = min(max_dist, raw_dist) / 2
-
-            self.line1 = v2(math.cos(angle), math.sin(angle))*self.res.x + self.res/2 + shift
-            self.line2 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*self.res.x + self.res/2 + shift
-            self.line3 = v2(math.cos(angle), math.sin(angle))*self.res.x + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
-            self.line4 = v2(math.cos(angle+math.pi), math.sin(angle+math.pi))*self.res.x + self.res/2 - v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*1200 + shift
-            self.CAMERA.posToTargetTo = self.CAMERA.cameraLockOrigin + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(-shiftAmount * (1-shiftI)) - self.res/2
-            self.CAMERA.posToTargetTo2 = self.CAMERA.cameraLockTarget + v2(math.cos(angle+math.pi/2), math.sin(angle+math.pi/2))*(shiftAmount+0.7*maxX) - self.res/2
+            self.line1, self.line2, self.line3, self.line4 = self.CAMERA.update_split_positions(self.res)
 
     def splitScreen(self, screen):
         #self.screen.fill((0,0,0))
