@@ -26,11 +26,15 @@ class Turret(getStat):
         super().__init__()
         self.pos = (v2(cell) + [0.5,0.5]) * self.app.tileSize
         self.team = team
-        self.leg = self.app.turretLeg.copy()
-        self.head = self.app.turretHead.copy()
+        self.leg_base = self.app.turretLeg.copy()
+        self.head_base = self.app.turretHead.copy()
+        self.leg = self.leg_base.copy()
+        self.head = self.head_base.copy()
 
         headRGB = self.app.getTurretHead(self.team.getColor())
         self.head.blit(headRGB, (0,0))
+
+        self.rescale()
 
         team.add(self)
         self.onCameraTime = 0
@@ -199,10 +203,20 @@ class Turret(getStat):
             pass
 
     def render(self):
-        self.app.DRAWTO.blit(self.leg, self.pos - v2(self.leg.get_size())/2 - self.app.cameraPosDelta)
+        pos_leg = self.app.scale_world_pos(self.pos - v2(self.leg.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.leg, pos_leg)
 
         im = pygame.transform.rotate(self.head.copy(), -self.rotation)
-        self.app.DRAWTO.blit(im, self.pos - v2(im.get_size())/2 - self.app.cameraPosDelta)
+        pos_head = self.app.scale_world_pos(self.pos - v2(im.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(im, pos_head)
+
+    def rescale(self):
+        if self.app.RENDER_SCALE != 1:
+            self.leg = self.app.scale_surface(self.leg_base)
+            self.head = self.app.scale_surface(self.head_base)
+        else:
+            self.leg = self.leg_base.copy()
+            self.head = self.head_base.copy()
 
 
     def v2ToTuple(self, p):

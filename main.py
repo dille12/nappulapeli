@@ -181,6 +181,15 @@ class Game(valInit):
             if not name.startswith("__") and not callable(getattr(self, name))
         }
 
+    def scale_world_pos(self, pos):
+        return v2(pos) * self.RENDER_SCALE
+
+    def scale_surface(self, surface: pygame.Surface):
+        if self.RENDER_SCALE == 1:
+            return surface
+        w, h = surface.get_size()
+        return pygame.transform.smoothscale(surface, (max(1, int(w * self.RENDER_SCALE)), max(1, int(h * self.RENDER_SCALE))))
+
     def draw_notification(self, text, x, y, start_time, color=(255, 255, 255)):
         current_time = pygame.time.get_ticks() - start_time
         duration = 2500

@@ -1,29 +1,31 @@
-import pygame
 from pygame.math import Vector2 as v2
 import random
+
+
 class Explosion:
-    def __init__(self, app, pos, firer = None, damage = 125, doFire = False):
+    def __init__(self, app, pos, firer=None, damage=125, doFire=False):
         self.lifetime = 0.5
         self.app = app
-        self.im = self.app.explosion[0]
+        self.base_frames = [frame.copy() for frame in self.app.explosion]
+        self.rescale()
         self.pos = v2(pos)
         if self.app.onScreen(self.pos):
-            self.app.CAMERA.vibrate(damage/10)
+            self.app.CAMERA.vibrate(damage / 10)
         self.app.playPositionalAudio(self.app.explosionSound, self.pos)
         self.app.visualEntities.append(self)
         self.weapon = firer
 
         s = random.choice(self.app.stains)
-        pos = self.pos - v2(s.get_size())/2
+        pos = self.pos - v2(s.get_size()) / 2
         self.app.MAP.blit(s, pos)
 
-        maxDist = (1 + (damage/125)*0.05) * 500
+        maxDist = (1 + (damage / 125) * 0.05) * 500
 
         if doFire:
             cx, cy = self.getOwnCell()
             for dx in range(-3, 4):
                 for dy in range(-3, 4):
-                    if dx*dx + dy*dy <= 3*3:    # inside circle
+                    if dx * dx + dy * dy <= 3 * 3:    # inside circle
                         nx = cx + dx
                         ny = cy + dy
 
@@ -33,27 +35,22 @@ class Explosion:
                         else:
                             continue
 
-                        self.app.FireSystem.addCell(nx, ny, random.uniform(3,10), self.weapon)
-
+                        self.app.FireSystem.addCell(nx, ny, random.uniform(3, 10), self.weapon)
 
         self.damage = damage
         for x in self.app.pawnHelpList:
             if x.killed:
                 continue
-            dist = 1 - (self.pos.distance_to(x.pos)/maxDist)
+            dist = 1 - (self.pos.distance_to(x.pos) / maxDist)
             if dist > 0:
                 dam = dist * self.damage
-                x.takeDamage(dam, fromActor = self.weapon, typeD = "explosion")
-        
-        
+                x.takeDamage(dam, fromActor=self.weapon, typeD="explosion")
 
     def getOwnCell(self):
-        return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
+        return self.v2ToTuple((self.pos + [0, self.app.tileSize / 2]) / self.app.tileSize)
 
     def v2ToTuple(self, p):
         return (int(p[0]), int(p[1]))
-
-
 
     def tick(self):
 
@@ -61,15 +58,23 @@ class Explosion:
             self.app.visualEntities.remove(self)
             return
 
-        i = int(2*(0.5 - self.lifetime) * (len(self.app.explosion)-1))
+        i = int(2 * (0.5 - self.lifetime) * (len(self.frames) - 1))
 
-        i = min(i, len(self.app.explosion)-1)
+        i = min(i, len(self.frames) - 1)
 
-        self.im = self.app.explosion[i]
-        
+        self.im = self.frames[i]
+
         self.lifetime -= self.app.deltaTime
-        
 
     def render(self):
-        
-        self.app.DRAWTO.blit(self.im, self.pos - v2(self.im.get_size())/2 - self.app.cameraPosDelta)
+
+        pos = self.app.scale_world_pos(self.pos - v2(self.im.get_size()) / 2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.im, pos)
+
+    def rescale(self):
+        scale = self.app.RENDER_SCALE
+        if scale != 1:
+            self.frames = [self.app.scale_surface(frame) for frame in self.base_frames]
+        else:
+            self.frames = [frame.copy() for frame in self.base_frames]
+        self.im = self.frames[0]
