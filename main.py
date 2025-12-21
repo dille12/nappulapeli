@@ -634,11 +634,11 @@ class Game(valInit):
         
         if self.GAMEMODE == "1v1":
             self.map = ArenaGenerator(self, 50, 40)
-            self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=3)
+            self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=4)
 
         else:
             self.map = ArenaGenerator(self, 120, 80)
-            self.map.generate_arena(room_count=27, min_room_size=8, max_room_size=14, corridor_width=3)
+            self.map.generate_arena(room_count=27, min_room_size=8, max_room_size=14, corridor_width=4)
 
         self.arena = ArenaWithPathfinding(self, self.map)
 

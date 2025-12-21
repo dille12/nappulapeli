@@ -583,7 +583,7 @@ class ArenaGenerator:
             r1.addConnection(r2)
         
         for room1, room2 in connections:
-            self._carve_corridor(room1, room2, random.randint(1, width))
+            self._carve_corridor(room1, room2, random.randint(2, width))
     
     def _generate_room_connections(self) -> List[Tuple[Room, Room]]:
         """Generate connections between rooms using MST algorithm with minimum 2 connections per room."""
