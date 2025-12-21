@@ -10,12 +10,20 @@ from pygame.math import Vector2 as v2
 def ult_multiplier(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
+
+        if self.NPC:
+            result *= 0.75
+
         return result * 3 if self.ULT else result
     return wrapper
 
 def ult_division(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
+
+        if self.NPC:
+            result *= 1.25
+
         return result / 3 if self.ULT else result
     return wrapper
 

@@ -385,8 +385,15 @@ class AudioMixer:
         except Exception:
             pass
 
-    def _get_camera_center(self):
-        return self.app.AUDIOORIGIN + (self.app.res / 2)
+    def _get_camera_center(self, sourcePos):
+        minD = float("inf")
+        minPos = v2(0,0)
+        for camera in self.app.CAMERAS:
+            dist = self.app.getDistFrom(camera.pos + self.app.camRes, sourcePos)
+            if dist < minD:
+                minPos = camera.pos.copy() + self.app.camRes
+                minD = dist
+        return minPos
 
 
     def _audio_callback(self, in_data, frame_count, time_info, status):
@@ -396,7 +403,7 @@ class AudioMixer:
         # mix into this buffer
         mixed = np.zeros((frame_count, 2), dtype=np.float32)
 
-        camera_center = self._get_camera_center()
+        
 
         # iterate copy of list to avoid modification during iteration
         sources = list(self.audio_sources)
@@ -413,6 +420,7 @@ class AudioMixer:
             if getattr(source, "positional", False) and source.pos is not None:
                 # compute delta and distance (v2 supports length())
                 try:
+                    camera_center = self._get_camera_center(source.pos)
                     delta = v2(source.pos) - camera_center
                     dist = float(delta.length())
                 except Exception:

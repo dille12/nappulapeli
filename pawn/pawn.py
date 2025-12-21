@@ -260,7 +260,7 @@ class Pawn(PawnBehaviour, getStat):
         self.thinkI = random.uniform(0, self.thinkEvery)
         self.walkTo = None
         self.route = None
-        self.speed = 400
+        self.speed = 300
 
         self.gType = None
         #self.gType = random.randint(0,2)
@@ -542,38 +542,46 @@ class Pawn(PawnBehaviour, getStat):
     def getRandomItem(self):
         
         i = self.app.randomWeighted(0.1, 0.3, 0.6)
+
+        addToStock = False
+
         if i == 0: # ULT
 
-            self.shopItems.append({"name": "ULT",
+            ITEM = {"name": "ULT",
                                "price": 100,
                                "image": None,
                                "description": "Ultaa 30 sekunniksi.",
                                "backgroundColor": [155,0,0],
-                               "owned": False})
+                               "owned": False}
 
 
         elif i == 1: # GRENADE
             gtype = self.app.randomWeighted(0.4, 0.4, 0.2)
             grenade = self.grenades[gtype]
-            self.shopItems.append({"name": grenade.name,
+            ITEM = {"name": grenade.name,
                                "price": 200,
                                "image": grenade.encodedImage,
                                "description": "Kranaatti.",
                                "backgroundColor": [20,120,20],
-                               "owned": False})
+                               "owned": False}
             
 
         else: # RANDOM ITEM
             items = [item for item in self.app.items if item not in self.nextItems and item not in self.itemsInStock and item.name not in self.pastItems]
             item = random.choice(items)
-            self.shopItems.append({"name": item.name,
+            ITEM = {"name": item.name,
                                "price": int(random.randint(2,8)*25),
                                "image": None,
                                "description": item.desc,
                                "backgroundColor": [20,20,120],
-                               "owned": False})
-            
+                               "owned": False}
+            addToStock = True
+        if ITEM.name in [x["name"] for x in self.shopItems]:
+            return
+
+        if addToStock: 
             self.itemsInStock.append(item)
+        self.shopItems.append(ITEM)
 
     def purchaseItem(self, name, price):
         gnames = [x.name for x in self.grenades]
@@ -1025,7 +1033,10 @@ class Pawn(PawnBehaviour, getStat):
         return self == self.app.MANUALPAWN
 
     def gainXP(self, amount):
-        if self.app.VICTORY or self.ULT or self.BOSS:
+        if self.app.VICTORY or self.ULT or self.BOSS or self.level >= 49:
+            return
+        
+        if self.level == 49:
             return
 
         am = amount * self.itemEffects["xpMult"]

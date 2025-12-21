@@ -10,8 +10,8 @@ from core.qrcodeMaker import make_qr_surface
 from pawn.teamLogic import Team
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
-    self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600), initialValue=3)
-    self.npcTeamAmount = Dropdown(self, "NPC Teams:", ["0", "1", "2", "3", "4", "5", "6", "7", "8"], (350,600))
+    self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600), initialValue=1)
+    self.npcTeamAmount = Dropdown(self, "NPC Teams:", ["0", "1", "2", "3", "4", "5", "6", "7", "8"], (350,600), initialValue=2)
     self.teamFill = Dropdown(self, "Fill teams to:", ["1", "2", "3", "4", "5", "6", "7", "8"], (600,600), initialValue=2)
 
 
@@ -72,6 +72,7 @@ def settingsTick(self: "Game"):
 
     self.playerTeams = int(self.teamAmount.get_selected())
     self.fillTeamsTo = int(self.teamFill.get_selected())
+    self.npcTeams = int(self.npcTeamAmount.get_selected())
     self.teamsSave = self.teams
     self.TTS_ON = self.ttsToggle.get_selected() == "On"
     self.ITEM_AUTO = self.itemToggle.get_selected() == "Auto"
@@ -156,7 +157,7 @@ def settingsTick(self: "Game"):
         #t.daemon = True
         #t.start()
 
-        npcsToAdd =  self.playerTeams * self.fillTeamsTo - len(self.pawnHelpList)
+        npcsToAdd =  (self.playerTeams + self.npcTeams) * self.fillTeamsTo - len(self.pawnHelpList)
         for _ in range(npcsToAdd):
             for file_name in os.listdir("npcs/"):
                 npc_name = os.path.splitext(file_name)[0]  # filename without extension

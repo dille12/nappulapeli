@@ -779,10 +779,8 @@ class Weapon:
 
         else:
             if self.raiseWeaponWhileRunning():
-                if self.name not in ["Skull", "Glock", "USP-S", "Desert Eagle"]:
-                    r = -110 if self.owner.facingRight else -70
-                else:
-                    r = 135 if self.owner.facingRight else 45
+                r = -110 if self.owner.facingRight else -70
+
                 self.runOffset += (self.app.deltaTime * self.owner.getHandling()*2)
             else:
                 r = 135 if self.owner.facingRight else 45
@@ -869,11 +867,9 @@ class Weapon:
         # Combined recoil offset
         recoilOffset = recoilBackwardOffset + recoilUpwardOffset
 
-        if self.name not in ["Glock", "USP-S", "Skull", "Desert Eagle"]:
-            yA -= self.runOffset*50
-            runOffset = self.runOffset*30
-        else:
-            runOffset = 0
+        yA -= self.runOffset*50
+        runOffset = self.runOffset*30
+
 
 
         if right:

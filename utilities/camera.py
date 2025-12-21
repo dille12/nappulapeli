@@ -24,6 +24,8 @@ class Camera:
         self.posToTargetTo = v2(0,0)
         self.posToTargetTo2 = v2(0,0)
         self.cameraPos = v2(0, 0)
+        
+        self.DUALVIEWACTIVE = False
 
     def _lock_angle(self) -> float:
         """Return the angle from the lock origin to target.

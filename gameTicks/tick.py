@@ -39,33 +39,44 @@ def battleTick(self: "Game"):
 
     x1,y1 = self.CAMERAS[0].pos
     x2,y2 = self.CAMERAS[1].pos
-    rect1 = pygame.Rect(x1,y1, 0, 0) 
-    rect2 = pygame.Rect(x2,y2, 0, 0) 
-    rect1.inflate_ip(self.originalRes.x, self.originalRes.y)
-    rect2.inflate_ip(self.originalRes.x, self.originalRes.y)
-    if rect1.colliderect(rect2):
-        amountOfScreens = 1
+    rect1 = pygame.Rect(x1,y1, self.camRes.x, self.camRes.y) 
+    rect2 = pygame.Rect(x2,y2, self.camRes.x, self.camRes.y) 
+
+    #if rect1.colliderect(rect2):
+
+    if self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
+        self.CAMERAS[0].cameraLock.target == self.CAMERAS[1].cameraLock or
+        self.CAMERAS[1].cameraLock.target == self.CAMERAS[0].cameraLock
+    ):
+        self.amountOfScreens = 1
+
+    #elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock:
     else:
-        amountOfScreens = 2
-    amountOfScreens = 2
+        self.amountOfScreens = 2
+
+
+    #amountOfScreens = 2        
 
 
     self.res = self.originalRes.copy()
-    self.res.x /= amountOfScreens
+    self.res.x /= self.amountOfScreens
 
-    for SPLITSCREENI in range(amountOfScreens):
+    for SPLITSCREENI in range(self.amountOfScreens):
 
         self.CAMERA = self.CAMERAS[SPLITSCREENI]
 
+        _battle_handle_cameras(self)
+        _battle_update_camera_and_cleanup(self)
+
         #print("HANDLING CAMERA", self.CAMERA.cameraIndex)
 
-        _battle_handle_cameras(self)
+        #_battle_handle_cameras(self)
 
-        _battle_update_camera_and_cleanup(self)
+        #_battle_update_camera_and_cleanup(self)
 
         DUAL = _battle_compute_dual_view(self)
 
-        _battle_render_world(self, entities_temp, DUAL, SPLITSCREENI, amountOfScreens)
+        _battle_render_world(self, entities_temp, DUAL, SPLITSCREENI, self.amountOfScreens)
 
     self.res = self.originalRes.copy()
 
@@ -355,23 +366,19 @@ def _battle_post_entity_logic(self: "Game"):
 def _battle_update_camera_and_cleanup(self: "Game"):
     if self.AUTOCAMERA:
         if self.CAMERA.splitI > 0:
-            self.cameraPos = self.CAMERA.posToTargetTo.copy()
-            print("SHOULD SPLIT CORRECTLY")
-            self.dualCameraPos = self.CAMERA.posToTargetTo2.copy()
-        else:
-            self.dualCameraPos = self.CAMERA.cameraPos.copy()
+            self.CAMERA.cameraPos = self.CAMERA.posToTargetTo.copy()
+
     else:
         if "w" in self.keypress_held_down:
-            self.cameraPos.y -= 10
+            self.CAMERA.cameraPos.y -= 10
         elif "s" in self.keypress_held_down:
-            self.cameraPos.y += 10
+            self.CAMERA.cameraPos.y += 10
 
         if "a" in self.keypress_held_down:
-            self.cameraPos.x -= 10
+            self.CAMERA.cameraPos.x -= 10
         elif "d" in self.keypress_held_down:
-            self.cameraPos.x += 10
+            self.CAMERA.cameraPos.x += 10
 
-    CAMPANSPEED = 500000 * self.deltaTimeR
     # self.cameraVel[0] += self.smoothRotationFactor(self.cameraVel[0], CAMPANSPEED, self.cameraPos[0] - self.cameraPosDelta[0]) * self.deltaTimeR
     # self.cameraVel[1] += self.smoothRotationFactor(self.cameraVel[1], CAMPANSPEED, self.cameraPos[1] - self.cameraPosDelta[1]) * self.deltaTimeR
     # self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
@@ -380,7 +387,7 @@ def _battle_update_camera_and_cleanup(self: "Game"):
     self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.1)
     self.cameraPosDelta = self.CAMERA.pos.copy()
 
-    self.AUDIOORIGIN = self.CAMERAS[0].pos + self.originalRes / 2
+    self.AUDIOORIGIN = v2(500,500)
 
     self.cleanUpLevel()
 
@@ -391,7 +398,7 @@ def _battle_compute_dual_view(self: "Game"):
         if self.CAMERA.requires_dual_view():
             DUAL = True
 
-    self.DUALVIEWACTIVE = DUAL
+    self.CAMERA.DUALVIEWACTIVE = DUAL
     return DUAL
 
 
@@ -400,18 +407,28 @@ def _battle_compute_dual_view(self: "Game"):
 # --------------------------
 
 def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI = 0, amountOfScreens = 2):
+
+    if DUAL:
+        if amountOfScreens == 1:
+            DS1 = self.screenCopy1FULL
+            DS2 = self.screenCopy2FULL
+        else:
+            DS1 = self.screenCopy1
+            DS2 = self.screenCopy2
+
+
     if self.RENDERING:
         for i in range(1 if not DUAL else 2):
 
             if not DUAL:
-                if amountOfScreens == 2:
+                if amountOfScreens != 1:
                     self.DRAWTO = self.sp
                 else:
                     self.DRAWTO = self.screen
             elif i == 0:
-                self.DRAWTO = self.screenCopy1
+                self.DRAWTO = DS1
             else:
-                self.DRAWTO = self.screenCopy2
+                self.DRAWTO = DS2
 
             self.DRAWTO.fill((0, 0, 0))
 
@@ -463,12 +480,15 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
 
             splitScreen = self.screen if amountOfScreens == 1 else self.sp
 
-            self.splitScreen(splitScreen)
+            self.splitScreen(splitScreen, DS1, DS2)
     else:
         self.screen.fill((0, 0, 0))
 
-    if amountOfScreens == 2:
-        self.screen.blit(self.sp, (SPLITSCREENI * self.originalRes.x/2, 0))
+    if amountOfScreens != 1:
+        self.screen.blit(self.sp, (SPLITSCREENI * self.originalRes.x/amountOfScreens, 0))
+        rect = self.sp.get_rect()
+        rect.topleft = (SPLITSCREENI * self.originalRes.x/amountOfScreens, 0)
+        pygame.draw.rect(self.screen, self.getTeamColor(self.CAMERA.cameraIndex), rect, width = 2)
     
 
 
@@ -500,10 +520,11 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
         else:
             self.drawRoundInfoDetonation()
 
-    ox, oy = self.MINIMAPCELLSIZE * self.cameraPosDelta / (self.tileSize)
-    w, h = self.MINIMAPCELLSIZE * self.res / (self.tileSize)
+    for x in self.CAMERAS:
 
-    pygame.draw.rect(self.MINIMAPTEMP, [255, 0, 0], (ox, oy, w, h), width=1)
+        ox, oy = self.MINIMAPCELLSIZE * x.pos / (self.tileSize)
+        w, h = self.MINIMAPCELLSIZE * self.camRes / (self.tileSize)
+        pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(x.cameraIndex), (ox, oy, w, h), width=1)
 
     if self.skull:
         if self.objectiveCarriedBy:

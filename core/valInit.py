@@ -55,7 +55,9 @@ DEBUG_VARS = [
     "NPC_WEAPONS_PURCHASE",
     "REGISTER_WEAPON_KILLS",
     "SET_SEED",
-    "TRAIN_TIME"
+    "TRAIN_TIME",
+    "ENABLEGRENADES"
+    
 ]
 
 
@@ -85,6 +87,8 @@ class valInit:
         self.SET_SEED = None
         self.TRAIN_TIME = 100
 
+        self.ENABLEGRENADES = True
+
         self.maxWins = 5
 
         self.gameModeLineUp = ["TEAM DEATHMATCH", "ODDBALL", "DETONATION", "FINAL SHOWDOWN"] #["TEAM DEATHMATCH", "ODDBALL", "DETONATION", "FINAL SHOWDOWN"] # , ,  "FINAL SHOWDOWN",  #,  "TEAM DEATHMATCH", 
@@ -104,6 +108,8 @@ class valInit:
             self.res = v2(1920, 1080)
             self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
         self.originalRes = self.res.copy()
+        self.camRes = self.res.copy()
+        self.camRes.x /= 2
         self.darken = []
         d = pygame.Surface(self.res).convert_alpha()
         for x in range(20):
@@ -153,15 +159,16 @@ class valInit:
 
         self.fontName = "texture/agencyb.ttf"
 
-        self.CAMERAS = [Camera(self, (0,0)), Camera(self, (0,0))]
+        self.CAMERAS = [Camera(self, (0,0)), Camera(self, (0,0)), Camera(self, (0,0)), Camera(self, (0,0))]
         self.CAMERAS[0].mainCamera = True
 
         for x in self.CAMERAS:
             x.cameraIndex = self.CAMERAS.index(x)
 
         self.CAMERA = self.CAMERAS[0]
+        self.amountOfScreens = 1
 
-        self.ENABLEGRENADES = True
+        
 
         self.turretLeg = pygame.image.load("texture/turret_leg.png").convert_alpha()
         self.turretHead = pygame.image.load("texture/turret.png").convert_alpha()
@@ -243,7 +250,7 @@ class valInit:
 
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []
-        self.tileSize = 100
+        self.tileSize = 75
         tile_w = 70
         w, h = self.concrete.get_width(), self.concrete.get_height()
 
@@ -469,6 +476,8 @@ class valInit:
         self.screenCopy1 = pygame.Surface(self.sp.get_size(), pygame.SRCALPHA)
         self.screenCopy2 = pygame.Surface(self.sp.get_size(), pygame.SRCALPHA)
 
+        self.screenCopy1FULL = pygame.Surface(self.originalRes, pygame.SRCALPHA)
+        self.screenCopy2FULL = pygame.Surface(self.originalRes, pygame.SRCALPHA)
         
 
         self.skull = None

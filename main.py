@@ -1114,7 +1114,7 @@ class Game(valInit):
         
             onDualScreen = False
 
-            if self.DUALVIEWACTIVE:
+            if camera.DUALVIEWACTIVE:
                 r2 = pygame.Rect(camera.posToTargetTo2, self.res)
                 onDualScreen = r2.collidepoint(pos)
             #r2.inflate_ip(self.app.res)
@@ -1154,16 +1154,41 @@ class Game(valInit):
             pygame.draw.rect(self.screen, [0,0,0], x2)
 
     def reTeamPawns(self):
-        index = 0
-        
-        for pawn in self.pawnHelpList:
+        # clear teams first
+        #for t in self.allTeams:
+        #    t.clear()
+
+        #self.alwaysHostileTeam.clear()
+
+        players = []
+        npcs = []
+
+        for pawn in self.getActualPawns():
             if pawn.BOSS:
-                print("Setting", pawn.name, "to always hostile")
                 self.alwaysHostileTeam.add(pawn)
-                continue
-            #i = self.pawnHelpList.index(pawn)
-            self.allTeams[index%self.playerTeams].add(pawn)
-            index += 1
+            elif pawn.NPC:
+                npcs.append(pawn)
+            else:
+                players.append(pawn)
+
+        # --- 1. assign players to player teams ---
+        for i, pawn in enumerate(players):
+            self.allTeams[i % self.playerTeams].add(pawn)
+
+        # --- 2. fill player teams with NPCs ---
+        npc_i = 0
+        for t in range(self.playerTeams):
+            team = self.allTeams[t]
+            while len(team.pawns) < self.fillTeamsTo and npc_i < len(npcs):
+                team.add(npcs[npc_i])
+                npc_i += 1
+
+        # --- 3. remaining NPCs go to npc teams ---
+        npc_team_i = 0
+        for i in range(npc_i, len(npcs)):
+            self.allTeams[self.playerTeams + npc_team_i % self.npcTeams].add(npcs[i])
+            npc_team_i += 1
+
 
 
     def add_player(self, name, image, client):
@@ -1740,18 +1765,18 @@ class Game(valInit):
 
             self.line1, self.line2, self.line3, self.line4 = self.CAMERA.update_split_positions(self.res)
 
-    def splitScreen(self, screen):
+    def splitScreen(self, screen, DS1, DS2):
         #self.screen.fill((0,0,0))
-        screen.blit(self.screenCopy1, (0, 0))
+        screen.blit(DS1, (0, 0))
 
         self.mask.fill((0, 0, 0, 0))
         pygame.draw.polygon(self.mask, [255, 255, 255, 255], (self.line1, self.line2, self.line4, self.line3))
 
         # Masking step: use mask to zero out non-polygon areas in screenCopy2
-        self.screenCopy2.blit(self.mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        DS2.blit(self.mask, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
         # True alpha blending
-        screen.blit(self.screenCopy2, (0, 0))  # This now honors alpha channel
+        screen.blit(DS2, (0, 0))  # This now honors alpha channel
 
         pygame.draw.line(screen, [255, 255, 255], self.line1, self.line2, 3)
 
@@ -2169,8 +2194,8 @@ class Game(valInit):
 
         for x in sorted([x for x in self.pawnHelpList if x.isPawn], key = lambda p: p.kills, reverse=True):
 
-
-            t = combinedText(f"{x.name}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
+            npcAppendix = "(NPC)" if x.NPC else ""
+            t = combinedText(f"{x.name} {npcAppendix}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
             r = t.get_rect()
             r.topleft = [10,y]
             

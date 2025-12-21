@@ -1,5 +1,5 @@
 {
-  "AUTOPLAY": true,
+  "AUTOPLAY": false,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
@@ -16,5 +16,6 @@
   "NPC_WEAPONS_PURCHASE": false,
   "REGISTER_WEAPON_KILLS": true,
   "SET_SEED": null,
-  "TRAIN_TIME": 100
+  "TRAIN_TIME": 100,
+  "ENABLEGRENADES": true
 }
