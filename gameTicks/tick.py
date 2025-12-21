@@ -387,10 +387,7 @@ def _battle_update_camera_and_cleanup(self: "Game"):
 def _battle_compute_dual_view(self: "Game"):
     DUAL = False
     if self.CAMERA.splitI > 0:
-        angle = self.getAngleFrom(self.CAMERA.cameraLockOrigin, self.CAMERA.cameraLockTarget) + math.pi / 2
-        max_dist = 300 + 300 * abs(math.sin(angle))  # ensures 300–600 range
-
-        if self.CAMERA.cameraLockOrigin.distance_to(self.CAMERA.cameraLockTarget) > max_dist and self.CAMERA.cameraLock and not self.CAMERA.cameraLock.BOSS:
+        if self.CAMERA.requires_dual_view():
             DUAL = True
 
     self.DUALVIEWACTIVE = DUAL
