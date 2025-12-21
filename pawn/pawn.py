@@ -576,7 +576,7 @@ class Pawn(PawnBehaviour, getStat):
                                "backgroundColor": [20,20,120],
                                "owned": False}
             addToStock = True
-        if ITEM.name in [x["name"] for x in self.shopItems]:
+        if ITEM["name"] in [x["name"] for x in self.shopItems]:
             return
 
         if addToStock: 
