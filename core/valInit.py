@@ -140,6 +140,7 @@ class valInit:
             "SUDDEN DEATH": "Pelaajilla on kaksinkertaiset HP:t ja vain yksi elämä. Viimeinen joukkue eloonjääneenä voittaa."
         }
 
+        self.RENDER_SCALE = 1
         self.SCALE = 1
 
         self.teams = 2

@@ -7,6 +7,7 @@ class ThickLaser:
         self.width = width
         self.active = False
         self.app = app
+        self.rescale()
 
         self.soundStart = pygame.mixer.Sound("audio/minigun1.wav")
         self.soundEnd = pygame.mixer.Sound("audio/minigun2.wav")
@@ -15,6 +16,9 @@ class ThickLaser:
         
         # Random variation seed (changes each laser activation)
         self.color_seed = 0
+
+    def rescale(self):
+        self.scaled_width = self.width * (self.app.RENDER_SCALE if self.app else 1)
         
     def activate(self):
         """Activate the laser (continuous beam)"""
@@ -30,6 +34,11 @@ class ThickLaser:
     
     def draw(self, screen, start_pos, end_pos, color, sizeMod=5):
         """Draw the thick multi-line laser beam"""
+
+        scale = self.app.RENDER_SCALE if self.app else 1
+        if self.app:
+            start_pos = self.app.scale_world_pos(start_pos)
+            end_pos = self.app.scale_world_pos(end_pos)
         
         # Create temporary surface for all laser lines
         #temp_surface = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
@@ -50,9 +59,9 @@ class ThickLaser:
         
         # Draw multiple layers for thickness
         layers = [
-            {"count": int(20), "thickness": 4, "spacing": 1},
-            {"count": int(10), "thickness": 4, "spacing": 2.2},
-            {"count": int(10), "thickness": 5, "spacing": 3.5}
+            {"count": int(20), "thickness": max(1, int(4 * scale)), "spacing": 1 * scale},
+            {"count": int(10), "thickness": max(1, int(4 * scale)), "spacing": 2.2 * scale},
+            {"count": int(10), "thickness": max(1, int(5 * scale)), "spacing": 3.5 * scale}
         ]
         
         
