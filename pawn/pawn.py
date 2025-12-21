@@ -568,6 +568,7 @@ class Pawn(PawnBehaviour, getStat):
 
         else: # RANDOM ITEM
             items = [item for item in self.app.items if item not in self.nextItems and item not in self.itemsInStock and item.name not in self.pastItems]
+            if not items: return
             item = random.choice(items)
             ITEM = {"name": item.name,
                                "price": int(random.randint(2,8)*25),
@@ -576,6 +577,7 @@ class Pawn(PawnBehaviour, getStat):
                                "backgroundColor": [20,20,120],
                                "owned": False}
             addToStock = True
+
         if ITEM["name"] in [x["name"] for x in self.shopItems]:
             return
 

@@ -42,12 +42,12 @@ def battleTick(self: "Game"):
     rect1 = pygame.Rect(x1,y1, self.camRes.x, self.camRes.y) 
     rect2 = pygame.Rect(x2,y2, self.camRes.x, self.camRes.y) 
 
-    #if rect1.colliderect(rect2):
-
-    if self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
+    CAMERASCOLLIDE = rect1.colliderect(rect2) and False
+    VERSUS = self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
         self.CAMERAS[0].cameraLock.target == self.CAMERAS[1].cameraLock or
-        self.CAMERAS[1].cameraLock.target == self.CAMERAS[0].cameraLock
-    ):
+        self.CAMERAS[1].cameraLock.target == self.CAMERAS[0].cameraLock)
+
+    if CAMERASCOLLIDE or VERSUS:
         self.amountOfScreens = 1
 
     #elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock:

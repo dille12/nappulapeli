@@ -1,20 +1,20 @@
-BFG 2621
-Rocket Launcher 2375
-Sniper 1981
-Desert Eagle 1918
-Machine Gun 1875
-E-BR 1757
-EMG 1669
-FAMAS 1664
-SMG 1580
-Glock (SECONDARY) 1391
-AK-47 1368
-USP-S 1352
-Shotgun 1164
-Glock 988
-Skull 95
+BFG 2713
+Rocket Launcher 2420
+Sniper 1990
+Desert Eagle 1938
+Machine Gun 1892
+E-BR 1762
+EMG 1685
+FAMAS 1683
+SMG 1596
+Glock (SECONDARY) 1396
+AK-47 1390
+USP-S 1369
+Shotgun 1176
+Glock 990
+TURRET 122
+Skull 96
 BABLON AK-47 78
 BABLON AK-47 (SECONDARY) 59
-TURRET 46
-Frag Grenade 10
+Frag Grenade 50
 Flashbang 2

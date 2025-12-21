@@ -97,7 +97,8 @@ class Grenade:
             self.createTurret()
 
         if self.isNadeFilmed():
-            self.app.cameraLinger = 0.5
+            camera = self.app.isCameraLocked(self.owner)
+            camera.cameraLinger = 0.5
 
         if self.owner.currentlyAliveNade == self:
             self.owner.currentlyAliveNade = None
@@ -209,7 +210,7 @@ class Grenade:
 
 
     def isNadeFilmed(self):
-        return self.owner == self.app.cameraLock and not self.owner.target and self == self.owner.currentlyAliveNade
+        return self.app.isCameraLocked(self.owner) and not self.owner.target and self == self.owner.currentlyAliveNade
     
 
 def angle_diff(a, b):

@@ -931,13 +931,13 @@ class Game(valInit):
 
         elif self.GAMEMODE == "DETONATION":
             for x in self.allTeams:
-                x.detonationTeam = x.i < len(self.allTeams)/2
+                x.detonationTeam = not bool(x.i % 2)
             
                 for y in self.allTeams:
                     if y == x:
                         continue
                     
-                    if (y.i < len(self.allTeams)/2) == x.detonationTeam:
+                    if not bool(y.i%2) == x.detonationTeam:
                         x.allied.append(y)
                         print(x.i, "allied with", y.i)
 
@@ -2116,6 +2116,7 @@ class Game(valInit):
                 continue
             w = random.choice(self.weapons)
             w.give(x)
+            x.gType = random.randint(0,2)
 
     def tickScoreBoard(self):
         y = 200
