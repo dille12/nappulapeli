@@ -47,9 +47,10 @@ class Bullet:
         self.app.ENTITIES.append(self)
         self.lifetime = 2
         if type == "normal":
-            self.bOrig = self.app.bulletSprite.copy()
+            self.baseSprite = self.app.bulletSprite.copy()
         else:
-            self.bOrig = self.app.energySprite.copy()
+            self.baseSprite = self.app.energySprite.copy()
+        self.bOrig = self.baseSprite.copy()
         self.b = pygame.transform.rotate(self.bOrig, -math.degrees(self.angle))
         self.rocket = rocket
         self.type = type
@@ -57,6 +58,8 @@ class Bullet:
         self.piercing = piercing
         self.homing = homing
         self.target = None
+
+        self.rescale()
         
         self.turnRate = 3.0  # radians per second
         self.targetRefreshTimer = 0
@@ -233,7 +236,16 @@ class Bullet:
 
     def render(self):
         if self.ONSCREEN:
-            self.app.DRAWTO.blit(self.b, self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)
+            pos = self.app.scale_world_pos(self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(self.b, pos)
+
+    def rescale(self):
+        scale = self.app.RENDER_SCALE
+        if scale != 1:
+            self.bOrig = self.app.scale_surface(self.baseSprite)
+        else:
+            self.bOrig = self.baseSprite.copy()
+        self.b = pygame.transform.rotate(self.bOrig, -math.degrees(self.angle))
 
 def raycast_grid(pos, direction, max_dist, grid, tile_size):
     x0, y0 = pos.x / tile_size, pos.y / tile_size
