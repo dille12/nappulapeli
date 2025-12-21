@@ -356,6 +356,7 @@ def _battle_update_camera_and_cleanup(self: "Game"):
     if self.AUTOCAMERA:
         if self.CAMERA.splitI > 0:
             self.cameraPos = self.CAMERA.posToTargetTo.copy()
+            print("SHOULD SPLIT CORRECTLY")
             self.dualCameraPos = self.CAMERA.posToTargetTo2.copy()
         else:
             self.dualCameraPos = self.CAMERA.cameraPos.copy()

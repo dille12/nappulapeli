@@ -1867,11 +1867,16 @@ class Pawn(PawnBehaviour, getStat):
 
     def render(self):
 
+        #self.ONSCREEN = self.app.onScreen(self.pos)
+
         if self.killed:
             return
         
         if not self.ONSCREEN:
             return
+        
+        #if not hasattr(self, "breathIm"):
+        #    return
         
 
         #L = 200

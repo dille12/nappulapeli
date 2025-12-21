@@ -9,7 +9,7 @@
     "TEAM DEATHMATCH"
   ],
   "maxWins": 5,
-  "DOREALGAMEMODES": true,
+  "DOREALGAMEMODES": false,
   "XPBASE": 5,
   "MAKEDEBUGPAWNS": true,
   "DISABLEDEBUGTEXT": false,
