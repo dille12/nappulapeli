@@ -420,7 +420,7 @@ def _battle_update_camera_and_cleanup(self: "Game"):
     # self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
     # self.cameraPosDelta += self.cameraVel * self.deltaTimeR
 
-    self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.3)
+    self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.2)
     self.cameraPosDelta = self.CAMERA.pos.copy()
 
     self.AUDIOORIGIN = v2(500,500)
@@ -506,8 +506,8 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
 
             self.particle_system.render_all(self.DRAWTO)
 
-            for x in self.debugCells:
-                self.highLightCell(x)
+            #for x in self.debugCells:
+            #    self.highLightCell(x)
 
             if DUAL and i == 1:
                 self.cameraPosDelta = SAVECAMPOS.copy()
@@ -574,53 +574,55 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
 
         pygame.draw.circle(self.MINIMAPTEMP, [255, 255, 255], self.MINIMAPCELLSIZE * skullpos / self.tileSize, 6, width=1)
 
-    MINIMAP_POS = self.res - self.MINIMAP.get_size() - [10, 10]
+    MINIMAP_POS = v2(self.originalRes.x/2 - self.MINIMAP.get_width()/2, self.originalRes.y - self.MINIMAP.get_height() - 10)
+    if not self.VICTORY:
+        self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
 
-    self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
+        w = self.MINIMAP.get_width()
+        h = 40
+        w_r = w / len(self.allTeams)
+        x = 0
 
-    w = self.MINIMAP.get_width()
-    h = 40
-    w_r = w / len(self.allTeams)
-    x = 0
+        for team in self.allTeams:
+            rect1 = pygame.Rect(MINIMAP_POS + [x, -h], [w_r, h])
 
-    for team in self.allTeams:
-        rect1 = pygame.Rect(MINIMAP_POS + [x, -h], [w_r, h])
+            pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.2), rect1)
 
-        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.2), rect1)
+            rect2 = rect1.copy()
+            rect2.height = (team.wins / self.maxWins) * h
+            rect2.bottom = rect1.bottom
+            pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.5), rect2)
 
-        rect2 = rect1.copy()
-        rect2.height = (team.wins / self.maxWins) * h
-        rect2.bottom = rect1.bottom
-        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 0.5), rect2)
+            pygame.draw.rect(self.screen, self.getTeamColor(team.i, 1), rect1, width=2)
 
-        pygame.draw.rect(self.screen, self.getTeamColor(team.i, 1), rect1, width=2)
+            x += w_r
 
-        x += w_r
+            center = rect1.center
+            t = self.font.render(f"{team.wins}", True, [255, 255, 255])
+            self.screen.blit(t, v2(center) - v2(t.get_size()) / 2)
 
-        center = rect1.center
-        t = self.font.render(f"{team.wins}", True, [255, 255, 255])
-        self.screen.blit(t, v2(center) - v2(t.get_size()) / 2)
+            if self.winningTeam != None and team == self.winningTeam:
+                crown_width = w_r * 0.6
+                crown_height = h * 0.6
+                crown_top = rect1.top - crown_height * 0.8
+                crown_center_x = rect1.centerx
 
-        if self.winningTeam != None and team == self.winningTeam:
-            crown_width = w_r * 0.6
-            crown_height = h * 0.6
-            crown_top = rect1.top - crown_height * 0.8
-            crown_center_x = rect1.centerx
-
-            points = [
-                (crown_center_x - crown_width / 2, rect1.top),  # bottom-left
-                (crown_center_x - crown_width / 2 - 5, crown_top),  # left spike
-                (crown_center_x - crown_width / 5, crown_top + crown_height * 0.33),
-                (crown_center_x, crown_top - crown_height * 0.5),  # middle spike
-                (crown_center_x + crown_width / 5, crown_top + crown_height * 0.33),
-                (crown_center_x + crown_width / 2 + 5, crown_top),  # right spike
-                (crown_center_x + crown_width / 2, rect1.top)  # bottom-right
-            ]
-            pygame.draw.polygon(self.screen, (255, 255, 0), points)
-            pygame.draw.polygon(self.screen, (200, 200, 0), points, width=2)  # outline
+                points = [
+                    (crown_center_x - crown_width / 2, rect1.top),  # bottom-left
+                    (crown_center_x - crown_width / 2 - 5, crown_top),  # left spike
+                    (crown_center_x - crown_width / 5, crown_top + crown_height * 0.33),
+                    (crown_center_x, crown_top - crown_height * 0.5),  # middle spike
+                    (crown_center_x + crown_width / 5, crown_top + crown_height * 0.33),
+                    (crown_center_x + crown_width / 2 + 5, crown_top),  # right spike
+                    (crown_center_x + crown_width / 2, rect1.top)  # bottom-right
+                ]
+                pygame.draw.polygon(self.screen, (255, 255, 0), points)
+                pygame.draw.polygon(self.screen, (200, 200, 0), points, width=2)  # outline
 
     if self.RENDERING:
-        self.handleHud()
+        for i in range(2):
+            camera = self.CAMERAS[i]
+            self.handleHud(camera, i)
 
     if self.pendingLevelUp and not self.VICTORY:
         self.levelUpScreen()

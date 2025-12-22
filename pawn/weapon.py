@@ -228,7 +228,7 @@ class Weapon:
         self.FINALROTATION = 0
         self.ROTATION = 0
         self.ROTATIONVEL = 0
-        self.barrelOffset = v2(75, 0) * sizeMult
+        self.barrelOffset = v2(75, 0) * sizeMult * 1.5
 
 
         self.grenadeThrowI = 0

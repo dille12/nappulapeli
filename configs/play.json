@@ -4,7 +4,7 @@
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
-  "midRoundTime": 30,
+  "midRoundTime": 0,
   "gameModeLineUp": [
     "TEAM DEATHMATCH",
     "ODDBALL",
@@ -19,8 +19,9 @@
   "DISABLEDEBUGTEXT": true,
   "NPC_WEAPONS_PURCHASE": true,
   "REGISTER_WEAPON_KILLS": false,
-  "SET_SEED": 1834414721,
+  "SET_SEED": null,
   "TRAIN_TIME": 100,
   "ENABLEGRENADES": true,
-  "RENDER_SCALE": 0.7
+  "RENDER_SCALE": 0.7,
+  "QUALITY_PRESET": 1
 }

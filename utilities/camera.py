@@ -2,6 +2,7 @@ import pygame
 from pygame.math import Vector2 as v2
 import random
 import math
+from collections import deque
 
 class Camera:
     def __init__(self, app, pos):
@@ -26,6 +27,39 @@ class Camera:
         self.cameraPos = v2(0, 0)
         
         self.DUALVIEWACTIVE = False
+        self.currHud = None
+        self.hudChange = 0
+
+        self.ekg_time = 0.0
+        self.ekg_accum = 0.0
+        self.ekg_points = deque(maxlen=100)
+        self.heartRateEKG = 1.2
+
+    def updateEKG(self):
+        self.ekg_time += self.app.deltaTime
+        self.ekg_accum += self.app.deltaTime
+        # Sampling interval = 0.00625
+        while self.ekg_accum >= 0.005:
+            self.ekg_accum -= 0.005
+
+            t = self.ekg_time
+            if self.heartRateEKG == 0:
+                phase = 0.5
+            else:
+                phase = (t * self.heartRateEKG) % 1.0
+
+            if phase < 0.03:
+                y = 5.0 * phase / 0.03
+            elif phase < 0.06:
+                y = 5.0 * (1.0 - (phase - 0.03) / 0.03)
+            elif phase < 0.2:
+                y = -0.15 * math.sin((phase - 0.06) * math.pi / 0.14)
+            else:
+                y = 0.02 * math.sin((phase - 0.2) * 2.0 * math.pi / 0.8)
+
+            self.ekg_points.append(y)
+
+        return list(self.ekg_points)
 
     def _lock_angle(self) -> float:
         """Return the angle from the lock origin to target.

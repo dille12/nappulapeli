@@ -232,6 +232,8 @@ class Pawn(PawnBehaviour, getStat):
         #pygame.draw.circle(self.imagePawn, [255,0,0], self.right_eye_center*100, 5)
 
         self.hudImage = pygame.transform.scale_by(self.levelUpImage.copy(), 200 / self.levelUpImage.get_size()[1])
+        self.hudImageFlipped = pygame.transform.flip(self.hudImage, True, False)
+
 
 
         enc = pygame.transform.scale_by(self.hudImage, 40 / self.hudImage.get_size()[1])
@@ -1302,24 +1304,34 @@ class Pawn(PawnBehaviour, getStat):
 
         return info_lines
 
-    def hudInfo(self, pos, screen = None):
+    def hudInfo(self, pos, screen=None, reverse=False):
         font = self.app.fontSmallest
         x, y = pos
-        line_height = 12
+        line_height = 14
         info_lines = self.fetchInfo(addItems=False)
         if not info_lines:
             return
+
         surfs = []
-        for l in info_lines:
-            line, c = l
-            text_surf = font.render(line, True, c)
-            surfs.append(text_surf)
-        separation = max(surf.get_width() for surf in surfs) + 5
+        for line, c in info_lines:
+            surfs.append(font.render(line, True, c))
+
+        separation = max(s.get_width() for s in surfs) + 5
 
         for i, surf in enumerate(surfs):
-            yOff = line_height*(i%18)
-            xOff = separation*(i//18)
-            screen.blit(surf, (x+xOff, y+yOff))
+            row = i % 14
+            col = i // 14
+
+            yOff = line_height * row
+
+            if not reverse:
+                xOff = separation * col
+                draw_x = x + xOff
+            else:
+                xOff = separation * col
+                draw_x = x - xOff - surf.get_width()
+
+            screen.blit(surf, (draw_x, y + yOff))
 
 
     def renderInfo(self):
@@ -1922,7 +1934,7 @@ class Pawn(PawnBehaviour, getStat):
 
         self.arcRect = pygame.Rect(BASEPOS.x, BASEPOS.y + 50*RS, 0, 0)
 
-        imwidth = self.imagePawn.get_width() * 1.2
+        imwidth = 100 * self.app.RENDER_SCALE
 
         self.arcRect.inflate_ip(imwidth, imwidth/2)
 
@@ -1934,15 +1946,17 @@ class Pawn(PawnBehaviour, getStat):
             arcRectI = self.arcRect.copy()
             arcRectI.inflate_ip(imwidth*I, imwidth/2*I)
 
-        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, 2*math.pi)
+        pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, 2*math.pi, width=4)
 
         for aPlus in [-math.pi/3, math.pi/3]:
-            dx = BASEPOS.x + math.cos(self.aimAt + aPlus) * self.arcRect.width/2
-            dy = BASEPOS.y - math.sin(self.aimAt + aPlus) * self.arcRect.height/2
-            pygame.draw.line(self.app.DRAWTO, self.teamColor, self.arcRect.center, (dx,dy))
+            dx = self.arcRect.center[0] + math.cos(self.aimAt + aPlus) * self.arcRect.width/2
+            dy = self.arcRect.center[1] - math.sin(self.aimAt + aPlus) * self.arcRect.height/2
+            pygame.draw.line(self.app.DRAWTO, self.teamColor, self.arcRect.center, (dx,dy), width=2)
+            #pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, self.aimAt + aPlus, self.aimAt - aPlus, 5)
+            
 
         if camera:
-            pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi)
+            pygame.draw.arc(self.app.DRAWTO, self.teamColor, arcRectI, 0, 2*math.pi, width=2)
 
             #cell = self.marchCells(-self.aimAt, 5)
             #self.app.highLightCell(cell)

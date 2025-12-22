@@ -8,7 +8,11 @@ from pygame.math import Vector2 as v2
 class Button:
     def __init__(self, app: "Game", pos, size):
         self.app = app
-        self.rect = pygame.Rect(pos, size)
+        self.rect = pygame.Rect((pos[0]*self.app.RENDER_SCALE,
+                                      pos[1]*self.app.RENDER_SCALE), 
+                                      (size[0]*self.app.RENDER_SCALE,
+                                      size[1]*self.app.RENDER_SCALE))
+        
         self.a = False
         self.weaponPos = v2(0,0)
 

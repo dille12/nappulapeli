@@ -722,9 +722,7 @@ class Game(valInit):
         self.killgrid = np.zeros(self.map.grid.shape, dtype=np.uint32)
 
         
-        
         self.SITES = []
-
 
 
         if self.GAMEMODE == "DETONATION":
@@ -1042,10 +1040,9 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST:
+        if self.STRESSTEST or True:
             for x in self.getActualPawns():
                 if x.BOSS: continue
-                print("Releveling", x.name)
                 x.reLevelPawn(10)
         
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
@@ -1054,6 +1051,9 @@ class Game(valInit):
             time.sleep(max(0, 5 - (time.time() - self.now)))
 
         self.resetRoundInfo()
+
+        for x in self.CAMERAS:
+            x.pos = self.teamSpawnRooms[x.cameraIndex].center()
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -1830,6 +1830,10 @@ class Game(valInit):
     def bombPlanted(self):
         return self.GAMEMODE == "DETONATION" and self.skull and self.skull.planted
     
+    def skip(self):
+        self.shopTimer = 0
+        self.roundTime = 0
+    
     def drawAwards(self, endGameI):
         awards = [
             ("MVP", self.MVP),
@@ -1840,7 +1844,7 @@ class Game(valInit):
         w, h = self.res
         n = len(awards)
         spacing = w // (n + 1)
-        cy = h // 2 + endGameI**2 * 900 - 50
+        cy = h // 2 + endGameI**2 * 900 + 100
 
         for i, (label, pawn) in enumerate(awards):
             cx = spacing * (i + 1)
@@ -2074,45 +2078,46 @@ class Game(valInit):
 
 
 
-    def handleHud(self):
-        if self.currHud == self.CAMERA.cameraLock and self.currHud and not self.VICTORY:
-            self.hudChange += self.deltaTimeR
-            self.hudChange = min(1, self.hudChange)
+    def handleHud(self, CAMERA: Camera, index = 0):
+        if CAMERA.currHud == CAMERA.cameraLock and CAMERA.currHud and not self.VICTORY:
+            CAMERA.hudChange += self.deltaTimeR * 2
+            CAMERA.hudChange = min(1, CAMERA.hudChange)
 
         else:
-            self.hudChange -= self.deltaTimeR
-            self.hudChange = max(0, self.hudChange)
-            if self.hudChange == 0:
-                self.currHud = None
+            CAMERA.hudChange -= self.deltaTimeR * 2
+            CAMERA.hudChange = max(0, CAMERA.hudChange)
+            if CAMERA.hudChange == 0:
+                CAMERA.currHud = None
 
-                self.ekg_time = 0.0
-                self.ekg_accum = 0.0
-                self.ekg_points.clear()
+                CAMERA.ekg_time = 0.0
+                CAMERA.ekg_accum = 0.0
+                CAMERA.ekg_points.clear()
 
-                if not self.currHud and self.CAMERA.cameraLock:
-                    self.currHud = self.CAMERA.cameraLock
+                if not CAMERA.currHud and CAMERA.cameraLock:
+                    CAMERA.currHud = CAMERA.cameraLock
 
-        if self.hudChange > 0 and self.currHud:
+        if CAMERA.hudChange > 0 and CAMERA.currHud:
             
+            currHud: "Pawn" = CAMERA.currHud
             
-            health = self.currHud.health / self.currHud.getHealthCap()
+            health = currHud.health / currHud.getHealthCap()
             health = min(1, max(health, 0))
 
-            if self.currHud.killed:
+            if currHud.killed:
                 health = 0
 
             if health != 0:
-                self.heartRateEKG = 1.2 + (5 * (1-health))
+                CAMERA.heartRateEKG = 1.2 + (5 * (1-health))
             else:
-                self.heartRateEKG = 0
+                CAMERA.heartRateEKG = 0
 
-            EKG = self.updateEKG()
+            EKG = CAMERA.updateEKG()
 
-            yPos = self.res[1] - 220*(1-(1-self.hudChange)**2)
+            yPos = self.res[1] - 220*(1-(1-CAMERA.hudChange)**2)
             surf = pygame.Surface((200,200))
-            c = self.getTeamColor(self.currHud.team.i)
+            c = self.getTeamColor(currHud.team.i)
             surf.fill((c[0]*0.2, c[1]*0.2, c[2]*0.2))
-            surf.blit(self.currHud.hudImage, v2(100,100) - v2(self.currHud.hudImage.get_size())/2)
+            surf.blit(currHud.hudImage if index == 1 else currHud.hudImageFlipped, v2(100,100) - v2(currHud.hudImage.get_size())/2)
             surf.blit(random.choice(self.noise), (0,0))
             pygame.draw.rect(surf, c, (0,0,200,200), width=1)
 
@@ -2135,53 +2140,31 @@ class Game(valInit):
             pygame.draw.rect(surf2, color2, (0,0,180,40), width=2)
 
             if health != 0:
-                t = self.font.render(f"+{int(self.currHud.health)}", True, color2)
+                t = self.font.render(f"+{int(currHud.health)}", True, color2)
             else:
                 t = self.font.render(f"DEAD", True, color2)
             surf2.blit(t, (5, 20-t.get_height()/2))
 
+            
             surf.blit(surf2, [10, 155])
-
-            self.screen.blit(surf, [20, yPos])
-
-
-
 
             c2 = [255,255,255]
 
-            t1 = self.font.render(self.currHud.name, True, c2)
-            self.screen.blit(t1, (230, yPos))
-            p = self.currHud
-            if p.weapon.isReloading():
-                i1 = p.weapon.currReload
-                i2 = p.weapon.getReloadTime()
-                procent = int(100*(1 - i1/i2))
-                t1 = self.font.render(f"RELOADING: {procent}%", True, c2)
-                self.screen.blit(t1, (230, yPos+35))
+            t1 = self.font.render(currHud.name, True, c2)
+            
+
+            if index == 0:
+                surf.blit(t1, (5, 5))
+                self.screen.blit(surf, [20, yPos])
+                hudInfoPos = (240, yPos)
             else:
-                t1 = self.font.render(f"Bullets: {p.currWeapon.magazine}/{p.getMaxCapacity(p.currWeapon)}", True, c2)
-                self.screen.blit(t1, (230, yPos+35))
+                surf.blit(t1, (surf.get_width() - t1.get_width() - 5, 5))
+                self.screen.blit(surf, [self.originalRes.x - surf.get_width() - 20, yPos])
+                hudInfoPos = (self.originalRes.x - surf.get_width() - 25, yPos)
 
-            t1 = self.font.render(f"KILLS: {p.kills} DEATHS: {p.deaths} (KD:{p.kills/max(1, p.deaths):.1f})", True, c2)
-            self.screen.blit(t1, (230, yPos+70))
+            p = currHud
 
-
-            xpTillnextLevel = self.levelUps[p.level-1] - p.xp
-
-            t1 = self.font.render(f"XP: {p.xp:.1f} Remaining: {xpTillnextLevel:.1f}", True, c2)
-            self.screen.blit(t1, (230, yPos+105))
-    
-            if p.gType != None:
-                gtype = p.grenades[p.gType].name 
-                if p.grenadeAmount != 1:
-                    gtype += "s"
-                t1 = self.font.render(f"Utility: {p.grenadeAmount} {gtype}", True, c2)
-                self.screen.blit(t1, (230, yPos+140))
-
-            t1 = self.font.render(f"STATUS: {p.STATUS}", True, c2)
-            self.screen.blit(t1, (230, yPos+175))
-
-            p.hudInfo((560, yPos), screen=self.screen)
+            p.hudInfo(hudInfoPos, screen=self.screen, reverse = bool(index))
 
             
 
@@ -2487,31 +2470,7 @@ class Game(valInit):
         self.levelUpIndex = random.randint(0,2)
 
 
-    def updateEKG(self):
-        self.ekg_time += self.deltaTime
-        self.ekg_accum += self.deltaTime
-        # Sampling interval = 0.00625
-        while self.ekg_accum >= 0.005:
-            self.ekg_accum -= 0.005
-
-            t = self.ekg_time
-            if self.heartRateEKG == 0:
-                phase = 0.5
-            else:
-                phase = (t * self.heartRateEKG) % 1.0
-
-            if phase < 0.03:
-                y = 5.0 * phase / 0.03
-            elif phase < 0.06:
-                y = 5.0 * (1.0 - (phase - 0.03) / 0.03)
-            elif phase < 0.2:
-                y = -0.15 * math.sin((phase - 0.06) * math.pi / 0.14)
-            else:
-                y = 0.02 * math.sin((phase - 0.2) * 2.0 * math.pi / 0.8)
-
-            self.ekg_points.append(y)
-
-        return list(self.ekg_points)
+    
 
 
 
