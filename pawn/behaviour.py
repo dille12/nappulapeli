@@ -475,6 +475,9 @@ class PawnBehaviour:
 
         for WEAPON in l:
 
+            if WEAPON.fireTick > 0:
+                WEAPON.fireTick -= self.app.deltaTime
+
             if WEAPON.weaponIsGrenade or self.flashed > 0:
                 #print("Forcing tick")
                 WEAPON.fireFunction(WEAPON)

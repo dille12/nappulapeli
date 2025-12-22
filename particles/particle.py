@@ -3,7 +3,7 @@ import math
 import random
 from enum import Enum
 from typing import Tuple, List, Callable, Optional, Union
-
+from pygame.math import Vector2 as v2
 
 class BlendMode(Enum):
     NORMAL = pygame.BLEND_ALPHA_SDL2
@@ -166,6 +166,12 @@ class Particle:
             self.trail_positions.append((self.x, self.y))
             if len(self.trail_positions) > self.trail_length:
                 self.trail_positions.pop(0)
+
+    def _screen_pos(self):
+        return self.app.convertPos(v2(self.x, self.y))
+
+    def _scaled(self, v):
+        return v * self.app.RENDER_SCALE
     
     def _apply_bounds(self):
         """Apply boundary constraints with bouncing."""
@@ -256,183 +262,167 @@ class Particle:
             self.custom_update_func(self)
     
     def _render_circle(self, surface: pygame.Surface):
-        """Render particle as a circle."""
         if self.current_size <= 0:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        pos = (int(screen_x), int(screen_y)) if not self.use_subpixel else (screen_x, screen_y)
-        
-        # Create a temporary surface for blending
-        temp_surface = pygame.Surface((int(self.current_size * 2 + 2), int(self.current_size * 2 + 2)), pygame.SRCALPHA)
-        pygame.draw.circle(temp_surface, self.current_color, 
-                         (int(self.current_size + 1), int(self.current_size + 1)), 
-                         int(self.current_size))
-        
-        surface.blit(temp_surface, (pos[0] - self.current_size - 1, pos[1] - self.current_size - 1), 
-                    special_flags=self.blend_mode.value)
+
+        sx, sy = self._screen_pos()
+        r = int(self._scaled(self.current_size))
+        d = r * 2
+
+        temp = pygame.Surface((d + 2, d + 2), pygame.SRCALPHA)
+        pygame.draw.circle(temp, self.current_color, (r + 1, r + 1), r)
+
+        surface.blit(
+            temp,
+            (int(sx - r - 1), int(sy - r - 1)),
+            special_flags=self.blend_mode.value
+        )
+
     
     def _render_square(self, surface: pygame.Surface):
-        """Render particle as a square."""
         if self.current_size <= 0:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        size = int(self.current_size * 2)
-        rect = pygame.Rect(int(screen_x - self.current_size), int(screen_y - self.current_size), size, size)
-        
-        temp_surface = pygame.Surface((size, size), pygame.SRCALPHA)
-        temp_surface.fill(self.current_color)
-        
+
+        sx, sy = self._screen_pos()
+        size = int(self._scaled(self.current_size * 2))
+
+        temp = pygame.Surface((size, size), pygame.SRCALPHA)
+        temp.fill(self.current_color)
+
         if self.rotation != 0:
-            temp_surface = pygame.transform.rotate(temp_surface, math.degrees(self.rotation))
-            new_rect = temp_surface.get_rect(center=(screen_x, screen_y))
-            surface.blit(temp_surface, new_rect, special_flags=self.blend_mode.value)
+            temp = pygame.transform.rotate(temp, math.degrees(self.rotation))
+            rect = temp.get_rect(center=(int(sx), int(sy)))
         else:
-            surface.blit(temp_surface, rect, special_flags=self.blend_mode.value)
+            rect = temp.get_rect(topleft=(int(sx - size / 2), int(sy - size / 2)))
+
+        surface.blit(temp, rect, special_flags=self.blend_mode.value)
     
     def _render_triangle(self, surface: pygame.Surface):
-        """Render particle as a triangle."""
         if self.current_size <= 0:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        # Calculate triangle points
-        angle1 = self.rotation
-        angle2 = self.rotation + 2 * math.pi / 3
-        angle3 = self.rotation + 4 * math.pi / 3
-        
-        points = [
-            (screen_x + self.current_size * math.cos(angle1),
-             screen_y + self.current_size * math.sin(angle1)),
-            (screen_x + self.current_size * math.cos(angle2),
-             screen_y + self.current_size * math.sin(angle2)),
-            (screen_x + self.current_size * math.cos(angle3),
-             screen_y + self.current_size * math.sin(angle3))
+
+        sx, sy = self._screen_pos()
+        r = self._scaled(self.current_size)
+
+        angles = [0, 2 * math.pi / 3, 4 * math.pi / 3]
+        pts = [
+            (sx + r * math.cos(self.rotation + a),
+            sy + r * math.sin(self.rotation + a))
+            for a in angles
         ]
-        
-        # Create temporary surface
-        bounds = [min(p[0] for p in points), min(p[1] for p in points),
-                 max(p[0] for p in points), max(p[1] for p in points)]
-        size = (int(bounds[2] - bounds[0] + 2), int(bounds[3] - bounds[1] + 2))
-        
-        temp_surface = pygame.Surface(size, pygame.SRCALPHA)
-        offset_points = [(p[0] - bounds[0], p[1] - bounds[1]) for p in points]
-        pygame.draw.polygon(temp_surface, self.current_color, offset_points)
-        
-        surface.blit(temp_surface, (bounds[0], bounds[1]), special_flags=self.blend_mode.value)
+
+        minx = min(p[0] for p in pts)
+        miny = min(p[1] for p in pts)
+        maxx = max(p[0] for p in pts)
+        maxy = max(p[1] for p in pts)
+
+        w = int(maxx - minx + 2)
+        h = int(maxy - miny + 2)
+
+        temp = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.polygon(
+            temp,
+            self.current_color,
+            [(p[0] - minx, p[1] - miny) for p in pts]
+        )
+
+        surface.blit(temp, (int(minx), int(miny)), special_flags=self.blend_mode.value)
+
     
     def _render_star(self, surface: pygame.Surface):
-        """Render particle as a star."""
         if self.current_size <= 0:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        # Calculate star points (5-pointed star)
-        points = []
+
+        sx, sy = self._screen_pos()
+        r_outer = self._scaled(self.current_size)
+        r_inner = r_outer * 0.5
+
+        pts = []
         for i in range(10):
-            angle = self.rotation + i * math.pi / 5
-            radius = self.current_size if i % 2 == 0 else self.current_size * 0.5
-            points.append((
-                screen_x + radius * math.cos(angle),
-                screen_y + radius * math.sin(angle)
-            ))
-        
-        # Create temporary surface
-        bounds = [min(p[0] for p in points), min(p[1] for p in points),
-                 max(p[0] for p in points), max(p[1] for p in points)]
-        size = (int(bounds[2] - bounds[0] + 2), int(bounds[3] - bounds[1] + 2))
-        
-        temp_surface = pygame.Surface(size, pygame.SRCALPHA)
-        offset_points = [(p[0] - bounds[0], p[1] - bounds[1]) for p in points]
-        pygame.draw.polygon(temp_surface, self.current_color, offset_points)
-        
-        surface.blit(temp_surface, (bounds[0], bounds[1]), special_flags=self.blend_mode.value)
+            a = self.rotation + i * math.pi / 5
+            r = r_outer if i % 2 == 0 else r_inner
+            pts.append((sx + r * math.cos(a), sy + r * math.sin(a)))
+
+        minx = min(p[0] for p in pts)
+        miny = min(p[1] for p in pts)
+        maxx = max(p[0] for p in pts)
+        maxy = max(p[1] for p in pts)
+
+        w = int(maxx - minx + 2)
+        h = int(maxy - miny + 2)
+
+        temp = pygame.Surface((w, h), pygame.SRCALPHA)
+        pygame.draw.polygon(
+            temp,
+            self.current_color,
+            [(p[0] - minx, p[1] - miny) for p in pts]
+        )
+
+        surface.blit(temp, (int(minx), int(miny)), special_flags=self.blend_mode.value)
+
     
     def _render_line(self, surface: pygame.Surface):
-        """Render particle as a line."""
         if self.current_size <= 0:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        end_x = screen_x + self.current_size * math.cos(self.rotation)
-        end_y = screen_y + self.current_size * math.sin(self.rotation)
-        
-        pygame.draw.line(surface, self.current_color[:3], 
-                        (int(screen_x), int(screen_y)), (int(end_x), int(end_y)), 
-                        max(1, int(self.current_size * 0.1)))
+
+        sx, sy = self._screen_pos()
+        length = self._scaled(self.current_size)
+
+        ex = sx + length * math.cos(self.rotation)
+        ey = sy + length * math.sin(self.rotation)
+
+        pygame.draw.line(
+            surface,
+            self.current_color[:3],
+            (int(sx), int(sy)),
+            (int(ex), int(ey)),
+            max(1, int(self._scaled(self.current_size * 0.1)))
+        )
+
     
     def _render_texture(self, surface: pygame.Surface):
-        """Render particle using a texture/sprite."""
         if not self.texture:
             return
-        
-        # Apply camera offset
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        screen_x = self.x - camera_offset[0]
-        screen_y = self.y - camera_offset[1]
-        
-        # Scale texture
-        if self.texture_scale != 1.0 or self.current_size != self.start_size:
-            scale_factor = (self.current_size / self.start_size) * self.texture_scale
-            scaled_texture = pygame.transform.scale(self.texture, 
-                (int(self.texture.get_width() * scale_factor),
-                 int(self.texture.get_height() * scale_factor)))
-        else:
-            scaled_texture = self.texture
-        
-        # Rotate if needed
+
+        sx, sy = self._screen_pos()
+        scale = (self.current_size / self.start_size) * self.texture_scale * self.app.RENDER_SCALE
+
+        tex = pygame.transform.scale(
+            self.texture,
+            (int(self.texture.get_width() * scale),
+            int(self.texture.get_height() * scale))
+        )
+
         if self.rotation != 0:
-            scaled_texture = pygame.transform.rotate(scaled_texture, math.degrees(self.rotation))
-        
-        # Apply color tint
+            tex = pygame.transform.rotate(tex, math.degrees(self.rotation))
+
         if self.current_color != (255, 255, 255, 255):
-            tinted_texture = scaled_texture.copy()
-            tinted_texture.fill(self.current_color[:3], special_flags=pygame.BLEND_MULT)
-            scaled_texture = tinted_texture
-        
-        # Blit to surface
-        rect = scaled_texture.get_rect(center=(int(screen_x), int(screen_y)))
-        surface.blit(scaled_texture, rect, special_flags=self.blend_mode.value)
+            tint = tex.copy()
+            tint.fill(self.current_color[:3], special_flags=pygame.BLEND_MULT)
+            tex = tint
+
+        rect = tex.get_rect(center=(int(sx), int(sy)))
+        surface.blit(tex, rect, special_flags=self.blend_mode.value)
+
     
     def _render_trail(self, surface: pygame.Surface):
-        """Render particle trail."""
-        if not self.trail_positions or len(self.trail_positions) < 2:
+        if len(self.trail_positions) < 2:
             return
-        
-        # Apply camera offset to trail positions
-        camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-        
-        for i, pos in enumerate(self.trail_positions[:-1]):
-            alpha = int(255 * (self.trail_alpha_decay ** (len(self.trail_positions) - i - 1)))
-            trail_color = (*self.current_color[:3], alpha)
-            
-            if i < len(self.trail_positions) - 1:
-                next_pos = self.trail_positions[i + 1]
-                # Apply camera offset to both positions
-                screen_pos = (pos[0] - camera_offset[0], pos[1] - camera_offset[1])
-                screen_next_pos = (next_pos[0] - camera_offset[0], next_pos[1] - camera_offset[1])
-                pygame.draw.line(surface, trail_color, screen_pos, screen_next_pos, max(1, int(self.current_size * 0.5)))
+
+        pts = [self.app.convertPos(v2(x, y)) for x, y in self.trail_positions]
+
+        for i in range(len(pts) - 1):
+            alpha = int(255 * (self.trail_alpha_decay ** (len(pts) - i - 1)))
+            color = (*self.current_color[:3], alpha)
+
+            pygame.draw.line(
+                surface,
+                color,
+                (int(pts[i][0]), int(pts[i][1])),
+                (int(pts[i + 1][0]), int(pts[i + 1][1])),
+                max(1, int(self._scaled(self.current_size * 0.5)))
+            )
+
     
     def render(self, surface: pygame.Surface):
         """Render the particle to the given surface."""

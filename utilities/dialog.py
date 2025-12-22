@@ -35,6 +35,32 @@ def onKill(ownName, killedName: str):
     ])
 
 
+def onCameraLock(ownName):
+    return random.choice([
+        f"{ownName} panee",
+        "Oottekos tällästä nähny?",
+        f"Kattokaas TÄTÄ",
+        "Hei kaikki!",
+        f"{ownName} tässä heippa!",
+        f"Antakaas mää näytän.",
+        f"Vittuun mun tieltäni.",
+        f"Löylyä lissää!",
+        "Welcome to my youtube tutorial",
+        "Ultraviolettimöses",
+        "Heipulivei!",
+        "Moikkuuuu!",
+        "Maksakaa mökki sit ajoissa.",
+        "We stay winning.",
+        "Aksulla on herpes.",
+        ":)",
+        "Kamala darra",
+        "Ruvetaas semisekoilee",
+        "Ripuliseksiäää",
+        "Mä kuristan kohta jonkun"
+
+    ])
+
+
 def babloBreak():
     return random.choice([
         "Oho!",
@@ -130,5 +156,6 @@ def onTakeDamage():
         "Voi veljet!",
         "Sattuu pippeliin!",
         "Tää muistetaan",
-        "Kamalaa! Minua ammutaan!"
+        "Kamalaa! Minua ammutaan!",
+        "Hyi vittu!"
     ])

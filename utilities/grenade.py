@@ -61,6 +61,8 @@ class Grenade:
         self.rotationVel = 720
 
         self.landingCell = toCell
+
+        self.arc = 0
         
         self.imageR = pygame.transform.rotate(self.image, self.rotation)
 
@@ -79,7 +81,9 @@ class Grenade:
 
         self.imageR = pygame.transform.rotate(self.image, self.rotation)
 
-        self.verticalPos = math.sin(math.pi * (self.lifetime / self.MAXLIFE)) * 300
+        
+        self.arc = math.sin(math.pi * (self.lifetime / self.MAXLIFE))
+        self.verticalPos = self.arc * 300
 
         if self.lifetime <= 0 and not self.app.PEACEFUL:
             self.detonate()
@@ -162,7 +166,6 @@ class Grenade:
             if x.flashed > 0:
                 totalFlashed += 1
                 
-
                 x.target = None
                 x.flashedBy = self.owner
                 self.app.playPositionalAudio("audio/flashedSound.wav", x.pos)
@@ -179,6 +182,7 @@ class Grenade:
                     ]))
         
         if totalFlashed:
+            self.app.roundInfo["flashes"] += totalFlashed
             if self.isNadeFilmed():
                 TextParticle(self.app, f"{totalFlashed} flashed!", self.pos)
             else:
@@ -191,7 +195,11 @@ class Grenade:
 
 
     def render(self):
-        self.app.DRAWTO.blit(self.imageR, self.pos - self.app.cameraPosDelta - [0, self.verticalPos] - v2(self.imageR.get_size())/2)
+
+        POS = self.pos - [0, self.verticalPos]
+        POS = self.app.convertPos(POS) - v2(self.imageR.get_size())/2
+
+        self.app.DRAWTO.blit(self.imageR, POS)
         if self.isNadeFilmed() or True:
             i = (self.lifetime % 0.25) * 4
             for x in range(4):
@@ -203,9 +211,10 @@ class Grenade:
                     [100,100,255],
                 )[self.type.value]
 
-                pos = self.pos - self.app.cameraPosDelta - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * 10
-                pos2 = self.pos - self.app.cameraPosDelta - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * (10 + 40 * i)
-                pygame.draw.line(self.app.DRAWTO, color, pos, pos2, width=5)
+                lPos1 = self.pos - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * 10
+                lPos2 = self.pos - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * (10 + 40 * i)
+
+                pygame.draw.line(self.app.DRAWTO, color, self.app.convertPos(lPos1), self.app.convertPos(lPos2), width=int(5*self.app.RENDER_SCALE))
                 
 
 

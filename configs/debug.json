@@ -1,12 +1,12 @@
 {
-  "AUTOPLAY": false,
+  "AUTOPLAY": true,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 0,
   "gameModeLineUp": [
-    "DETONATION"
+    "FINAL SHOWDOWN"
   ],
   "maxWins": 5,
   "DOREALGAMEMODES": false,
@@ -17,5 +17,6 @@
   "REGISTER_WEAPON_KILLS": true,
   "SET_SEED": null,
   "TRAIN_TIME": 100,
-  "ENABLEGRENADES": true
+  "ENABLEGRENADES": true,
+  "RENDER_SCALE": 0.7
 }

@@ -128,6 +128,19 @@ def tickDetonationLogic(self: "Team"):
                 plan["planTimer"] = 30
                 resetTeamRoutes(self)
 
+                for x in self.getPawns():
+                    x.say(random.choice(
+                        ["RRAAAAAH",
+                        "Hyökätkää!",
+                        "Execute.",
+                        "KUOLKAAA!",
+                        "ASJJDAOIKDJIOAS",
+                        "TÄÄLTÄ MÄ TUUN",
+                        "Counter strike.",
+                        "RRRAHRAAARAAH",
+                        "RÄÄÄÄÄYH",]
+                    ), 1)
+
                 if plan["site"]: 
                     for _ in range(5): 
                         self.addNadePos(plan["site"].room.randomCell(), "aggr")
@@ -182,6 +195,19 @@ def tickDetonationLogic(self: "Team"):
             if plan["planTimer"] <= 0 or ready:
                 plan["currentAction"] = "execute"
                 plan["planTimer"] = 30
+
+                for x in self.getPawns():
+                    x.say(random.choice(
+                        ["RRAAAAAH",
+                        "Hyökätkää!",
+                        "Execute.",
+                        "KUOLKAAA!",
+                        "ASJJDAOIKDJIOAS",
+                        "TÄÄLTÄ MÄ TUUN",
+                        "Counter strike.",
+                        "RRRAHRAAARAAH",
+                        "RÄÄÄÄÄYH",]
+                    ), 1)
 
                 if plan["site"]: 
                     for _ in range(5): 

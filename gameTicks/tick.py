@@ -21,11 +21,21 @@ def battleTick(self: "Game"):
 
     victoryCondition = _battle_victory_logic(self)
 
+    
+
     entities_temp = _battle_prepare_entities(self)
 
     FF, TIMESCALE = _battle_timescale(self)
 
     _battle_roundtime_and_timeout(self, victoryCondition)
+
+    if not self.VICTORY and victoryCondition:
+        self.monitorProgress -= self.deltaTime
+        if self.monitorProgress <= 0:
+            self.monitorProgress = 5
+            for i, x in enumerate(victoryCondition):
+                self.victoryProgress[i].append(x)
+
 
     _battle_minimap_begin(self)
 
@@ -46,8 +56,24 @@ def battleTick(self: "Game"):
     VERSUS = self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
         self.CAMERAS[0].cameraLock.target == self.CAMERAS[1].cameraLock or
         self.CAMERAS[1].cameraLock.target == self.CAMERAS[0].cameraLock)
+    
+    beginTransition = self.TRANSITION_INTO_SINGLE
 
-    if CAMERASCOLLIDE or VERSUS:
+   #if self.GAMEMODE == "":
+   #    self.amountOfScreens = 1
+
+   ##elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock:
+   #else:
+   #    self.amountOfScreens = 2
+
+   #if self.TRANSITION_INTO_SINGLE != beginTransition:
+   #    self.FADEOUTMANUAL = 0
+
+   #if self.manualTransition:
+   #    self.IN_SINGLE = self.TRANSITION_INTO_SINGLE
+
+
+    if self.GAMEMODE == "FINAL SHOWDOWN":
         self.amountOfScreens = 1
 
     #elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock:
@@ -74,13 +100,15 @@ def battleTick(self: "Game"):
 
         #_battle_update_camera_and_cleanup(self)
 
-        DUAL = _battle_compute_dual_view(self)
+        DUAL = _battle_compute_dual_view(self, self.res)
 
         _battle_render_world(self, entities_temp, DUAL, SPLITSCREENI, self.amountOfScreens)
 
-    self.res = self.originalRes.copy()
+    
 
     _battle_render_overlays_and_ui(self, FF)
+
+    self.res = self.originalRes.copy()
 
     _battle_debug_and_metrics(self)
 
@@ -220,9 +248,15 @@ def _battle_timescale(self: "Game"):
     FF = max(1, self.fastForwardI)
     TIMESCALE = self.TIMESCALE * FF
 
-    self.deltaTime *= self.SLOWMO
-    self.deltaTime *= TIMESCALE
+    if self.VICTORY:
+        I = max(self.endGameI-13, 0)*0.5
+        ENDGAME =  0.25 + I*0.75
+    else:
+        ENDGAME = 1
 
+    self.TOTAL_TIME_ADJUSTMENT = self.SLOWMO * TIMESCALE * ENDGAME
+
+    self.deltaTime *= self.TOTAL_TIME_ADJUSTMENT
     return FF, TIMESCALE
 
 
@@ -384,7 +418,7 @@ def _battle_update_camera_and_cleanup(self: "Game"):
     # self.cameraPosDelta = self.cameraPosDelta * 0.9 + self.cameraPos * 0.1#* self.deltaTimeR
     # self.cameraPosDelta += self.cameraVel * self.deltaTimeR
 
-    self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.1)
+    self.CAMERA.update(self.CAMERA.cameraPos, self.deltaTimeR, smooth_time=0.3)
     self.cameraPosDelta = self.CAMERA.pos.copy()
 
     self.AUDIOORIGIN = v2(500,500)
@@ -392,10 +426,10 @@ def _battle_update_camera_and_cleanup(self: "Game"):
     self.cleanUpLevel()
 
 
-def _battle_compute_dual_view(self: "Game"):
+def _battle_compute_dual_view(self: "Game", res):
     DUAL = False
     if self.CAMERA.splitI > 0:
-        if self.CAMERA.requires_dual_view():
+        if self.CAMERA.requires_dual_view(self.res):
             DUAL = True
 
     self.CAMERA.DUALVIEWACTIVE = DUAL
@@ -436,7 +470,7 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
                 SAVECAMPOS = self.cameraPosDelta.copy()
                 self.cameraPosDelta = self.CAMERA.posToTargetTo2.copy()
 
-            self.DRAWTO.blit(self.MAP, -self.cameraPosDelta)
+            self.DRAWTO.blit(self.MAP, self.convertPos(v2(0,0)))
 
             if self.SLOWMO_FOR > 0 and not self.BABLO.killed:
                 alpha = int(255 * min(max(self.SLOWMO_FOR * 2, 0.5), 1.0))
@@ -503,9 +537,8 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
         x.tick()
 
     if self.VICTORY:
-        if self.endGameI >= 0:
-            self.tickEndGame()
-        else:
+        self.tickEndGame()
+        if self.endGameI < 0:
             if not self.TRANSITION:
                 self.transition(lambda: self.endGame())
             # self.endGame()
@@ -522,9 +555,14 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
 
     for x in self.CAMERAS:
 
+        if x.cameraIndex >= self.amountOfScreens:
+            break
+
         ox, oy = self.MINIMAPCELLSIZE * x.pos / (self.tileSize)
-        w, h = self.MINIMAPCELLSIZE * self.camRes / (self.tileSize)
-        pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(x.cameraIndex), (ox, oy, w, h), width=1)
+        w, h = self.MINIMAPCELLSIZE * self.res / (self.tileSize)
+        r = pygame.Rect(ox, oy, w, h)
+        r.inflate_ip(w/self.RENDER_SCALE - w, h/self.RENDER_SCALE - h)
+        pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(x.cameraIndex), r, width=1)
 
     if self.skull:
         if self.objectiveCarriedBy:
@@ -598,7 +636,7 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
 
         self.screen.blit(t, self.res / 2 - v2(t.get_size()) / 2)
 
-    if self.roundTime < 4:
+    if self.roundTime < 10 and not self.VICTORY:
         self.nextMusic = -1
 
     # keep onscreen for debug

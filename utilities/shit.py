@@ -18,7 +18,7 @@ class Shit:
         pass
 
     def render(self):
-        self.app.DRAWTO.blit(self.image, self.pos - Vector2(self.image.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.image, self.app.convertPos(self.pos) - Vector2(self.image.get_size())/2)
 
     def kill(self):
         self.app.shitGrid[self.cell[1], self.cell[0]] = 0

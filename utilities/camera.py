@@ -37,47 +37,70 @@ class Camera:
             return 0.0
         return math.atan2(delta.y, delta.x)
 
-    def max_split_distance(self):
+    def max_split_distance(self, res):
         """Compute angle and maximum distance before a split is required."""
-        angle = self._lock_angle() + math.pi / 2
-        max_dist = 300 + 300 * abs(math.sin(angle))
+        angle = self._lock_angle() + math.pi
+
+        diff = v2(math.sin(angle) * res.x/2, math.cos(angle) * res.y/2)
+
+        max_dist = diff.magnitude() / self.app.RENDER_SCALE
         return angle, max_dist
 
-    def requires_dual_view(self) -> bool:
+    def requires_dual_view(self, res) -> bool:
         if not self.cameraLock or getattr(self.cameraLock, "BOSS", False):
             return False
 
-        _, max_dist = self.max_split_distance()
+        _, max_dist = self.max_split_distance(res)
         return self.cameraLockOrigin.distance_to(self.cameraLockTarget) > max_dist
 
     def update_split_positions(self, res: v2):
-        """Update split camera lines and target positions.
+        angle, max_dist = self.max_split_distance(res)
 
-        Returns a tuple of (line1, line2, line3, line4) points used for masking
-        the split screen. `res` should be the current resolution Vector2.
-        """
-        angle, max_dist = self.max_split_distance()
+        splitI = (1 - self.splitI) ** 2
 
-        shiftI = (1 - self.splitI) ** 2
-        maxX = 1000 * shiftI
+        hx = res.x * 0.5
+        hy = res.y * 0.5
 
-        shift = v2(math.cos(angle + math.pi / 2), math.sin(angle + math.pi / 2)) * (-maxX)
+        # Directions
+        side_dir = v2(math.cos(angle), math.sin(angle))          # split normal
+        forward_dir = v2(-side_dir.y, side_dir.x)               # split direction
+        backward_dir = -forward_dir
+
+        # Resolution-dependent lateral shift
+        shift = -v2(
+            math.cos(angle) * hx,
+            math.sin(angle) * hy
+        ) * splitI
+
+        # Target separation
         raw_dist = self.cameraLockOrigin.distance_to(self.cameraLockTarget)
-        shiftAmount = min(max_dist, raw_dist) / 2
+        shiftAmount = min(max_dist, raw_dist) * 0.5
 
-        side_dir = v2(math.cos(angle + math.pi / 2), math.sin(angle + math.pi / 2))
-        forward_dir = v2(math.cos(angle), math.sin(angle))
-        backward_dir = v2(math.cos(angle + math.pi), math.sin(angle + math.pi))
+        self.posToTargetTo = (
+            self.cameraLockOrigin
+            - side_dir * (shiftAmount * (1 - splitI))
+            - res / 2
+        )
 
-        self.posToTargetTo = self.cameraLockOrigin + side_dir * (-shiftAmount * (1 - shiftI)) - res / 2
-        self.posToTargetTo2 = self.cameraLockTarget + side_dir * (shiftAmount + 0.7 * maxX) - res / 2
+        self.posToTargetTo2 = (
+            self.cameraLockTarget
+            + side_dir * (shiftAmount * (1 - splitI))
+            - res / 2
+        )
 
-        line1 = forward_dir * res.x + res / 2 + shift
-        line2 = backward_dir * res.x + res / 2 + shift
-        line3 = forward_dir * res.x + res / 2 - side_dir * 1200 + shift
-        line4 = backward_dir * res.x + res / 2 - side_dir * 1200 + shift
+        # Mask thickness (guaranteed to cover screen)
+        thickness = max(res.x, res.y) * 1.1
+        mask_offset = side_dir * thickness
+
+        center = res / 2
+
+        line1 = forward_dir * res.x + center + shift
+        line2 = backward_dir * res.x + center + shift
+        line3 = forward_dir * res.x + center + shift - mask_offset
+        line4 = backward_dir * res.x + center + shift - mask_offset
 
         return line1, line2, line3, line4
+
 
     def vibrate(self, strength: float):
         strength = min(strength, 40)

@@ -13,6 +13,9 @@ class Objective:
         self.pos = v2(self.cell) * self.app.tileSize + [self.app.tileSize/2, self.app.tileSize/2]
         
         self.image = pygame.transform.scale(self.image, [40, 40])
+
+        self.image = pygame.transform.scale_by(self.image, self.app.RENDER_SCALE)
+
         self.bounce = 0
         self.app.visualEntities.append(self)
 
@@ -42,7 +45,7 @@ class Objective:
     def render(self):
         if self.app.objectiveCarriedBy:
             return
-        pos = self.pos - v2(self.image.get_size())/2 +[0, 10*math.sin(2*self.bounce*math.pi)] - self.app.cameraPosDelta
+        pos = self.app.convertPos(self.pos + [0, 10*math.sin(2*self.bounce*math.pi)]) - v2(self.image.get_size())/2
         self.app.DRAWTO.blit(self.image, pos)
 
 

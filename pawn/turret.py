@@ -199,10 +199,10 @@ class Turret(getStat):
             pass
 
     def render(self):
-        self.app.DRAWTO.blit(self.leg, self.pos - v2(self.leg.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.leg, self.app.convertPos(self.pos) - v2(self.leg.get_size())/2)
 
         im = pygame.transform.rotate(self.head.copy(), -self.rotation)
-        self.app.DRAWTO.blit(im, self.pos - v2(im.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(im, self.app.convertPos(self.pos) - v2(im.get_size())/2)
 
 
     def v2ToTuple(self, p):

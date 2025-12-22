@@ -11,7 +11,7 @@ def ult_multiplier(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
 
-        if self.NPC:
+        if self.NPC and not self.BOSS:
             result *= 0.75
 
         return result * 3 if self.ULT else result
@@ -21,7 +21,7 @@ def ult_division(func):
     def wrapper(self, *args, **kwargs):
         result = func(self, *args, **kwargs)
 
-        if self.NPC:
+        if self.NPC and not self.BOSS:
             result *= 1.25
 
         return result / 3 if self.ULT else result
@@ -67,7 +67,7 @@ class getStat:
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": False,
+            "talking": True,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,

@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+from pygame.math import Vector2 as v2
 
 class FireSystem:
     def __init__(self, app):
@@ -28,7 +29,7 @@ class FireSystem:
         return (40, 40, 40, int(a*50))
     
     def to_screen(self, x, y):
-        return int(x - self.app.cameraPosDelta.x), int(y - self.app.cameraPosDelta.y)
+        return self.app.convertPos(v2(x,y))
 
     # ==============================================
     # PARTICLES
@@ -46,7 +47,7 @@ class FireSystem:
             self.vy = random.uniform(-2.5, -5.0)
             self.vx = random.uniform(-0.5, 0.5)
 
-            self.radius = random.uniform(8, 20)
+            self.radius = random.uniform(8, 20) * self.parent.app.RENDER_SCALE
             self.life = random.uniform(0.25, 0.5)
             self.age = 0.0
 
@@ -84,6 +85,8 @@ class FireSystem:
             self.vy = random.uniform(-1.5, -3.0)
             self.vx = random.uniform(-0.3, 0.3)
 
+            self.radius = random.randint(1,5) * self.parent.app.RENDER_SCALE
+
             self.life = random.uniform(0.4, 0.9)
             self.age = 0.0
 
@@ -102,7 +105,7 @@ class FireSystem:
 
             a = 1 - self.age/self.life
             col = self.parent.fire_color(a*0.8 + 0.2)
-            pygame.draw.circle(surf, col, self.parent.to_screen(int(self.x), int(self.y)), 3)
+            pygame.draw.circle(surf, col, self.parent.to_screen(int(self.x), int(self.y)), self.radius)
 
     class Smoke:
         def __init__(self, parent, cx, cy):

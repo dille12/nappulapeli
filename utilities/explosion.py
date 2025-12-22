@@ -13,8 +13,10 @@ class Explosion:
         self.app.visualEntities.append(self)
         self.weapon = firer
 
+        self.app.roundInfo["explosions"] += 1
+
         s = random.choice(self.app.stains)
-        pos = self.pos - v2(s.get_size())/2
+        pos = self.pos * self.app.RENDER_SCALE - v2(s.get_size())/2
         self.app.MAP.blit(s, pos)
 
         maxDist = (1 + (damage/125)*0.05) * 500
@@ -72,4 +74,4 @@ class Explosion:
 
     def render(self):
         
-        self.app.DRAWTO.blit(self.im, self.pos - v2(self.im.get_size())/2 - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.im, self.app.convertPos(self.pos, heightDiff = 1.1) - v2(self.im.get_size())/2)

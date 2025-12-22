@@ -65,6 +65,8 @@ class Bullet:
         if self.crit:
             self.damage *= 4
 
+        self.app.roundInfo["bulletsFired"] += 1
+
     def getOwnCell(self):
         return self.v2ToTuple((self.pos + [0, self.app.tileSize/2]) / self.app.tileSize)
     
@@ -233,7 +235,8 @@ class Bullet:
 
     def render(self):
         if self.ONSCREEN:
-            self.app.DRAWTO.blit(self.b, self.pos - v2(self.b.get_size())/2 - self.app.cameraPosDelta)
+            POS = self.app.convertPos(self.pos)
+            self.app.DRAWTO.blit(self.b, POS - v2(self.b.get_size())/2)
 
 def raycast_grid(pos, direction, max_dist, grid, tile_size):
     x0, y0 = pos.x / tile_size, pos.y / tile_size

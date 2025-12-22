@@ -39,7 +39,7 @@ import subprocess, glob
 from utilities.extractLyrics import get_subs_for_track
 from utilities.camera import Camera
 import inspect
-from utilities.dialog import babloBreak
+from utilities.dialog import babloBreak, onCameraLock
 import tkinter
 from statistics import stdev
 from collections import deque
@@ -628,17 +628,23 @@ class Game(valInit):
 
             pygame.draw.polygon(self.DRAWTO, color, polygon)
 
+
+    def convertPos(self, pos, heightDiff = 1.0):
+        return (pos - self.cameraPosDelta - self.res/2) * self.RENDER_SCALE * heightDiff + self.res/2
+
+
+
     def genLevel(self):
 
         
         
         if self.GAMEMODE == "1v1":
             self.map = ArenaGenerator(self, 50, 40)
-            self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=3)
+            self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=4)
 
         else:
             self.map = ArenaGenerator(self, 120, 80)
-            self.map.generate_arena(room_count=27, min_room_size=8, max_room_size=14, corridor_width=3)
+            self.map.generate_arena(room_count=27, min_room_size=8, max_room_size=14, corridor_width=4)
 
         self.arena = ArenaWithPathfinding(self, self.map)
 
@@ -706,7 +712,7 @@ class Game(valInit):
 
         
         
-        self.MAP = self.map.to_pygame_surface_textured2(cell_size=self.tileSize) #
+        self.MAP = self.map.to_pygame_surface_textured2(cell_size=self.tileSize * self.RENDER_SCALE) #
 
         #mapUntextured = self.map.to_pygame_surface(cell_size=self.tileSize) #
         #pygame.image.save(mapUntextured, "untexturedLevel.png")
@@ -758,8 +764,8 @@ class Game(valInit):
                 else:
                     team = 0
 
-            pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize, r.y*self.tileSize, 
-                                                                                      r.width*self.tileSize, r.height*self.tileSize))
+            pygame.draw.rect(self.MAP, self.getTeamColor(team, 0.2), (r.x*self.tileSize*self.RENDER_SCALE, r.y*self.tileSize*self.RENDER_SCALE, 
+                                                                                      r.width*self.tileSize*self.RENDER_SCALE, r.height*self.tileSize*self.RENDER_SCALE))
             
             pygame.draw.rect(self.MINIMAP, self.getTeamColor(team, 0.2), (r.x*self.MINIMAPCELLSIZE, r.y*self.MINIMAPCELLSIZE, 
                                                                                       r.width*self.MINIMAPCELLSIZE, r.height*self.MINIMAPCELLSIZE))
@@ -968,7 +974,7 @@ class Game(valInit):
         
             
 
-        self.endGameI = 10
+        self.endGameI = 15
         self.skullTimes = []
         for x in range(self.teams):
             self.skullTimes.append(0)
@@ -1036,8 +1042,9 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST:
+        if self.STRESSTEST or True:
             for x in self.getActualPawns():
+                if x.BOSS: continue
                 print("Releveling", x.name)
                 x.reLevelPawn(10)
         
@@ -1045,6 +1052,8 @@ class Game(valInit):
 
         if not self.AUTOPLAY:
             time.sleep(max(0, 5 - (time.time() - self.now)))
+
+        self.resetRoundInfo()
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -1085,14 +1094,15 @@ class Game(valInit):
         if self.crackAppearTimes[self.crackIndex] < timeIntoMusic:
             P = self.commonRoom.center()
             POS = v2(P) * self.tileSize + [random.uniform(-1 * self.tileSize, 1*self.tileSize), random.uniform(-1 * self.tileSize, 1*self.tileSize)]
+            BLITPOS = POS * self.RENDER_SCALE
             for i in range(random.randint(1,6)):
                 I = self.crackIndex - i
                 if I >= 0:
                     C = self.cracks[I]
-                    self.MAP.blit(C, POS - v2(C.get_size())/2)
+                    self.MAP.blit(C, BLITPOS - v2(C.get_size())/2)
             self.crackIndex += 1
-            if self.crackIndex == len(self.crackAppearTimes):
-                self.notify("NEW OBJECTIVE")
+            #if self.crackIndex == len(self.crackAppearTimes):
+            #    self.notify("NEW OBJECTIVE")
 
             self.particle_system.create_explosion(POS.x, POS.y, count = 100, start_size = random.randint(50,100), speed = 15)
 
@@ -1100,22 +1110,41 @@ class Game(valInit):
                 i.say("Ö", 1)
             #random.choice(self.pawnHelpList).say(babloBreak(), 0.5)
 
-            self.cameraLinger = 2
-            self.CAMERA.cameraLock = None
-            self.cameraPos = POS.copy() - self.res/2
-            self.CAMERA.vibrate(25)
+            self.CAMERAS[0].cameraLinger = 2
+            self.CAMERAS[0].cameraLock = None
+            self.CAMERAS[0].cameraPos = POS.copy() - self.res/2
+            self.CAMERAS[0].vibrate(25)
+
+
+    def resetRoundInfo(self):
+        self.roundInfo = {
+            "deaths": 0,
+            "bulletsFired": 0,
+            "explosions": 0,
+            "timesTalked": 0,
+            "flashes": 0,
+            "levelUps": 0,
+            "xpGained": 0,
+        }
+        self.victoryProgress = [[0] for _ in range(len(self.allTeams))]
+        self.monitorProgress = 3
+        self.endroundInfo = self.roundInfo.copy()
         
         
     def onScreen(self, pos):
 
+        #pos = self.convertPos(pos)
+
         for camera in self.CAMERAS:
 
             r = pygame.Rect(camera.pos, self.res)
+            r.inflate_ip(r.x / self.RENDER_SCALE, r.y / self.RENDER_SCALE)
         
             onDualScreen = False
 
             if camera.DUALVIEWACTIVE:
                 r2 = pygame.Rect(camera.posToTargetTo2, self.res)
+                r2.inflate_ip(r2.x / self.RENDER_SCALE, r2.y / self.RENDER_SCALE)
                 onDualScreen = r2.collidepoint(pos)
             #r2.inflate_ip(self.app.res)
 
@@ -1288,6 +1317,19 @@ class Game(valInit):
 
         self.HEATMAP = self.makeDeathHeatmapSurface(8, 3).convert_alpha()
         self.HEATMAP.set_colorkey((0,0,0))
+
+        if self.GAMEMODE != "DETONATION":
+            n_samples = len(self.victoryProgress[0])
+
+            for team in range(len(self.victoryProgress)):
+                prog = self.victoryProgress[team]
+
+                for i in range(1, n_samples):
+                    alpha = 0.5
+                    prog[i] = prog[i-1] * (1 - alpha) + prog[i] * alpha
+
+        self.endroundInfo = self.roundInfo.copy()
+
 
 
     def getActualPawns(self) -> list:
@@ -1611,6 +1653,8 @@ class Game(valInit):
         pygame.surfarray.blit_array(surf, out)
         pygame.surfarray.pixels_alpha(surf)[:] = alpha
 
+        surf = pygame.transform.scale_by(surf, self.RENDER_SCALE)
+
         self.turretHeadRGB[key] = surf
         return surf
 
@@ -1676,8 +1720,9 @@ class Game(valInit):
 
                 for x in e:
                     if not x.killed and x.isPawn:
-                        print("Locking camera", self.CAMERA.cameraIndex, "to", x.name)
                         self.CAMERA.cameraLock = x
+                        if not x.target:
+                            x.say(onCameraLock(x.name))
                         break
 
 
@@ -1716,18 +1761,17 @@ class Game(valInit):
             self.CAMERA.cameraLinger -= self.deltaTime
             self.CAMERA.cameraIdleTime = 0
 
-        return
 
 
         if self.VICTORY:
             I = max(self.endGameI-8, 0)
             self.SLOWMO = 1 - 0.25*(2-I)
             
-            self.CAMERA.cameraLock = max(
-                (x for x in self.getActualPawns() if (x.team.i == self.victoryTeam and not x.killed)),
-                key=lambda x: x.kills,
-                default=None
-            )
+            #self.CAMERA.cameraLock = max(
+            #    (x for x in self.getActualPawns() if (x.team.i == self.victoryTeam and not x.killed)),
+            #    key=lambda x: x.kills,
+            #    default=None
+            #)
 
         
         elif self.pendingLevelUp:
@@ -1736,7 +1780,7 @@ class Game(valInit):
             I = self.levelUpTimeFreeze()
 
             self.SLOWMO = 1 - 0.5*(1-I)
-            self.CAMERA.cameraLock = self.pendingLevelUp
+            #self.CAMERA.cameraLock = self.pendingLevelUp
 
     def isCameraLocked(self, pawn: "Pawn"):
         for x in self.CAMERAS:
@@ -1818,8 +1862,7 @@ class Game(valInit):
 
     def tickEndGame(self):
         self.endGameI -= self.deltaTimeR
-        I = max(self.endGameI-8, 0)*0.5
-        self.deltaTime *= 0.01 + I*0.99
+        I = max(self.endGameI-13, 0)*0.5
 
         if self.currMusic == -1:
             self.nextMusic = 0
@@ -1848,12 +1891,82 @@ class Game(valInit):
         text.set_alpha(int(255 * (1-I)))
         self.screen.blit(text, v2([self.res.x/2, 100]) - v2(text.get_size())/2)
 
-        if self.endGameI > 4.5:
-            I = max(I, 5.5 - self.endGameI)
+        if self.endGameI > 8:
+            I = max(I, 9 - self.endGameI)
             self.drawAwards(I)
         else:
-            I = max(self.endGameI-3.5, 0)
+            I = max(self.endGameI-7, 0)
             self.screen.blit(self.HEATMAP, self.res/2 - v2(self.HEATMAP.get_size())/2 + [0, I**2 * 900])
+
+            # Base Y aligned with heatmap top
+            base_y = self.res.y / 2 - self.HEATMAP.get_height() / 2
+
+            # Slide-in from left (mirrors heatmap easing)
+            x_offset = min(10, 10 - I**2 * 400)
+
+            line_h = self.font.get_height() + 6
+
+            ROUND_INFO_LABELS = {
+                "deaths":        "Deaths",
+                "bulletsFired":  "Bullets Fired",
+                "explosions":    "Explosions",
+                "timesTalked":   "Times Talked",
+                "flashes":       "Times flashed",
+                "levelUps":      "Level Ups",
+                "xpGained":      "XP Gained",
+            }
+
+            for i, (k, v) in enumerate(self.endroundInfo.items()):
+                text = f"{ROUND_INFO_LABELS[k]}: {v:.0f}"
+                surf = self.font.render(text, True, (255, 255, 255))
+
+                pos = v2(
+                    x_offset,
+                    base_y + i * line_h
+                )
+
+                self.screen.blit(surf, pos)
+
+
+
+            if self.GAMEMODE != "DETONATION":
+                i2 = 1 - max(min(self.endGameI-2.5, 1), 0)
+
+                
+                xWidth = self.HEATMAP.get_width()
+
+                n_samples = max(len(self.victoryProgress[0]), 1)
+                draw_samples = int(n_samples * i2)
+
+                perStep = xWidth / n_samples
+
+                height = 140
+                maxY = max(max(row) for row in self.victoryProgress if row)
+
+                position = v2(self.originalRes.x/2 - self.HEATMAP.get_width()/2, self.originalRes.y - height - 20)
+
+                for team in range(len(self.victoryProgress)):
+                    prog = self.victoryProgress[team]
+
+                    for i in range(1, draw_samples):
+                        v0 = prog[i - 1]
+                        v1 = prog[i]
+
+                        x0 = (i - 1) * perStep
+                        x1 = i * perStep
+
+                        y0 = height * (1 - v0 / maxY)
+                        y1 = height * (1 - v1 / maxY)
+
+                        pygame.draw.line(
+                            self.screen,
+                            self.getTeamColor(team),
+                            position + [x0, y0],
+                            position + [x1, y1],
+                            2
+                        )
+                    
+                    
 
     def handleNPCWeaponPurchase(self):
         NPCS = [x for x in self.pawnHelpList if x.NPC and x.isPawn]
@@ -2085,8 +2198,8 @@ class Game(valInit):
                 continue
             
         
-            pygame.draw.rect(self.MAP, (0,0,0), (x*self.tileSize,y*self.tileSize, 
-                                                 self.tileSize, self.tileSize))
+            pygame.draw.rect(self.MAP, (0,0,0), (x*self.tileSize*self.RENDER_SCALE,y*self.tileSize*self.RENDER_SCALE, 
+                                                 self.tileSize*self.RENDER_SCALE + 1, self.tileSize*self.RENDER_SCALE + 1))
             
     def drawDetonation(self):
         if self.GAMEMODE != "DETONATION":
@@ -2095,8 +2208,8 @@ class Game(valInit):
         for site in self.SITES:
             r = site.room
             rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
-                                r.width*self.tileSize, r.height*self.tileSize)
-            rect.topleft -= self.cameraPosDelta
+                                r.width*self.tileSize * self.RENDER_SCALE, r.height*self.tileSize * self.RENDER_SCALE)
+            rect.topleft = self.convertPos(rect.topleft)
             draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, [255,0,0], width=5)
         
 
@@ -2106,8 +2219,8 @@ class Game(valInit):
         for r in self.map.rooms:
             if r.turfWarTeam is not None:
                 rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
-                                   r.width*self.tileSize, r.height*self.tileSize)
-                rect.topleft -= self.cameraPosDelta
+                                   r.width*self.tileSize * self.RENDER_SCALE, r.height*self.tileSize * self.RENDER_SCALE)
+                rect.topleft = self.convertPos(rect.topleft)
                 draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, self.getTeamColor(r.turfWarTeam), width=5)
 
     def giveAllWeapons(self):
@@ -2290,8 +2403,8 @@ class Game(valInit):
     def drawBFGLazers(self):
         currLaser = False
         for startPos, endPos, color in self.BFGLasers:
-            s1 = startPos - self.cameraPosDelta
-            e1 = endPos - self.cameraPosDelta
+            s1 = startPos
+            e1 = endPos
             #if (0 <= s1[0] <= self.res[0] and 0 <= s1[1] <= self.res[1]) or (0 <= e1[0] <= self.res[0] and 0 <= e1[1] <= self.res[1]):
             self.LAZER.draw(self.DRAWTO, s1, e1, color)
             currLaser = True
@@ -2549,12 +2662,13 @@ class Game(valInit):
 
             if SPAWNBABLO and self.musicSwitch and self.currMusic == 1:
                 print("Bablo spawned!")
+                self.BABLO.health = self.BABLO.healthCap
                 self.BABLO.respawnI = 0
                 P = self.commonRoom.center()
                 self.BABLO.pos = v2(P) * self.tileSize + [self.tileSize/2, self.tileSize/2] 
                 self.BABLO.killed = False
-                self.notify("SURVIVE")
-                self.CAMERA.cameraLock = self.BABLO
+                #self.notify("SURVIVE")
+                self.CAMERAS[0].cameraLock = self.BABLO
                 self.BABLO.damageTakenPerTeam = {}
                 self.SLOWMO_FOR = 3.36
                 self.particle_system.create_explosion(self.BABLO.pos.x, self.BABLO.pos.y, count = 100)
@@ -2583,11 +2697,20 @@ class Game(valInit):
                                           self.notificationTime, color=self.currNotification[1]):
                     self.currNotification = None
 
+            self.manualTransition = False
+
             if self.TRANSITION:
                 self.drawExplosion()
             elif self.FADEIN > 0:
                 self.screen.blit(self.FADEOUT[self.FADEIN], (0,0))
                 self.FADEIN -= 1
+
+            elif self.FADEOUTMANUAL < len(self.FADEOUT):
+                self.screen.blit(self.FADEOUT[self.FADEOUTMANUAL], (0,0))
+                self.FADEOUTMANUAL += 1
+                if self.FADEOUTMANUAL == len(self.FADEOUT):
+                    self.FADEIN = len(self.FADEOUT) - 1
+                    self.manualTransition = True
 
             if not self.TRANSITION and self.TARGETGAMESTATE:
                 self.TARGETGAMESTATE()

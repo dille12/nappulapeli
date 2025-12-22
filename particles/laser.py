@@ -30,6 +30,9 @@ class ThickLaser:
     
     def draw(self, screen, start_pos, end_pos, color, sizeMod=5):
         """Draw the thick multi-line laser beam"""
+
+        start_pos = self.app.convertPos(start_pos)
+        end_pos = self.app.convertPos(end_pos)
         
         # Create temporary surface for all laser lines
         #temp_surface = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
@@ -59,7 +62,7 @@ class ThickLaser:
         for layer_idx, layer in enumerate(layers):
             for i in range(layer["count"]):
                 # Calculate offset from center
-                offset = (i - layer["count"] // 2) * layer["spacing"]
+                offset = (i - layer["count"] // 2) * layer["spacing"] * self.app.RENDER_SCALE
                 
                 # Calculate line positions
                 line_start = (
@@ -98,7 +101,7 @@ class ThickLaser:
                 
                 # Draw the line with varying thickness
                 line_thickness = layer["thickness"] + random.randint(-1, 1)
-                line_thickness = max(1, line_thickness)
+                line_thickness = max(1, int(line_thickness * self.app.RENDER_SCALE))
                 
                 if length > 2:  # Only draw if line is long enough
                     pygame.draw.line(screen, final_color, line_start, line_end, line_thickness)

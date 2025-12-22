@@ -161,6 +161,9 @@ class Pawn(PawnBehaviour, getStat):
         self.height = 100 if not self.BOSS else 300
 
         self.imagePawn = pygame.transform.scale_by(self.levelUpImage, self.height / self.levelUpImage.get_size()[1]).convert_alpha()
+
+        self.imagePawn = pygame.transform.scale_by(self.imagePawn, self.app.RENDER_SCALE)
+        
         #self.imagePawn = debug_draw_alpha(self.imagePawn).convert_alpha()
 
         self.imagePawnR = pygame.transform.flip(self.imagePawn.copy(), True, False).convert_alpha()
@@ -335,6 +338,7 @@ class Pawn(PawnBehaviour, getStat):
 
         if self.app.giveWeapons:
             weapon = random.choice(self.app.weapons)
+            
 
         self.flash = self.app.flash.duplicate(self)
         self.frag = self.app.frag.duplicate(self)
@@ -452,7 +456,7 @@ class Pawn(PawnBehaviour, getStat):
 
         
             w, h = self.imagePawn.get_size()
-            mouth = 145
+            mouth = 145 * self.app.RENDER_SCALE
             self.head_rect = pygame.Rect(0, 0, w, mouth)
             self.body_rect = pygame.Rect(0, mouth, w, h - mouth)
 
@@ -467,6 +471,9 @@ class Pawn(PawnBehaviour, getStat):
             self.imagePawn.fill((0, 0, 0, 0), self.head_rect)
 
             self.imagePawnR.fill((0, 0, 0, 0), self.head_rect)
+
+        
+
 
 
         #else:
@@ -818,6 +825,7 @@ class Pawn(PawnBehaviour, getStat):
 
         self.team.currency += 5
         self.team.updateCurrency()
+        self.app.roundInfo["deaths"] += 1
 
         #if self.app.cameraLock == self and self.target:
         #    self.app.cameraLock = self.target
@@ -1045,6 +1053,9 @@ class Pawn(PawnBehaviour, getStat):
         TextParticle(self.app, f"+{am:.1f}XP", self.pos)
 
         self.xp += am
+
+        self.app.roundInfo["xpGained"] += am
+
         self.updateStats({"XP": int(self.xp)})
 
     def updateStats(self, stats: dict):
@@ -1333,7 +1344,7 @@ class Pawn(PawnBehaviour, getStat):
         self.healthCap += 10
         self.say(f"Jipii! Nousin tasolle {self.level}, ja sain uuden esineen!", 0.1)
         self.level += 1
-
+        self.app.roundInfo["levelUps"] += 1
         self.updateStats({"Level" : self.level, "XP to next level" : self.app.levelUps[self.level-1]})
         self.sendHudInfo()
         self.reconnectJson = None
@@ -1906,7 +1917,10 @@ class Pawn(PawnBehaviour, getStat):
         #    width=2
         #)
 
-        self.arcRect = pygame.Rect(self.pos.x - self.app.cameraPosDelta[0], self.pos.y + 50 - self.app.cameraPosDelta[1], 0, 0)
+        BASEPOS = self.app.convertPos(self.deltaPos)
+        RS = self.app.RENDER_SCALE
+
+        self.arcRect = pygame.Rect(BASEPOS.x, BASEPOS.y + 50*RS, 0, 0)
 
         imwidth = self.imagePawn.get_width() * 1.2
 
@@ -1923,8 +1937,8 @@ class Pawn(PawnBehaviour, getStat):
         pygame.draw.arc(self.app.DRAWTO, self.teamColor, self.arcRect, 0, 2*math.pi)
 
         for aPlus in [-math.pi/3, math.pi/3]:
-            dx = self.pos.x - self.app.cameraPosDelta[0] + math.cos(self.aimAt + aPlus) * self.arcRect.width/2
-            dy = self.pos.y + 50 - self.app.cameraPosDelta[1] - math.sin(self.aimAt + aPlus) * self.arcRect.height/2
+            dx = BASEPOS.x + math.cos(self.aimAt + aPlus) * self.arcRect.width/2
+            dy = BASEPOS.y - math.sin(self.aimAt + aPlus) * self.arcRect.height/2
             pygame.draw.line(self.app.DRAWTO, self.teamColor, self.arcRect.center, (dx,dy))
 
         if camera:
@@ -1933,9 +1947,12 @@ class Pawn(PawnBehaviour, getStat):
             #cell = self.marchCells(-self.aimAt, 5)
             #self.app.highLightCell(cell)
 
-        heightOffset = v2(0, - self.height/2 + 30)
+        heightOffset = v2(0, - self.height/2 + 30) * RS
+
+        switchSides = math.pi/2 <= self.aimAt <= 3*math.pi/2
+
         
-        self.app.DRAWTO.blit(self.breatheIm, self.deltaPos - v2(self.breatheIm.get_size()) / 2 + [0, self.breatheY] + heightOffset - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.breatheIm, BASEPOS - v2(self.breatheIm.get_size()) / 2 + [0, self.breatheY] + heightOffset)
         if self.BOSS:
             if self.app.babloLyricCurrent:
                 heightOffsetHead = v2(0, -((1 - self.app.babloLyricNorm)**2) * 100)
@@ -1943,33 +1960,40 @@ class Pawn(PawnBehaviour, getStat):
                 heightOffsetHead.rotate(tripRotation)
             else:
                 heightOffsetHead = v2(0,0)
-            self.app.DRAWTO.blit(self.headIm, self.deltaPos - v2(self.headIm.get_size()) / 2 + [0, self.breatheY] + heightOffset + heightOffsetHead - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(self.headIm, BASEPOS - v2(self.headIm.get_size()) / 2 + [0, self.breatheY] + heightOffset + heightOffsetHead)
 
         if self.itemEffects["hat"]:
-            self.app.DRAWTO.blit(self.topHat, self.deltaPos + [-self.xComponent*0.2, self.breatheY - self.yComponent - self.weapon.recoil*20]  - self.app.cameraPosDelta + self.apexPawn - v2(self.topHat.get_size())/2)
+            self.app.DRAWTO.blit(self.topHat, BASEPOS + [-self.xComponent*0.2, self.breatheY - self.yComponent - self.weapon.recoil*20] + self.apexPawn - v2(self.topHat.get_size())/2)
 
         #if not self.tripped:
-        self.currWeapon.render() 
+        
         if self.dualwield and self.dualWieldWeapon:
-            self.dualWieldWeapon.render() 
+            if not switchSides:
+                self.dualWieldWeapon.render() 
+                self.currWeapon.render()
+            else:
+                self.currWeapon.render()
+                self.dualWieldWeapon.render() 
+        else:
+            self.currWeapon.render()
 
         if self.BOSS:
-            self.app.DRAWTO.blit(self.npcPlate, (self.pos.x - self.npcPlate.get_width() / 2, self.pos.y - self.npcPlate.get_height() - self.height) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(self.npcPlate, (BASEPOS.x - self.npcPlate.get_width() / 2, BASEPOS.y - self.npcPlate.get_height() - self.height))
 
         elif self.NPC:
-            self.app.DRAWTO.blit(self.npcPlate, (self.pos.x - self.npcPlate.get_width() / 2, self.pos.y - self.npcPlate.get_height() - self.height + 55) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(self.npcPlate, (BASEPOS.x - self.npcPlate.get_width() / 2, BASEPOS.y - self.npcPlate.get_height() - self.height + 55))
 
-        self.app.DRAWTO.blit(self.namePlate, (self.pos.x - self.namePlate.get_width() / 2, self.pos.y - self.namePlate.get_height() - self.height + 30) - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.namePlate, (BASEPOS.x - self.namePlate.get_width() / 2, BASEPOS.y - self.namePlate.get_height() - self.height + 30))
 
         if self.BOSS:
             t2 = self.app.fontLarge.render(self.app.babloLyricCurrent, True, [255,255,255])
             t2.set_alpha(int((1-self.app.babloLyricNorm**2)*255))
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - self.height + 140) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - self.height + 140))
 
 
         elif self.textBubble:
             t2 = self.app.font.render(self.textBubble, True, [255,255,255])
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - self.height + 60) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - self.height + 60))
         
         elif self.flashed > 0:
             t2 = self.app.font.render("FLASHED", True, [255,255,255])
@@ -1977,19 +2001,19 @@ class Pawn(PawnBehaviour, getStat):
             i = int(min(1, self.flashed) * 255)
             t2.set_alpha(i)
 
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - self.height + 60) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - self.height + 60))
 
         elif self.revengeHunt():
             t2 = self.app.font.render(f"HUNTING FOR {self.lastKiller.name}!!!", True, [255,255,255])
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - self.height + 60) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - self.height + 60))
 
         elif self.currWeapon.isReloading():
             t2 = self.app.fontSmaller.render(f"RELOADING", True, [255,255,255])
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - self.height + 60) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - self.height + 60))
 
         elif self.enslaved:
             t2 = self.app.fontSmaller.render(f"Orja", True, self.app.getTeamColor(self.team.i))
-            self.app.DRAWTO.blit(t2, (self.pos.x - t2.get_width() / 2, self.pos.y - t2.get_height() - 40) - self.app.cameraPosDelta)
+            self.app.DRAWTO.blit(t2, (BASEPOS.x - t2.get_width() / 2, BASEPOS.y - t2.get_height() - 40))
 
         #if not self.app.PEACEFUL and self.app.cameraLock == self:
         #    self.renderInfo()

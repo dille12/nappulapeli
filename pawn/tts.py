@@ -65,6 +65,8 @@ class EspeakTTS:
 
             time.sleep(random.uniform(0.1,0.5))
 
+            self.app.roundInfo["timesTalked"] += 1
+
             self.sound = self.owner.app.playPositionalAudio(source, pos=self.owner.pos)
             if not self.sound:
                 return
@@ -81,6 +83,7 @@ class EspeakTTS:
 
 
         finally:
+            time.sleep(random.uniform(0.1,0.5))
             self.owner.textBubble = None
             self.app.speeches -= 1
             self.sound = None

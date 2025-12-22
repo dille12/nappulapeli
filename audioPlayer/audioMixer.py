@@ -451,7 +451,7 @@ class AudioMixer:
                 source.set_lowpass(cutoff)
 
             # get chunk with current per-source parameters
-            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo=self.app.SLOWMO * self.app.TIMESCALE)
+            chunk = source.get_next_chunk(frame_count, fs=self.sample_rate, slowmo=self.app.TOTAL_TIME_ADJUSTMENT)
             # mix into master buffer
             mix_chunk_nb(mixed, chunk, np.float32(source.volume), np.float32(source.left_gain), np.float32(source.right_gain))
 

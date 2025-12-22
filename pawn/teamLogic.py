@@ -268,7 +268,6 @@ class Team:
                 if safe_cells:
                     x.getRouteTo(endPosGrid=random.choice(safe_cells))
                     x.say("Äkkiä piiloon!")
-                    print(x.name, "Dodges a flash")
                     
 
 

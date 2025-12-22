@@ -49,7 +49,7 @@ class FlyingCorpse:
 
         if self.lifeTime <= 0:
             c = random.choice(self.pawn.corpses)
-            self.app.MAP.blit(c, self.pos - v2(c.get_size())/2)
+            self.app.MAP.blit(c, self.pos * self.app.RENDER_SCALE - v2(c.get_size())/2)
 
             self.app.playPositionalAudio(self.app.deathSounds, self.pos)
 
@@ -57,9 +57,10 @@ class FlyingCorpse:
                 self.SOUND.active = False
 
             for x in range(random.randint(4,8)):
-                self.app.bloodSplatters.append(BloodParticle(self.pos.copy(), 1.2, app = self.app))
+                self.app.bloodSplatters.append(BloodParticle(self.pos.copy() * self.app.RENDER_SCALE, 1.2, app = self.app))
 
             self.app.ENTITIES.remove(self)
 
     def render(self):
-        self.app.DRAWTO.blit(self.blitIm, self.pos - self.app.cameraPosDelta - v2(self.blitIm.get_size())/2 + [0, self.yPos])
+        POS = self.app.convertPos(self.pos + [0, self.yPos]) - v2(self.blitIm.get_size())/2
+        self.app.DRAWTO.blit(self.blitIm, POS)

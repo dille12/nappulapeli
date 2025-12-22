@@ -56,7 +56,8 @@ DEBUG_VARS = [
     "REGISTER_WEAPON_KILLS",
     "SET_SEED",
     "TRAIN_TIME",
-    "ENABLEGRENADES"
+    "ENABLEGRENADES",
+    "RENDER_SCALE"
     
 ]
 
@@ -86,6 +87,7 @@ class valInit:
         self.REGISTER_WEAPON_KILLS = True
         self.SET_SEED = None
         self.TRAIN_TIME = 100
+        self.RENDER_SCALE = 0.7
 
         self.ENABLEGRENADES = True
 
@@ -127,6 +129,9 @@ class valInit:
         self.playerFiles = []  # List to hold player objects
         self.particle_list = []
         self.playerFilesToGen = [] 
+
+
+        self.TOTAL_TIME_ADJUSTMENT = 1
 
 
         self.preConfiguredTeamNames = []
@@ -172,6 +177,10 @@ class valInit:
 
         self.turretLeg = pygame.image.load("texture/turret_leg.png").convert_alpha()
         self.turretHead = pygame.image.load("texture/turret.png").convert_alpha()
+
+        self.turretLeg = pygame.transform.scale_by(self.turretLeg, self.RENDER_SCALE)
+        self.turretHead = pygame.transform.scale_by(self.turretHead, self.RENDER_SCALE)
+
 
         self.consoleFont = pygame.font.Font("texture/terminal.ttf", 20)
 
@@ -230,7 +239,9 @@ class valInit:
         self.judgementPhase = "nextup"
         self.judgementDrinkTime = 0  # Will be randomized between 5–30
 
-        
+        self.TRANSITION_INTO_SINGLE = False
+        self.IN_SINGLE = False
+        self.FADEOUTMANUAL = 0
 
         self.consoleOpen = False
 
@@ -239,6 +250,7 @@ class valInit:
         self.DUALVIEWACTIVE = False
 
         self.shit = pygame.image.load("texture/shit.png").convert_alpha()
+        self.shit = pygame.transform.scale_by(self.shit, self.RENDER_SCALE)
 
 
         self.babloLyricIndex = 0
@@ -260,7 +272,7 @@ class valInit:
             rect = pygame.Rect(i * tile_w, 0, tile_w, h)
             tile = self.concrete.subsurface(rect).copy()
 
-            tile = pygame.transform.scale(tile, (self.tileSize, self.tileSize))
+            tile = pygame.transform.scale(tile, (self.tileSize*self.RENDER_SCALE, self.tileSize*self.RENDER_SCALE))
 
             self.concretes.append(tile)
         
@@ -330,7 +342,7 @@ class valInit:
         self.roomTextures = []
         for x in os.listdir("texture/floorTiles"):
             im = pygame.image.load(f"texture/floorTiles/{x}").convert()
-            im = pygame.transform.scale(im, [self.tileSize, self.tileSize])
+            im = pygame.transform.scale(im, [self.tileSize*self.RENDER_SCALE, self.tileSize*self.RENDER_SCALE])
             self.roomTextures.append(im)
 
         self.grass = pygame.image.load(f"texture/Asphalt3_img.jpg").convert()
@@ -350,7 +362,7 @@ class valInit:
         self.keypress_held_down = []
 
         self.crack = pygame.image.load("texture/crack.png").convert_alpha()
-        self.crack = pygame.transform.scale_by(self.crack, 400 / self.crack.get_width())
+        self.crack = pygame.transform.scale_by(self.crack, 400 * self.RENDER_SCALE / self.crack.get_width())
 
 
         self.stains = []
@@ -358,7 +370,7 @@ class valInit:
             stain = pygame.image.load(x).convert_alpha()
             for x in range(5):
                 s = stain.copy()
-                s = pygame.transform.scale_by(s, random.randint(300,400) / stain.get_width())
+                s = pygame.transform.scale_by(s, random.randint(300,400) / stain.get_width() * self.RENDER_SCALE)
                 s = pygame.transform.rotate(s, random.randint(0,360))
                 s.set_alpha(random.randint(155,255))
                 self.stains.append(s)
@@ -439,11 +451,19 @@ class valInit:
         self.bulletSprite = pygame.image.load("texture/bullet.png").convert_alpha()
         self.bulletSprite = pygame.transform.scale(self.bulletSprite, [200, 5])
 
+        self.bulletSprite = pygame.transform.scale_by(self.bulletSprite, self.RENDER_SCALE)
+
         self.energySprite = pygame.image.load("texture/lazer.png").convert_alpha()
         self.energySprite = pygame.transform.scale(self.energySprite, [220, 8])
 
+        self.energySprite = pygame.transform.scale_by(self.energySprite, self.RENDER_SCALE)
+
+
+        self.resetRoundInfo()
+        self.monitorProgress = 3
+
         self.visualEntities = []
-        self.explosion = load_animation("texture/expl1", 0, 31, size = [500,500])
+        self.explosion = load_animation("texture/expl1", 0, 31, size = [int(700*self.RENDER_SCALE),700*self.RENDER_SCALE])
         self.items = getItems()
         print("ITEMS:", len(self.items))
 

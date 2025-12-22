@@ -19,6 +19,41 @@ def surface_to_base64(surface: pygame.Surface) -> str:
     b64 = base64.b64encode(buf.read()).decode("utf-8")
     return b64  # Just the base64, no prefix
 
+def apply_light_bounce(mask_surf, rot_norm):
+    w, h = mask_surf.get_size()
+
+    temp = mask_surf.copy().convert_alpha()
+
+    rot_norm = rot_norm*2-0.5
+
+    y = int(h * rot_norm)
+
+    angle = math.radians(30)
+    dx = math.cos(angle)
+    dy = math.sin(angle)
+
+    length = max(w, h) * 2
+
+    x0 = -length
+    y0 = y - dy * length
+    x1 = length
+    y1 = y + dy * length
+
+    line_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+    pygame.draw.line(
+        line_surf,
+        (255, 255, 255, 255),
+        (x0, y0),
+        (x1, y1),
+        40
+    )
+
+    # Multiply keeps line only where mask is opaque
+    temp.blit(line_surf, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+
+    return temp
+
+
 def angle_diff(a, b):
     diff = (b - a + 180) % 360 - 180
     return diff
@@ -142,6 +177,14 @@ class Weapon:
         else:
             self.image = precomputedImage
 
+        self.image = pygame.transform.scale_by(self.image, self.app.RENDER_SCALE * 1.5)  # Scale the image to a suitable size
+
+
+        self.masked = False
+        if self.name == "BABLON AK-47":
+            self.tintMask = pygame.transform.scale(pygame.image.load("texture/goldenAkMASK.png"), self.image.get_size()).convert_alpha()
+            self.tintMaskR = pygame.transform.flip(self.tintMask.copy(), True, False)
+            self.masked = True
 
         self.shopIcon = pygame.transform.scale_by(self.image.copy(), 100 / self.image.get_height()) 
         self.shopIcon = trim_surface(self.shopIcon)
@@ -642,7 +685,6 @@ class Weapon:
             return False
         
         if self.fireTick > 0:
-            self.fireTick -= self.app.deltaTime
             return False
         
         if self.owner.isManual():
@@ -832,13 +874,7 @@ class Weapon:
             RGAIN,               # Gain factor - acceleration rate (no deltaTime here)
             DIFF  # Angle difference
         )
-        if self.owner.flashed > 1:
-            if self.ROTATIONVEL < 720:
-                self.ROTATIONVEL += RGAIN * self.app.deltaTime
-            else:
-                self.ROTATIONVEL -= RGAIN * self.app.deltaTime
-        else:
-        # Apply the acceleration to velocity
+        if self.owner.flashed <= 0:
             self.ROTATIONVEL += rotation_factor * self.app.deltaTime
 
         # Apply velocity to position
@@ -848,11 +884,23 @@ class Weapon:
         if 90 <= self.ROTATION <= 270:
             self.FINALROTATION = self.ROTATION - self.recoil * 30 - rA
             self.rotatedImage = pygame.transform.rotate(self.imageR, self.FINALROTATION + 180)
+
+            if self.masked:
+                self.rotatedMask = pygame.transform.rotate(self.tintMaskR, self.FINALROTATION + 180)
+
             right = True
         else:
             self.FINALROTATION = self.ROTATION + self.recoil * 30 + rA
             self.rotatedImage = pygame.transform.rotate(self.image, self.FINALROTATION)
+            if self.masked:
+                self.rotatedMask = pygame.transform.rotate(self.tintMask, self.FINALROTATION)
             right = False
+
+        if self.masked:
+            rot_norm = ((self.FINALROTATION+65) % 45) / 45.0
+
+            temp = apply_light_bounce(self.rotatedMask, rot_norm)
+            self.rotatedImage.blit(temp, (0,0))
 
         
 
@@ -886,12 +934,12 @@ class Weapon:
         TOTALOFFSET = TOTALOFFSET.rotate(-self.owner.rotation)
 
 
-        self.BLITPOS = - v2(self.rotatedImage.get_size()) / 2 + TOTALOFFSET + self.owner.deltaPos
+        self.BLITPOS = (TOTALOFFSET * self.app.RENDER_SCALE) + self.owner.deltaPos
         
     def render(self):
         if not hasattr(self, "rotatedImage"):
             return
-        self.app.DRAWTO.blit(self.rotatedImage, self.BLITPOS - self.app.cameraPosDelta)
+        self.app.DRAWTO.blit(self.rotatedImage, self.app.convertPos(self.BLITPOS) - v2(self.rotatedImage.get_size()) / 2)
 
 
         #p = self.getBulletSpawnPoint()
