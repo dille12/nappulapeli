@@ -87,7 +87,7 @@ class valInit:
         self.REGISTER_WEAPON_KILLS = True
         self.SET_SEED = None
         self.TRAIN_TIME = 100
-        self.RENDER_SCALE = 0.7
+        self.RENDER_SCALE = 0.5
 
         self.ENABLEGRENADES = True
 
@@ -107,7 +107,7 @@ class valInit:
             self.res = v2(854, 480)
             self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
         else:
-            self.res = v2(1920, 1080)
+            self.res = v2(1366, 768)
             self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
         self.originalRes = self.res.copy()
         self.camRes = self.res.copy()
@@ -281,6 +281,7 @@ class valInit:
         self.deltaTimeR = 1/60
         self.debugI = 0
         self.fontSmaller = pygame.font.Font(self.fontName, 18)  # Smaller font for debug text
+        self.fontSmallest= pygame.font.Font(self.fontName, 10) 
         self.pawnGenI = 0
         self.pawnGenT = 0
         self.fastForwardI = 0

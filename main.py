@@ -1042,7 +1042,7 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST or True:
+        if self.STRESSTEST:
             for x in self.getActualPawns():
                 if x.BOSS: continue
                 print("Releveling", x.name)
@@ -1350,6 +1350,9 @@ class Game(valInit):
             print(self.music)
             return
         self.music[self.currMusic].stop()
+
+        if self.currMusic == -1 and self.loadedMusic == "Bablo >:)":
+            self.music = self.loadSound("audio/bar", volume=0.2, asPygame=True)
 
         nextTrack = self.nextMusic
         if self.nextMusic == 1:
@@ -2178,7 +2181,7 @@ class Game(valInit):
             t1 = self.font.render(f"STATUS: {p.STATUS}", True, c2)
             self.screen.blit(t1, (230, yPos+175))
 
-            p.hudInfo((600, yPos), screen=self.screen)
+            p.hudInfo((560, yPos), screen=self.screen)
 
             
 
@@ -2232,7 +2235,7 @@ class Game(valInit):
             x.gType = random.randint(0,2)
 
     def tickScoreBoard(self):
-        y = 200
+        y = 20
 
         if self.GAMEMODE == "ODDBALL":
             for i, x in sorted(enumerate(self.skullTimes), key=lambda pair: pair[1], reverse=True):
@@ -2756,7 +2759,7 @@ class Game(valInit):
             self.MAXFRAMETIME = max(self.frameTimeCache)
             self.STD = stdev(self.frameTimeCache) if len(self.frameTimeCache) > 1 else 0
 
-            self.deltaTimeR = min(self.deltaTimeR, 1/30)
+            self.deltaTimeR = min(self.deltaTimeR, 1/20)
             self.deltaTime = self.deltaTimeR
 
 

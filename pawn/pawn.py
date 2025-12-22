@@ -1303,9 +1303,9 @@ class Pawn(PawnBehaviour, getStat):
         return info_lines
 
     def hudInfo(self, pos, screen = None):
-        font = self.app.fontSmaller
+        font = self.app.fontSmallest
         x, y = pos
-        line_height = 20
+        line_height = 12
         info_lines = self.fetchInfo(addItems=False)
         if not info_lines:
             return
@@ -1314,11 +1314,11 @@ class Pawn(PawnBehaviour, getStat):
             line, c = l
             text_surf = font.render(line, True, c)
             surfs.append(text_surf)
-        separation = max(surf.get_width() for surf in surfs) + 10
+        separation = max(surf.get_width() for surf in surfs) + 5
 
         for i, surf in enumerate(surfs):
-            yOff = line_height*(i%9)
-            xOff = separation*(i//9)
+            yOff = line_height*(i%18)
+            xOff = separation*(i//18)
             screen.blit(surf, (x+xOff, y+yOff))
 
 

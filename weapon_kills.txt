@@ -2,7 +2,7 @@ BFG 3728
 Rocket Launcher 3323
 Machine Gun 2693
 Sniper 2661
-Desert Eagle 2587
+Desert Eagle 2614
 E-BR 2332
 SMG 2318
 EMG 2308
@@ -11,7 +11,7 @@ USP-S 1905
 AK-47 1783
 Shotgun 1747
 Glock (SECONDARY) 1704
-Glock 1354
+Glock 1515
 TURRET 1180
 BABLON AK-47 756
 Frag Grenade 752

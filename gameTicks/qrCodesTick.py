@@ -70,5 +70,5 @@ def qrCodesTick(self: "Game"):
         self.preConfiguredTeamNames.append(name)
 
     #self.genPawns()
-    if self.goToSettingsButton.draw(self.screen, "Settings", font = self.fontLarge) or self.AUTOPLAY:
+    if self.goToSettingsButton.draw(self.screen, "Settings", font = self.fontLarge) or self.AUTOPLAY or "space" in self.keypress:
         self.GAMESTATE = "settings"

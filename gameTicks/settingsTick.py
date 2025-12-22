@@ -148,7 +148,7 @@ def settingsTick(self: "Game"):
             w = random.choice(self.weapons)
             w.give(pawn)
 
-    if not (self.playerFilesToGen or self.pawnGenI) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY):
+    if not (self.playerFilesToGen or self.pawnGenI) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY  or "space" in self.keypress):
         self.GAMESTATE = "pawnGeneration"
 
         #self.MANUALPAWN = self.pawnHelpList[0]

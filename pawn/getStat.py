@@ -67,7 +67,7 @@ class getStat:
             "martyrdom" : False,
             
             "instaHeal" : False,
-            "talking": True,
+            "talking": False,
             "turnCoat" : False,
             "hat": False,
             "noscoping": False,

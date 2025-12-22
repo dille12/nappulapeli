@@ -115,7 +115,7 @@ class KillFeed:
             self.app.killfeed.remove(self)
             return
         
-        pos = [self.app.res[0] - self.surface.get_width() - 5, 30 + self.app.killfeed.index(self)*55]
+        pos = [self.app.originalRes[0] - self.surface.get_width() - 5, 30 + self.app.killfeed.index(self)*55]
 
         if self.lifetime >= self.maxL - 0.2:
             i = 1-((self.maxL - self.lifetime)/0.2)

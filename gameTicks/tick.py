@@ -87,6 +87,8 @@ def battleTick(self: "Game"):
     self.res = self.originalRes.copy()
     self.res.x /= self.amountOfScreens
 
+    self.camResSave = self.res.copy()
+
     for SPLITSCREENI in range(self.amountOfScreens):
 
         self.CAMERA = self.CAMERAS[SPLITSCREENI]
@@ -104,11 +106,11 @@ def battleTick(self: "Game"):
 
         _battle_render_world(self, entities_temp, DUAL, SPLITSCREENI, self.amountOfScreens)
 
-    
+    self.res = self.originalRes.copy()
 
     _battle_render_overlays_and_ui(self, FF)
 
-    self.res = self.originalRes.copy()
+    
 
     _battle_debug_and_metrics(self)
 
@@ -559,7 +561,7 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
             break
 
         ox, oy = self.MINIMAPCELLSIZE * x.pos / (self.tileSize)
-        w, h = self.MINIMAPCELLSIZE * self.res / (self.tileSize)
+        w, h = self.MINIMAPCELLSIZE * self.camResSave / (self.tileSize)
         r = pygame.Rect(ox, oy, w, h)
         r.inflate_ip(w/self.RENDER_SCALE - w, h/self.RENDER_SCALE - h)
         pygame.draw.rect(self.MINIMAPTEMP, self.getTeamColor(x.cameraIndex), r, width=1)
