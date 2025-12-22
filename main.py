@@ -797,6 +797,42 @@ class Game(valInit):
                     q.append(nxt)
         return dist
     
+    def bust(self, pawn, timeBetween):
+
+        self.VACPAWN = pawn
+        self.timeBetween = timeBetween
+
+        t = threading.Thread(target=self.bustThread, args=(pawn,))
+        t.daemon = True
+        t.start()
+        
+
+    def bustThread(self, pawn):
+        dt = 0.01
+
+        # ramp down: 1 -> 0 in 1s
+        t = 0.0
+        while t < 1.0:
+            self.THREAD_SLOWMO = max(0.0, 1.0 - t)
+            time.sleep(dt)
+            t += dt
+
+        self.THREAD_SLOWMO = 0.0
+
+        self.DISPLAY_VAC = True
+        # idle 3s
+        time.sleep(10.0)
+        self.DISPLAY_VAC = False
+
+        # ramp up: 0 -> 1 in 1s
+        t = 0.0
+        while t < 1.0:
+            self.THREAD_SLOWMO = min(1.0, t)
+            time.sleep(dt)
+            t += dt
+
+        self.THREAD_SLOWMO = 1.0
+    
 
     def getSites(self):
 

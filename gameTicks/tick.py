@@ -256,7 +256,7 @@ def _battle_timescale(self: "Game"):
     else:
         ENDGAME = 1
 
-    self.TOTAL_TIME_ADJUSTMENT = self.SLOWMO * TIMESCALE * ENDGAME
+    self.TOTAL_TIME_ADJUSTMENT = self.SLOWMO * TIMESCALE * ENDGAME * self.THREAD_SLOWMO
 
     self.deltaTime *= self.TOTAL_TIME_ADJUSTMENT
     return FF, TIMESCALE
@@ -639,6 +639,15 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
         t.set_alpha(int(alpha))
 
         self.screen.blit(t, self.res / 2 - v2(t.get_size()) / 2)
+
+    if self.DISPLAY_VAC:
+        p = self.VACPAWN
+        t = self.fontLarge.render(f"{p.name} REKISTERÖI ÄSKEN KAKS KERTAA {self.timeBetween:.1f} SEKUNNIS :DDD", True, [255, 255, 255])
+        self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2)
+
+        t = self.fontLarge.render(f"VAC BAN OJENNETTU", True, [255, 255, 255])
+        self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2 + [0,60])
+
 
     if self.roundTime < 10 and not self.VICTORY:
         self.nextMusic = -1

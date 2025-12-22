@@ -120,7 +120,9 @@ class Pawn(PawnBehaviour, getStat):
         super().__init__()
 
         
-
+        self.drinkTimer = 0
+        self.drinks = {}
+        self.lastDrinks = []
 
         # pawnAvatarEncoded is encoded as base64
 
@@ -1476,6 +1478,9 @@ class Pawn(PawnBehaviour, getStat):
     def tick(self):
 
         self.ONSCREEN = False
+
+        if self.drinkTimer > 0:
+            self.drinkTimer -= self.app.deltaTimeR
 
         #self.teamColor = self.team.color
 

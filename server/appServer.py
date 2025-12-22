@@ -6,7 +6,7 @@ import traceback
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
-
+import time
 import threading
 class ClientHandler:
     def __init__(self, websocket):
@@ -130,6 +130,22 @@ def make_handler(app: "Game"):
                     am = data.get("drinkValue")
                     pawn.team.currency += am
                     pawn.stats["amountDrank"] += am
+                    
+                    drinkType = data.get("drinkType")
+                    if drinkType in pawn.drinks:
+                        pawn.drinks[drinkType] += 1
+                    else:
+                        pawn.drinks[drinkType] = 1
+
+                    
+
+                    if pawn.drinkTimer > 0:
+                        if app.ANTICHEAT:
+                            app.bust(pawn, time.time() - pawn.lastDrinks[-1][0])
+
+                    pawn.lastDrinks.append([time.time(), drinkType])
+                    
+                    pawn.drinkTimer += am
                     
                     """Send drink registration response to client"""
                     packet = {

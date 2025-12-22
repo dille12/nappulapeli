@@ -59,6 +59,7 @@ DEBUG_VARS = [
     "ENABLEGRENADES",
     "RENDER_SCALE",
     "QUALITY_PRESET",
+    "ANTICHEAT",
     
 ]
 
@@ -92,6 +93,7 @@ class valInit:
         self.QUALITY_PRESET = 1
 
         self.ENABLEGRENADES = True
+        self.ANTICHEAT = True
 
         self.maxWins = 5
 
@@ -521,6 +523,8 @@ class valInit:
         self.AUDIOMIXER.start_stream()
         
         self.SLOWMO = 1
+        self.THREAD_SLOWMO = 1
+        self.DISPLAY_VAC = False
         self.skullTimes = []
         self.refreshShops()
 
