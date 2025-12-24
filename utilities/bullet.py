@@ -65,6 +65,9 @@ class Bullet:
         if self.crit:
             self.damage *= 4
 
+        self.trail = [self.pos]
+        #self.app.trails.append(self.trail)
+
         self.app.roundInfo["bulletsFired"] += 1
 
     def getOwnCell(self):
@@ -173,9 +176,13 @@ class Bullet:
                 Explosion(self.app, self.pos, firer = self.weapon, damage = self.damage, doFire=True)
 
             self.app.ENTITIES.remove(self)
+            self.app.trails.append(self.trail)
             return
 
         self.pos += self.vel * move_dist
+        self.trail.append(self.pos.copy())
+        if len(self.trail) > 3:
+            self.trail.pop(0)
         
         for x in self.app.pawnHelpList:
             if x == self:
@@ -209,6 +216,7 @@ class Bullet:
                 if not self.piercing:
                     if self in self.app.ENTITIES:
                         self.app.ENTITIES.remove(self)
+                        self.app.trails.append(self.trail)
 
                 self.app.bloodSplatters.append(BloodParticle(x.pos.copy(), 0.7, app = self.app))
 
@@ -232,8 +240,19 @@ class Bullet:
         if self.lifetime < 0:
             if self in self.app.ENTITIES:
                 self.app.ENTITIES.remove(self)
+                self.app.trails.append(self.trail)
+
+    @staticmethod
+    def renderTrail(app, trail):
+        if len(trail) < 2:
+            return
+        points = [app.convertPos(p) for p in trail]
+        pygame.draw.lines(app.DRAWTO, (200, 200, 50), False, points, 2)
 
     def render(self):
+
+        self.renderTrail(self.app, self.trail)
+
         if self.ONSCREEN:
             POS = self.app.convertPos(self.pos)
             self.app.DRAWTO.blit(self.b, POS - v2(self.b.get_size())/2)

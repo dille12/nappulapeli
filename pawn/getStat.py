@@ -27,66 +27,7 @@ def ult_division(func):
         return result / 3 if self.ULT else result
     return wrapper
 
-class getStat:
-    def __init__(self: "Pawn"):
-        self.itemEffects = {
-            "speedMod": 1.0, # Done
-            "healthRegenMult": 1.0,
-            "thorns": 0.0,
-            "healthCapMult": 1.0,
-            
-            "weaponHandling" : 1.0,
-            "weaponDamage" : 1.0,
-            "weaponReload" : 1.0,
-            "weaponFireRate" : 1.0,
-            "weaponAmmoCap" : 1.0,
-            "weaponRange": 1.0,
-            "accuracy": 1.0,
-            "multiShot" : 1,
-            "recoilMult": 1.0,
-            "meleeDamage": 1.0,
-            
-            "saveChance" : 0.0,
-            "fireRateIncrease" : 0,
-            "lifeSteal": 0.0,
-            "tacticalSprintSpeed": 1.0,
-            "defenceNormal" : 1.0,
-            "defenceEnergy" : 1.0,
-            "defenceExplosion" : 1.0,
-            "tripChance": 0.0,
-            "shitChance": 0.0,
-            "dodgeChance": 0.0,
-            "xpMult":1.0,
-            "healOnKill":0,
-            "knockbackMult":1.0,
-            "healAllies":0,
-            "timeScale": 1.0,
-            "utilityUsage": 1.0,
-
-            "berserker" : False,
-            "martyrdom" : False,
-            
-            "instaHeal" : False,
-            "talking": False,
-            "turnCoat" : False,
-            "hat": False,
-            "noscoping": False,
-            "piercing": False,
-            "detonation": False,
-            
-            "extraItem": False,  
-            "homing": False,
-            "playMusic": False,
-            "magDump": False,
-            "allyProtection" : False,
-            "coward" : False,
-            "revenge" : False,
-            "duplicator" : False,
-            "bossKiller" : False,
-            "dualWield" : False,
-        }
-
-        self.effect_labels_fi = {
+effect_labels_fi = {
             "speedMod": "Nopeus",
             "healthRegenMult": "Elpymisnopeus",
             "thorns": "Piikit",
@@ -141,56 +82,70 @@ class getStat:
             "tacticalSprintSpeed": "Taktinen juoksu",
             "bossKiller" : "Koodarikilleri",
             "dualWield" : "Dual wield",
+            "currencyGain": "Pisteiden ansaitseminen",
         }
 
-        self.effect_labels_en = {
-            "speedMod": "Speed",
-            "healthRegenMult": "Health Regeneration",
-            "thorns": "Thorns",
-            "healthCapMult": "Max HP",
-            "berserker": "Berserker",
-            "martyrdom": "Martyrdom",
+class getStat:
+    def __init__(self: "Pawn"):
+        self.itemEffects = {
+            "speedMod": 1.0, # Done
+            "healthRegenMult": 1.0,
+            "thorns": 0.0,
+            "healthCapMult": 1.0,
+            
+            "weaponHandling" : 1.0,
+            "weaponDamage" : 1.0,
+            "weaponReload" : 1.0,
+            "weaponFireRate" : 1.0,
+            "weaponAmmoCap" : 1.0,
+            "weaponRange": 1.0,
+            "accuracy": 1.0,
+            "multiShot" : 1,
+            "recoilMult": 1.0,
+            "meleeDamage": 1.0,
+            
+            "saveChance" : 0.0,
+            "fireRateIncrease" : 0,
+            "lifeSteal": 0.0,
+            "tacticalSprintSpeed": 1.0,
+            "defenceNormal" : 1.0,
+            "defenceEnergy" : 1.0,
+            "defenceExplosion" : 1.0,
+            "tripChance": 0.0,
+            "shitChance": 0.0,
+            "dodgeChance": 0.0,
+            "xpMult":1.0,
+            "healOnKill":0,
+            "knockbackMult":1.0,
+            "healAllies":0,
+            "timeScale": 1.0,
+            "utilityUsage": 1.0,
+            "currencyGain": 1.0,
 
-            "weaponHandling": "Weapon Handling",
-            "weaponDamage": "Weapon Damage",
-            "weaponReload": "Reload Speed",
-            "weaponFireRate": "Fire Rate",
-            "weaponAmmoCap": "Magazine",
-            "weaponRange": "Range",
-            "accuracy": "Accuracy",
-            "multiShot": "Multishot",
-            "meleeDamage": "Melee Damage",
-
-            "instaHeal": "Instant Heal",
-            "saveChance": "Survival Chance",
-            "fireRateIncrease": "Increasing Fire Rate",
-            "allyProtection": "Ally Protection",
-            "coward": "Coward",
-            "revenge": "Revenge",
-            "duplicator": "Duplicator",
-
-            "defenceNormal": "Normal Defence",
-            "defenceEnergy": "Energy Defence",
-            "defenceExplosion": "Explosion Defence",
-
-            "dodgeChance": "Dodge Chance",
-            "xpMult": "XP Multiplier",
-            "healOnKill": "Heal on Kill",
-            "knockbackMult": "Knockback",
-            "healAllies": "Heal Allies",
-            "talking": "Talking",
-            "turnCoat": "Turncoat",
-            "hat": "Hat",
-            "noscoping": "360",
-            "recoilMult": "Recoil",
-            "piercing": "Piercing Bullets",
-            "detonation": "Detonation",
-            "tripChance": "Trip Chance",
-            "extraItem": "Extra Item",
-            "homing": "Homing",
-            "shitChance": "Shitting Chance",
-            "playMusic": "Boombox",
+            "berserker" : False,
+            "martyrdom" : False,
+            
+            "instaHeal" : False,
+            "talking": False,
+            "turnCoat" : False,
+            "hat": False,
+            "noscoping": False,
+            "piercing": False,
+            "detonation": False,
+            
+            "extraItem": False,  
+            "homing": False,
+            "playMusic": False,
+            "magDump": False,
+            "allyProtection" : False,
+            "coward" : False,
+            "revenge" : False,
+            "duplicator" : False,
+            "bossKiller" : False,
+            "dualWield" : False,
         }
+
+        self.effect_labels_fi = effect_labels_fi
 
         super().__init__()
 

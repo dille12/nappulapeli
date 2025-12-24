@@ -161,7 +161,7 @@ class PawnBehaviour:
                 x = base_x2 + (index - total / 2) * spacing2
                 y = base_y + offset_y + 70*(index%2)
 
-            self.walkTo = [x, y]
+            self.walkTo = self.app.inverseConvertPos(v2([x, y]))
 
     def judgeWalkPos(self):
         inspect_team = [p for p in self.app.pawnHelpList.copy() if p == self.app.podiumPawn]
@@ -185,7 +185,7 @@ class PawnBehaviour:
             x = base_x2 + (index - total / 2) * spacing2
             y = base_y + offset_y + 70*(index%2)
 
-        self.walkTo = [x, y]
+        self.walkTo = self.app.inverseConvertPos(v2([x, y]))
 
 
 
@@ -210,11 +210,30 @@ class PawnBehaviour:
             return False
 
         return self.getOwnCell()[0] == self.getAttackPosition()[0] and self.getOwnCell()[1] == self.getAttackPosition()[1]
+    
+
+    def gameEndWalkPos(self):
+        spacing = 250
+        base_x = self.app.res[0]/2 + spacing/2
+        base_y = 300
+
+        l = self.team.getPawns()
+        l.sort(key=lambda p: id(p))
+        index = l.index(self)
+        total = len(l)
+        x = base_x + (index - total / 2) * spacing
+        y = base_y
+
+        self.walkTo = self.app.inverseConvertPos(v2([x, y]))
 
     def pickWalkingTarget(self):
 
         if self.app.PEACEFUL:
-            if self.app.pregametick == "shop" and self.app.teamInspectIndex != -1:
+
+            if self.app.GAMESTATE == "end":
+                self.gameEndWalkPos()
+
+            elif self.app.pregametick == "shop" and self.app.teamInspectIndex != -1:
                 self.shopWalkPos()
             elif self.app.pregametick == "judgement":
                 self.judgeWalkPos()

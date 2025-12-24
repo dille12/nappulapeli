@@ -165,6 +165,7 @@ class Weapon:
         self.weaponIsGrenade = fireFunction == Weapon.grenade
         self.weaponIsObjective = fireFunction == Weapon.skull
 
+        WEAPONSCALE = 1.1
         if not precomputedImage:
             self.image = pygame.image.load(image_path).convert_alpha()
             if image_path == "texture/ak47.png":
@@ -174,10 +175,17 @@ class Weapon:
                 self.image = pygame.transform.scale_by(self.image, 36 / self.image.get_width())
             else:
                 self.image = pygame.transform.scale_by(self.image, (150*sizeMult) / self.image.get_width())  # Scale the image to a suitable size
+
+
+            
+            self.image = pygame.transform.scale_by(self.image, self.app.RENDER_SCALE * WEAPONSCALE)  # Scale the image to a suitable size
+
         else:
             self.image = precomputedImage
 
-        self.image = pygame.transform.scale_by(self.image, self.app.RENDER_SCALE * 1.5)  # Scale the image to a suitable size
+        
+
+        
 
 
         self.masked = False
@@ -228,7 +236,7 @@ class Weapon:
         self.FINALROTATION = 0
         self.ROTATION = 0
         self.ROTATIONVEL = 0
-        self.barrelOffset = v2(75, 0) * sizeMult * 1.5
+        self.barrelOffset = v2(self.image.get_width()/2, 0)
 
 
         self.grenadeThrowI = 0
@@ -672,7 +680,7 @@ class Weapon:
         if self.meleeing(): return False
         if self.isReloading(): return False
         if not self.pointingAtTarget(): return False
-        if self.magazine == 0: return False
+        if self.magazine <= 0: return False
         return True
 
     def canShoot(self):
@@ -680,7 +688,7 @@ class Weapon:
      
         if self.isReloading(): return False
                     
-        if self.magazine == 0:
+        if self.magazine <= 0:
             self.reload()
             return False
         

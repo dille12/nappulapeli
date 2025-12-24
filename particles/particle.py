@@ -83,7 +83,7 @@ class Particle:
         self.alive = True
         
         # Color properties
-        self.start_color = kwargs.get('start_color', (255, 255, 255, 255))
+        self.start_color = kwargs.get('start_color', (255, 255, 255))
         self.end_color = kwargs.get('end_color', self.start_color)
         self.current_color = list(self.start_color)
         self.color_curve = kwargs.get('color_curve', EasingType.LINEAR)
@@ -425,45 +425,77 @@ class Particle:
 
     
     def render(self, surface: pygame.Surface):
-        """Render the particle to the given surface."""
         if not self.alive or self.current_size <= 0:
             return
-        
-        # Render trail first (behind particle)
-        self._render_trail(surface)
-        
-        # Custom render function takes precedence
-        if self.custom_render_func:
-            self.custom_render_func(self, surface)
+
+        sx, sy = self.app.convertPos(v2(self.x, self.y))
+        size = int(self.current_size * self.app.RENDER_SCALE)
+        if size <= 0:
             return
-        
-        # Texture rendering
-        if self.texture:
-            self._render_texture(surface)
-            return
-        
-        # Custom surface rendering
-        if self.shape == ParticleShape.CUSTOM and self.custom_surface:
-            # Apply camera offset
-            camera_offset = getattr(self.app, 'cameraPosDelta', (0, 0))
-            screen_x = self.x - camera_offset[0]
-            screen_y = self.y - camera_offset[1]
-            
-            rect = self.custom_surface.get_rect(center=(int(screen_x), int(screen_y)))
-            surface.blit(self.custom_surface, rect, special_flags=self.blend_mode.value)
-            return
-        
-        # Shape-based rendering
+
+        color = self.current_color
+
+        # ---- Trail (single draw call) ----
+        if self.trail_length > 1 and len(self.trail_positions) >= 2:
+            pts = [
+                self.app.convertPos(v2(x, y))
+                for x, y in self.trail_positions
+            ]
+            pygame.draw.lines(
+                surface,
+                color,
+                False,
+                pts,
+                max(1, size // 2)
+            )
+
+        # ---- Shape rendering ----
         if self.shape == ParticleShape.CIRCLE:
-            self._render_circle(surface)
+            pygame.draw.circle(surface, color, (int(sx), int(sy)), size)
+
         elif self.shape == ParticleShape.SQUARE:
-            self._render_square(surface)
-        elif self.shape == ParticleShape.TRIANGLE:
-            self._render_triangle(surface)
-        elif self.shape == ParticleShape.STAR:
-            self._render_star(surface)
+            r = size
+            pygame.draw.rect(
+                surface,
+                color,
+                pygame.Rect(int(sx - r), int(sy - r), r * 2, r * 2)
+            )
+
         elif self.shape == ParticleShape.LINE:
-            self._render_line(surface)
+            length = size * 2
+            dx = math.cos(self.rotation) * length
+            dy = math.sin(self.rotation) * length
+            pygame.draw.line(
+                surface,
+                color,
+                (int(sx), int(sy)),
+                (int(sx + dx), int(sy + dy)),
+                max(1, size // 2)
+            )
+
+        elif self.shape == ParticleShape.TRIANGLE:
+            r = size
+            a = self.rotation
+            pts = [
+                (sx + math.cos(a) * r,     sy + math.sin(a) * r),
+                (sx + math.cos(a + 2.1) * r, sy + math.sin(a + 2.1) * r),
+                (sx + math.cos(a + 4.2) * r, sy + math.sin(a + 4.2) * r),
+            ]
+            pygame.draw.polygon(surface, color, pts)
+
+        elif self.shape == ParticleShape.STAR:
+            r1 = size
+            r2 = size * 0.5
+            pts = []
+            a = self.rotation
+            for i in range(10):
+                r = r1 if i % 2 == 0 else r2
+                pts.append((
+                    sx + math.cos(a + i * math.pi / 5) * r,
+                    sy + math.sin(a + i * math.pi / 5) * r
+                ))
+            pygame.draw.polygon(surface, color, pts)
+
     
     def destroy(self):
         """Destroy the particle and remove it from the particle list."""
@@ -521,8 +553,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(angle),
                 'vel_y': speed * math.sin(angle),
                 'lifetime': random.randint(30, 90),
-                'start_color': (255, 255, 100, 255),
-                'end_color': (255, 0, 0, 0),
+                'start_color': (255, 255, 100),
+                'end_color': (255, 0, 0),
                 'start_size': random.uniform(3, 8),
                 'end_size': 0,
                 'gravity': 0.1,
@@ -541,8 +573,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-1, 1),
                 'vel_y': random.uniform(-3, -1),
                 'lifetime': random.randint(40, 80),
-                'start_color': (255, 255, 0, 255),
-                'end_color': (255, 0, 0, 0),
+                'start_color': (255, 255, 0),
+                'end_color': (255, 0, 0),
                 'start_size': random.uniform(2, 6),
                 'end_size': random.uniform(8, 12),
                 'blend_mode': BlendMode.ADD,
@@ -584,8 +616,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(angle),
                 'vel_y': speed * math.sin(angle) - 1,  # Slight upward bias
                 'lifetime': random.randint(120, 150),
-                'start_color': (255, 215, 0, 255),  # Gold
-                'end_color': (255, 255, 100, 0),    # Fade to bright yellow
+                'start_color': (255, 215, 0),  # Gold
+                'end_color': (255, 255, 100),    # Fade to bright yellow
                 'start_size': random.uniform(70, 100),
                 'end_size': random.uniform(1, 3),
                 'shape': ParticleShape.STAR,
@@ -604,8 +636,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-2, 2),
                 'vel_y': random.uniform(-4, -1),
                 'lifetime': random.randint(40, 80),
-                'start_color': (255, 255, 200, 255),  # Bright yellow-white
-                'end_color': (255, 215, 0, 0),        # Fade to gold
+                'start_color': (255, 255, 200),  # Bright yellow-white
+                'end_color': (255, 215, 0),        # Fade to gold
                 'start_size': random.uniform(2, 4),
                 'end_size': 0,
                 'shape': ParticleShape.CIRCLE,
@@ -630,8 +662,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(angle),
                 'vel_y': speed * math.sin(angle),
                 'lifetime': 30,
-                'start_color': (255, 215, 0, 200),
-                'end_color': (255, 215, 0, 0),
+                'start_color': (255, 215, 0),
+                'end_color': (255, 215, 0),
                 'start_size': 1,
                 'end_size': 3,
                 'shape': ParticleShape.CIRCLE,
@@ -658,8 +690,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-0.5, 0.5),
                 'vel_y': random.uniform(-0.5, 0.5),
                 'lifetime': random.randint(8, 15),  # Very short-lived
-                'start_color': (255, 255, 255, 255),  # Bright white
-                'end_color': (255, 100, 0, 0),        # Fade to orange
+                'start_color': (255, 255, 255),  # Bright white
+                'end_color': (255, 100, 0),        # Fade to orange
                 'start_size': random.uniform(8, 15),
                 'end_size': random.uniform(15, 25),
                 'shape': ParticleShape.CIRCLE,
@@ -679,8 +711,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(flash_angle),
                 'vel_y': speed * math.sin(flash_angle),
                 'lifetime': random.randint(12, 20),
-                'start_color': (255, 200, 50, 255),   # Bright yellow
-                'end_color': (200, 50, 0, 0),         # Dark red fade
+                'start_color': (255, 200, 50),   # Bright yellow
+                'end_color': (200, 50, 0),         # Dark red fade
                 'start_size': random.uniform(4, 8),
                 'end_size': 0,
                 'shape': ParticleShape.CIRCLE,
@@ -699,8 +731,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(spark_angle),
                 'vel_y': speed * math.sin(spark_angle),
                 'lifetime': random.randint(15, 35),
-                'start_color': (255, 255, 100, 255),  # Hot yellow
-                'end_color': (100, 0, 0, 0),          # Cool to dark red
+                'start_color': (255, 255, 100),  # Hot yellow
+                'end_color': (100, 0, 0),          # Cool to dark red
                 'start_size': random.uniform(1, 3),
                 'end_size': 0,
                 'shape': ParticleShape.CIRCLE,
@@ -722,8 +754,8 @@ class ParticleSystem:
                 'vel_x': speed * math.cos(smoke_angle),
                 'vel_y': speed * math.sin(smoke_angle),
                 'lifetime': random.randint(40, 70),
-                'start_color': (100, 100, 100, 150),  # Gray smoke
-                'end_color': (50, 50, 50, 0),         # Fade to transparent
+                'start_color': (100, 100, 100),  # Gray smoke
+                'end_color': (50, 50, 50),         # Fade to transparent
                 'start_size': random.uniform(3, 6),
                 'end_size': random.uniform(12, 20),   # Expands as it cools
                 'shape': ParticleShape.CIRCLE,
@@ -754,8 +786,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-1, 1),
                 'vel_y': random.uniform(-3, -1),
                 'lifetime': random.randint(60, 100),
-                'start_color': (50, 255, 100, 200),   # Soft green
-                'end_color': (100, 255, 200, 0),      # Fade to cyan
+                'start_color': (50, 255, 100),   # Soft green
+                'end_color': (100, 255, 200),      # Fade to cyan
                 'start_size': random.uniform(30, 60),
                 'end_size': random.uniform(1, 3),
                 'shape': ParticleShape.CIRCLE,
@@ -780,8 +812,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-0.5, 0.5),
                 'vel_y': random.uniform(-2, -0.5),
                 'lifetime': random.randint(50, 80),
-                'start_color': (255, 255, 255, 255),  # Pure white
-                'end_color': (50, 255, 100, 0),       # Fade to green
+                'start_color': (255, 255, 255),  # Pure white
+                'end_color': (50, 255, 100),       # Fade to green
                 'start_size': random.uniform(40, 70),
                 'end_size': random.uniform(1, 2),
                 'shape': ParticleShape.STAR,  # We'll use star as a cross-like shape
@@ -802,8 +834,8 @@ class ParticleSystem:
                 'vel_x': random.uniform(-1.5, 1.5),
                 'vel_y': random.uniform(-4, -1),
                 'lifetime': random.randint(30, 60),
-                'start_color': (200, 255, 255, 255),  # Bright cyan-white
-                'end_color': (50, 255, 150, 0),       # Fade to healing green
+                'start_color': (200, 255, 255),  # Bright cyan-white
+                'end_color': (50, 255, 150),       # Fade to healing green
                 'start_size': random.uniform(10, 15),
                 'end_size': 0,
                 'shape': ParticleShape.CIRCLE,
@@ -826,8 +858,8 @@ class ParticleSystem:
                 'vel_x': 0,
                 'vel_y': 0,
                 'lifetime': 40 + delay_offset,
-                'start_color': (100, 255, 150, 100) if i == 0 else (100, 255, 150, 0),
-                'end_color': (100, 255, 150, 0),
+                'start_color': (100, 255, 150) if i == 0 else (100, 255, 150),
+                'end_color': (100, 255, 150),
                 'start_size': 5 if i == 0 else 15 + i * 10,
                 'end_size': 25 + i * 15,
                 'shape': ParticleShape.CIRCLE,
@@ -849,8 +881,8 @@ class ParticleSystem:
                 vel_x=random.uniform(-0.5, 0.5),
                 vel_y=random.uniform(-0.5, 0.5),
                 lifetime=random.randint(20, 25),
-                start_color=(255, 255, 255, 255),
-                end_color=(255, 255, 255, 0),
+                start_color=(255, 255, 255),
+                end_color=(255, 255, 255),
                 start_size=random.uniform(20, 30),
                 end_size=random.uniform(100, 200),
                 shape=ParticleShape.CIRCLE,
@@ -868,8 +900,8 @@ class ParticleSystem:
                 vel_x=math.cos(angle) * speed,
                 vel_y=math.sin(angle) * speed,
                 lifetime=random.randint(30, 40),
-                start_color=(255, 255, 255, 220),
-                end_color=(255, 255, 255, 0),
+                start_color=(255, 255, 255),
+                end_color=(255, 255, 255),
                 start_size=random.uniform(40, 70),
                 end_size=0,
                 shape=ParticleShape.LINE,
@@ -888,8 +920,8 @@ class ParticleSystem:
                 vel_x=math.cos(angle) * speed,
                 vel_y=math.sin(angle) * speed,
                 lifetime=random.randint(20, 40),
-                start_color=(255, 220, 120, 255),
-                end_color=(120, 60, 20, 0),
+                start_color=(255, 220, 120),
+                end_color=(120, 60, 20),
                 start_size=random.uniform(2, 4),
                 end_size=0,
                 shape=ParticleShape.CIRCLE,
@@ -923,8 +955,8 @@ class ParticleSystem:
                 vel_x=math.cos(angle) * speed,
                 vel_y=math.sin(angle) * speed,
                 lifetime=random.randint(80, 120),
-                start_color=(255, 200, 120, 255),
-                end_color=(80, 40, 20, 0),
+                start_color=(255, 200, 120),
+                end_color=(80, 40, 20),
                 start_size=random.uniform(3, 4),
                 end_size=0,
                 shape=ParticleShape.CIRCLE,

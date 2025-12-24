@@ -1,63 +1,8 @@
 from utilities.item import Item
-
+from pawn.getStat import effect_labels_fi
 
 def getItems():
-    effect_labels_fi = {
-        "speedMod": "Nopeus",
-        "healthRegenMult": "Elpymisnopeus",
-        "thorns": "Piikit",
-        "healthCapMult": "Maksimi HP",
-        "berserker": "Berserkki",
-        "martyrdom": "Marttyyri",
-
-        "weaponHandling": "Aseen käsittely",
-        "weaponDamage": "Aseen vahinko",
-        "weaponReload": "Latausnopeus",
-        "weaponFireRate": "Tulinopeus",
-        "weaponAmmoCap": "Lipas",
-        "weaponRange": "Kantama",
-        "accuracy": "Tarkkuus",
-        "multiShot": "Monilaukaus",
-        "meleeDamage": "Lyöntivahinko",
-
-        "instaHeal": "Pika-parannus",
-        "saveChance": "Pelastumis-%",
-        "fireRateIncrease": "Ajan myötä lisääntynyt tuli",
-        "allyProtection": "Liittolaisten suoja",
-        "coward": "Pelkuri",
-        "revenge": "Kosto",
-        "duplicator": "Kaksoiskappale",
-
-        "defenceNormal": "Normaali puolustus",
-        "defenceEnergy": "Energiapuolustus",
-        "defenceExplosion": "Räjähdyssuoja",
-
-        "timeScale": "Kellonopeus",
-        "utilityUsage": "Kalusteiden käyttö",
-
-        "dodgeChance": "Väistön todennäköisyys",
-        "xpMult": "XP-kerroin",
-        "healOnKill": "Parannus tapon yhteydessä",
-        "knockbackMult": "Takaisku",
-        "healAllies": "Liittolaisten parannus",
-        "talking": "Puhuva",
-        "turnCoat": "Petturi",
-        "hat": "Hattu",
-        "noscoping": "360",
-        "recoilMult": "Rekyyli",
-        "piercing": "Lävistävät luodit",
-        "detonation": "Detonaatio",
-        "tripChance": "Kaatumisen todennäköisyys",
-        "extraItem": "Extraesine",
-        "homing": "Itseohjautuva",
-        "shitChance": "Paskantamisen todennäköisyys",
-        "playMusic": "Jytä",
-        "magDump": "Lipas tyhjäksi",
-        "lifeSteal": "Elämänimeminen",
-        "tacticalSprintSpeed": "Taktinen juoksu",
-        "bossKiller": "Koodarikilleri",
-        "dualWield": "Dual wield",
-    }
+   
 
     def format_effects(effects):
         labels = []
@@ -141,7 +86,7 @@ def getItems():
         create_item("Niken Nyssykkä", extraItem=["set", True]),
         create_item("Magneetti", homing=["set", True], weaponDamage=["mult", 0.75]),
         create_item("Paskahousu", shitChance=["add", 0.025], speedMod=["mult", 0.95], healthCapMult=["mult", 1.1]),
-        create_item("Tuplaruuti", recoilMult=["mult", 0.25], weaponDamage=["mult", 2]),
+        create_item("Tuplaruuti", recoilMult=["mult", 0.75], weaponDamage=["mult", 1.5]),
         create_item("Mankka", playMusic=["set", True], dodgeChance=["add", 0.3]),
         create_item("Mersun merkki", speedMod=["mult", 1.25]),
         create_item("Taktinen juoksu", tacticalSprintSpeed=["mult", 1.3]),
@@ -152,6 +97,8 @@ def getItems():
         create_item("Ransuexprertti", utilityUsage=["add", 1]),
         create_item("Keinosnipu", weaponDamage=["mult",1.5], weaponFireRate=["mult", 0.5], recoilMult=["mult", 0.75]),
         create_item("Dualwield", dualWield=["set", True]),
+        create_item("Säästöpossu", currencyGain=["mult", 2.0]),
+        create_item("Kelan eväät", currencyGain=["mult", 1.5]),
         #create_item("Mag dump", magDump=["set", True]),
     ]
 

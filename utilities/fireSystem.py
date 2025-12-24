@@ -26,7 +26,7 @@ class FireSystem:
 
     def smoke_color(self, a):
         a = max(0.0, min(1.0, a))
-        return (40, 40, 40, int(a*50))
+        return (int(a*40), int(a*40), int(a*40))
     
     def to_screen(self, x, y):
         return self.app.convertPos(v2(x,y))
@@ -144,6 +144,9 @@ class FireSystem:
     # CELL MANAGEMENT
     # ==============================================
 
+    def clearCells(self):
+        for cell in list(self.cells.keys()):
+            self.removeCell(cell)
 
     def removeCell(self, cell):
         if cell in self.cells:

@@ -4,7 +4,7 @@
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
-  "midRoundTime": 0,
+  "midRoundTime": 10,
   "gameModeLineUp": [
     "TEAM DEATHMATCH",
     "ODDBALL",
@@ -15,7 +15,7 @@
   "maxWins": 3,
   "DOREALGAMEMODES": true,
   "XPBASE": 5,
-  "MAKEDEBUGPAWNS": true,
+  "MAKEDEBUGPAWNS": false,
   "DISABLEDEBUGTEXT": true,
   "NPC_WEAPONS_PURCHASE": true,
   "REGISTER_WEAPON_KILLS": false,

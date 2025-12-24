@@ -36,6 +36,22 @@ def battleTick(self: "Game"):
             for i, x in enumerate(victoryCondition):
                 self.victoryProgress[i].append(x)
 
+    if self.GAMEMODE == "FINAL SHOWDOWN":
+        self.amountOfScreens = 1
+    elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
+        self.CAMERAS[0].cameraLock.target == self.CAMERAS[1].cameraLock or
+        self.CAMERAS[1].cameraLock.target == self.CAMERAS[0].cameraLock):
+        self.amountOfScreens = 1
+    else:
+        self.amountOfScreens = 2
+
+    self.screenSwitchI = self.amountOfScreens * 0.05 + self.screenSwitchI * 0.95
+
+    self.res = self.originalRes.copy()
+    self.res.x /= self.screenSwitchI
+
+    self.camResSave = self.res.copy()
+
 
     _battle_minimap_begin(self)
 
@@ -73,21 +89,7 @@ def battleTick(self: "Game"):
    #    self.IN_SINGLE = self.TRANSITION_INTO_SINGLE
 
 
-    if self.GAMEMODE == "FINAL SHOWDOWN":
-        self.amountOfScreens = 1
-
-    #elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock:
-    else:
-        self.amountOfScreens = 2
-
-
-    #amountOfScreens = 2        
-
-
-    self.res = self.originalRes.copy()
-    self.res.x /= self.amountOfScreens
-
-    self.camResSave = self.res.copy()
+    
 
     for SPLITSCREENI in range(self.amountOfScreens):
 
@@ -377,6 +379,7 @@ def _battle_tick_entities(self: "Game", entities_temp):
         x.tick()
 
     self.handleTurfWar()
+    self.tickTrails()
 
 
 def _battle_post_entity_logic(self: "Game"):
@@ -496,6 +499,8 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
             for x in entities_temp:
                 x.render()
 
+            self.renderTrails()
+
             for x in self.visualEntities:
                 x.render()
 
@@ -531,7 +536,7 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
 def _battle_render_overlays_and_ui(self: "Game", FF: float):
     # onscreen count
     onscreen = 0
-    for x in self.pawnHelpList:
+    for x in self.getActualPawns():
         if self.onScreen(x.pos):
             onscreen += 1
 
@@ -575,7 +580,7 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
         pygame.draw.circle(self.MINIMAPTEMP, [255, 255, 255], self.MINIMAPCELLSIZE * skullpos / self.tileSize, 6, width=1)
 
     MINIMAP_POS = v2(self.originalRes.x/2 - self.MINIMAP.get_width()/2, self.originalRes.y - self.MINIMAP.get_height() - 10)
-    if not self.VICTORY:
+    if not self.VICTORY and self.GAMEMODE != "FINAL SHOWDOWN":
         self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
 
         w = self.MINIMAP.get_width()
@@ -640,13 +645,7 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
 
         self.screen.blit(t, self.res / 2 - v2(t.get_size()) / 2)
 
-    if self.DISPLAY_VAC:
-        p = self.VACPAWN
-        t = self.fontLarge.render(f"{p.name} REKISTERÖI ÄSKEN KAKS KERTAA {self.timeBetween:.1f} SEKUNNIS :DDD", True, [255, 255, 255])
-        self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2)
-
-        t = self.fontLarge.render(f"VAC BAN OJENNETTU", True, [255, 255, 255])
-        self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2 + [0,60])
+    
 
 
     if self.roundTime < 10 and not self.VICTORY:

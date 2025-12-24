@@ -251,7 +251,40 @@ class ArenaGenerator:
         self.grid = np.zeros((height, width), dtype=int)
         self.rooms: List[Room] = []
         
+    def getLightMap(self, tilesize) -> np.ndarray:
+        lightMap = np.zeros((self.height, self.width), dtype=np.float32)
 
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y,x] == CellType.WALL.value: continue
+                cells = len(self.get_visible_cells(x,y, max_range=10))
+                lightMap[y,x] = cells / 400.0
+
+        lightMap /= np.max(lightMap)
+        lightMap = self.upscale_lightmap(lightMap, self.grid, tileSize=tilesize)
+
+        return lightMap
+    
+    @staticmethod
+    def upscale_lightmap(lightMap, grid, tileSize):
+        mask = (grid != CellType.WALL.value).astype(np.float32)
+
+        lm = lightMap * mask
+
+        lm_px = np.repeat(
+            np.repeat(lm, tileSize, axis=0),
+            tileSize, axis=1
+        )
+
+        mask_px = np.repeat(
+            np.repeat(mask, tileSize, axis=0),
+            tileSize, axis=1
+        )
+
+        lm_px *= mask_px
+        print("Lightmap stats:", np.min(lm_px), np.max(lm_px), np.mean(lm_px))
+        print("Lightmap shape:", lm_px.shape)
+        return lm_px
 
     def to_pygame_surface(self, cell_size: int = 16, colors: Optional[Dict[int, Tuple[int, int, int]]] = None) -> pygame.Surface:
         """
@@ -298,6 +331,7 @@ class ArenaGenerator:
     
 
     def to_pygame_surface_textured2(self, cell_size=16):
+        lightmap = np.transpose(self.getLightMap(cell_size), (1,0))
         # Create surface
         surface_width = self.width * cell_size
         surface_height = self.height * cell_size
@@ -323,7 +357,13 @@ class ArenaGenerator:
                 if not drawn:
                     surface.blit(random.choice(self.app.concretes), (pixel_x, pixel_y))
 
-        
+        mapArray = pygame.surfarray.array3d(surface).astype(np.float32) / 255.0
+
+        mapArray = mapArray * lightmap[:, :, None]
+
+        mapArray = (np.clip(mapArray, 0, 1) * 255).astype(np.uint8)
+
+        surface = pygame.surfarray.make_surface(mapArray)
         return surface
         
 

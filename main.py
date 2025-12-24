@@ -6,6 +6,7 @@ from pawn.pawn import Pawn
 from pawn.weapon import Weapon
 import random
 import threading
+from utilities.bullet import Bullet
 from utilities.enemy import Enemy
 import math
 from pygame.math import Vector2 as v2
@@ -44,7 +45,7 @@ import tkinter
 from statistics import stdev
 from collections import deque
 from pawn.site import Site
-
+from collections import Counter
 from utilities.register import register_gun_kill
 
 print("Imports complete")
@@ -564,7 +565,7 @@ class Game(valInit):
     ):
         kg = self.killgrid.astype(np.float32)
 
-        # --- 1. smooth heatmap (Gaussian blur via separable convolution) ---
+        # --- 1. smooth heatmap ---
         if blur_sigma > 0:
             r = int(3 * blur_sigma)
             x = np.arange(-r, r + 1)
@@ -574,18 +575,16 @@ class Game(valInit):
             kg = np.apply_along_axis(lambda m: np.convolve(m, g, mode="same"), 0, kg)
             kg = np.apply_along_axis(lambda m: np.convolve(m, g, mode="same"), 1, kg)
 
-        # normalize to [0, 1]
+        # normalize
         maxv = kg.max()
         if maxv > 0:
             kg /= maxv
 
-        # --- 2. apply walls (force to zero / black) ---
+        # --- 2. wall mask ---
         wall_mask = self.map.grid == CellType.WALL.value
-        kg[wall_mask] = 0.0
 
-        # --- 3. map to RGB ---
+        # --- 3. RGB mapping ---
         if colormap is None:
-            # black → red → yellow → white
             r = np.clip(kg * 3, 0, 1)
             g = np.clip(kg * 3 - 1, 0, 1)
             b = np.clip(kg * 3 - 2, 0, 1)
@@ -594,11 +593,24 @@ class Game(valInit):
             rgb = colormap(kg)[:, :, :3]
 
         rgb = (55 + rgb * 200).astype(np.uint8)
+
+        # --- 4. Alpha channel ---
+        alpha = np.ones((kg.shape[0], kg.shape[1]), dtype=np.uint8) * 255
+        alpha[wall_mask] = 0
+
+        # Walls color irrelevant now, but keep clean
         rgb[wall_mask] = 0
 
-        # --- 4. pygame surface ---
-        surf = pygame.surfarray.make_surface(rgb.swapaxes(0, 1))
+        # --- 5. Create surface with per-pixel alpha ---
+        surf = pygame.Surface(
+            (rgb.shape[1], rgb.shape[0]),
+            flags=pygame.SRCALPHA,
+        )
 
+        pygame.surfarray.pixels3d(surf)[:, :, :] = rgb.swapaxes(0, 1)
+        pygame.surfarray.pixels_alpha(surf)[:, :] = alpha.swapaxes(0, 1)
+
+        # --- 6. Scale ---
         if tilesize != 1:
             surf = pygame.transform.scale(
                 surf,
@@ -606,6 +618,7 @@ class Game(valInit):
             )
 
         return surf
+
 
 
     def renderParallax(self):
@@ -631,6 +644,16 @@ class Game(valInit):
 
     def convertPos(self, pos, heightDiff = 1.0):
         return (pos - self.cameraPosDelta - self.res/2) * self.RENDER_SCALE * heightDiff + self.res/2
+    
+
+    def inverseConvertPos(self, screenPos, heightDiff=1.0):
+        return (
+            (screenPos - self.res / 2)
+            / (self.RENDER_SCALE * heightDiff)
+            + self.cameraPosDelta
+            + self.res / 2
+        )
+
 
 
 
@@ -712,7 +735,7 @@ class Game(valInit):
 
         
         
-        self.MAP = self.map.to_pygame_surface_textured2(cell_size=self.tileSize * self.RENDER_SCALE) #
+        self.MAP = self.map.to_pygame_surface_textured2(cell_size=int(self.tileSize * self.RENDER_SCALE)) #
 
         #mapUntextured = self.map.to_pygame_surface(cell_size=self.tileSize) #
         #pygame.image.save(mapUntextured, "untexturedLevel.png")
@@ -799,6 +822,9 @@ class Game(valInit):
     
     def bust(self, pawn, timeBetween):
 
+        #if self.VACPAWN:
+        #    return
+
         self.VACPAWN = pawn
         self.timeBetween = timeBetween
 
@@ -832,6 +858,7 @@ class Game(valInit):
             t += dt
 
         self.THREAD_SLOWMO = 1.0
+        self.VACPAWN = None
     
 
     def getSites(self):
@@ -1076,7 +1103,7 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST or True:
+        if self.STRESSTEST:
             for x in self.getActualPawns():
                 if x.BOSS: continue
                 x.reLevelPawn(10)
@@ -1089,6 +1116,8 @@ class Game(valInit):
         self.resetRoundInfo()
 
         for x in self.CAMERAS:
+            if x.cameraIndex >= len(self.teamSpawnRooms): continue
+
             x.pos = self.teamSpawnRooms[x.cameraIndex].center()
 
         self.transition(lambda: self.exitLoadingScreen())
@@ -1168,19 +1197,22 @@ class Game(valInit):
         
         
     def onScreen(self, pos):
+        if self.PEACEFUL: return True
 
         #pos = self.convertPos(pos)
 
         for camera in self.CAMERAS:
 
             r = pygame.Rect(camera.pos, self.res)
-            r.inflate_ip(r.x / self.RENDER_SCALE, r.y / self.RENDER_SCALE)
+            r.inflate_ip(self.res.x/self.RENDER_SCALE - self.res.x, self.res.y/self.RENDER_SCALE - self.res.y)
         
             onDualScreen = False
 
             if camera.DUALVIEWACTIVE:
+
                 r2 = pygame.Rect(camera.posToTargetTo2, self.res)
-                r2.inflate_ip(r2.x / self.RENDER_SCALE, r2.y / self.RENDER_SCALE)
+                r2.inflate_ip(self.res.x/self.RENDER_SCALE - self.res.x, self.res.y/self.RENDER_SCALE - self.res.y)
+
                 onDualScreen = r2.collidepoint(pos)
             #r2.inflate_ip(self.app.res)
 
@@ -1352,7 +1384,8 @@ class Game(valInit):
         )[1]
 
         self.HEATMAP = self.makeDeathHeatmapSurface(8, 3).convert_alpha()
-        self.HEATMAP.set_colorkey((0,0,0))
+        self.HEATMAP = pygame.transform.scale_by(self.HEATMAP, (640*self.RENDER_SCALE)/self.HEATMAP.get_height())
+        #self.HEATMAP.set_colorkey((0,0,0))
 
         if self.GAMEMODE != "DETONATION":
             n_samples = len(self.victoryProgress[0])
@@ -1453,6 +1486,7 @@ class Game(valInit):
     def BPM(self):
         if not self.loadedMusic:
             return
+        
         tempo = {"HH": 150, "Bablo": 123, "Bablo >:)": 125}[self.loadedMusic]
         #tempo = 150 if self.loadedMusic == "HH" else 123
         musicPlayedFor = time.time() - self.musicStart
@@ -1729,7 +1763,11 @@ class Game(valInit):
                     FILMLIST = [x for x in self.pawnHelpList.copy() if x.team.i == self.CAMERA.cameraIndex]
                     e = sorted(FILMLIST, key=lambda p: p.onCameraTime)
 
-                    #if self.GAMEMODE == "DETONATION":
+                    if self.GAMEMODE in "DETONATION":
+                        site = self.allTeams[0].getCurrentSite()
+                        if site:
+                            center = site.room.center()
+                            e = sorted(FILMLIST, key=lambda p: self.getDistFrom(p.getOwnCell(), center))
                     #    if self.skull.plantedAt:
                     #        l = [x for x in FILMLIST.copy() if self.skull.plantedAt.room.contains(*x.getOwnCell())]
                     #        e = sorted(l, key=lambda p: p.onCameraTime)
@@ -1985,7 +2023,7 @@ class Game(valInit):
 
                 height = 140
                 maxY = max(max(row) for row in self.victoryProgress if row)
-
+                maxY = max(maxY, 1)
                 position = v2(self.originalRes.x/2 - self.HEATMAP.get_width()/2, self.originalRes.y - height - 20)
 
                 for team in range(len(self.victoryProgress)):
@@ -2026,7 +2064,120 @@ class Game(valInit):
                 pawn.gType = gtype
 
 
+    def buildAwards(self):
+        pawns = [x for x in self.getActualPawns() if not x.NPC and not x.BOSS]
+        if not pawns:
+            pawns = [x for x in self.getActualPawns()]
 
+        awards = []
+
+        def add_stat_award(title, pawn, stat):
+            val = pawn.stats.get(stat, 0)
+
+            statToDesc = {
+                "kills": "Kills",
+                "deaths": "Deaths",
+                "damageDealt": "Damage Dealt",
+                "damageTaken": "Damage Taken",
+                "teamkills": "Teammates Killed",
+                "suicides": "Suicides",
+                "flashes": "Flashes",
+                "teamFlashes": "Team Flashes",
+                "amountSpended": "Amount Spent",
+                "amountDrank": "Amount Drank"
+            }
+
+            desc = f"{statToDesc[stat]}: {val:.0f}"
+            awards.append((title, pawn, desc))
+
+        add_stat_award("MOST KILLS",
+                    max(pawns, key=lambda p: p.stats["kills"]),
+                    "kills")
+
+        add_stat_award("MOST DEATHS",
+                    max(pawns, key=lambda p: p.stats["deaths"]),
+                    "deaths")
+
+        add_stat_award("LEAST DAMAGE DEALT",
+                    min(pawns, key=lambda p: p.stats["damageDealt"]),
+                    "damageDealt")
+
+        add_stat_award("MOST DAMAGE DEALT",
+                    max(pawns, key=lambda p: p.stats["damageDealt"]),
+                    "damageDealt")
+
+        add_stat_award("LEAST DAMAGE TAKEN",
+                    min(pawns, key=lambda p: p.stats["damageTaken"]),
+                    "damageTaken")
+
+        add_stat_award("MOST DAMAGE TAKEN",
+                    max(pawns, key=lambda p: p.stats["damageTaken"]),
+                    "damageTaken")
+
+        add_stat_award("MOST TEAMMATES KILLED",
+                    max(pawns, key=lambda p: p.stats["teamkills"]),
+                    "teamkills")
+
+        add_stat_award("MOST SUICIDES",
+                    max(pawns, key=lambda p: p.stats["suicides"]),
+                    "suicides")
+
+        add_stat_award("MOST FLASHES",
+                    max(pawns, key=lambda p: p.stats["flashes"]),
+                    "flashes")
+
+        add_stat_award("MOST TEAMFLASHES",
+                    max(pawns, key=lambda p: p.stats["teamFlashes"]),
+                    "teamFlashes")
+
+        # --- Drink-specific awards ---
+        heaviest = max(pawns, key=lambda p: p.stats["amountDrank"])
+        awards.append((
+            "HEAVIEST DRINKER",
+            heaviest,
+            self.summarizeDrinks(heaviest)
+        ))
+
+        worst = min(pawns, key=lambda p: p.stats["amountDrank"])
+        awards.append((
+            "WORST DRINKER",
+            worst,
+            self.summarizeDrinks(worst)
+        ))
+
+        add_stat_award("BIGGEST SPENDER",
+                    max(pawns, key=lambda p: p.stats["amountSpended"]),
+                    "amountSpended")
+
+        add_stat_award("SMALLEST SPENDER",
+                    min(pawns, key=lambda p: p.stats["amountSpended"]),
+                    "amountSpended")
+
+        self.awards = awards
+
+
+    
+
+    def summarizeDrinks(self, pawn):
+        if not pawn.lastDrinks:
+            return "No drinks consumed"
+
+        counts = Counter()
+        for _, drinkType in pawn.lastDrinks:
+            counts[drinkType] += 1
+
+        parts = []
+
+        if counts.get("shot"):
+            parts.append(f"{counts['shot']} shots")
+
+        if counts.get("330ml"):
+            parts.append(f"{counts['330ml']} × 330ml")
+
+        if counts.get("500ml"):
+            parts.append(f"{counts['500ml']} × 500ml")
+
+        return "Drinks drunk: " + ", ".join(parts)
 
     def endGame(self):
 
@@ -2035,6 +2186,7 @@ class Game(valInit):
         if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1:
             self.GAMESTATE = "end"
             print("ending game.")
+            self.buildAwards()
         else:
             self.GAMESTATE = "pawnGeneration"
             print("not ending game.")
@@ -2050,6 +2202,12 @@ class Game(valInit):
         self.nextMusic = 0
         self.mapCreated = False
         self.CAMERA.cameraLock = None
+
+        self.FireSystem.clearCells()
+        for x in self.allTeams:
+            x.utilityPos["aggr"].clear()
+            x.utilityPos["defensive"].clear()
+
         if self.skull:
             self.skull.kill()
 
@@ -2523,6 +2681,22 @@ class Game(valInit):
                 return i
             l += x
 
+    def tickTrails(self):
+        toremove = []
+        for i, trail in enumerate(self.trails):
+            trail.pop(0)
+            if not trail:
+                toremove.append(i)
+
+        for i in reversed(toremove):
+            self.trails.pop(i)
+
+    def renderTrails(self):
+        for trail in self.trails:
+            if len(trail) < 2:
+                continue
+            Bullet.renderTrail(self, trail)
+
     def playPositionalAudio(self, audio, pos = None):
 
         if self.STRESSTEST:
@@ -2682,7 +2856,6 @@ class Game(valInit):
             else:
                 #self.handleMainMusic()
                 #self.drawSubs()
-                pass
                 self.BPM()
             r = pygame.Rect((0,0), self.res)
             pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
@@ -2723,6 +2896,15 @@ class Game(valInit):
             
             if self.consoleOpen:
                 runConsole(self)
+
+            if self.DISPLAY_VAC:
+                self.screen.blit(self.darken[-1], (0,0))
+                p = self.VACPAWN
+                t = self.fontLarge.render(f"{p.name} REKISTERÖI ÄSKEN KAKS KERTAA {self.timeBetween:.1f} SEKUNNIS :DDD", True, [255, 0, 0])
+                self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2)
+
+                t = self.fontLarge.render(f"JULKINEN TELOITUS VARATTU 30 MIN PÄÄHÄN", True, [255, 0, 0])
+                self.screen.blit(t, self.originalRes / 2 - v2(t.get_size()) / 2 + [0,60])
 
            #if self.STRESSTEST and not self.PEACEFUL:
            #    if self.stressTestFpsClock >= 1/60:
@@ -2776,7 +2958,7 @@ def heat_color(v):
 
 import traceback
 
-def run_forever():
+def run():
     for i in range(1):
         try:
             game = Game()
@@ -2794,4 +2976,4 @@ def run_forever():
             #time.sleep(2)
 
 if __name__ == "__main__":
-    run_forever()
+    run()

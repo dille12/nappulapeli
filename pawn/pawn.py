@@ -487,6 +487,22 @@ class Pawn(PawnBehaviour, getStat):
        #
         self.GENERATING = False
 
+    def updateEquipment(self):
+        if not self.client:
+            return
+        
+        equipment = [self.weapon]
+        if self.itemEffects["dualWield"]:
+            equipment.append(self.dualWieldWeapon)
+        
+        if self.gType != None:
+            equipment.append(self.grenades[self.gType])
+
+        packet = {"type": "equipmentImages",
+                  "images": [x.encodedImage for x in equipment],}
+        
+        self.dumpAndSend(packet)
+
     def fullSync(self):
         if not self.client:
             return       
@@ -507,6 +523,8 @@ class Pawn(PawnBehaviour, getStat):
         self.sendCurrWeaponShop()
 
         self.sendGamemodeInfo()
+
+        self.updateEquipment()
 
         #for x in self.shopSuccessPackets:
         #    print(x)
@@ -821,14 +839,17 @@ class Pawn(PawnBehaviour, getStat):
         self.app.objectiveCarriedBy = None
         self.app.skull.cell = self.getOwnCell()
 
+    def gainCurrency(self, amount):
+        self.team.currency += int(amount*self.itemEffects["currencyGain"])
+        self.team.updateCurrency()
+
     def die(self):
 
         if random.uniform(0, 1) < self.itemEffects["saveChance"]:
             self.health = self.getHealthCap()
             return
 
-        self.team.currency += 5
-        self.team.updateCurrency()
+        self.gainCurrency(5)
         self.app.roundInfo["deaths"] += 1
 
         #if self.app.cameraLock == self and self.target:
@@ -1355,7 +1376,7 @@ class Pawn(PawnBehaviour, getStat):
         else:
             random.choice(self.nextItems).apply(self)
         self.getNextItems()
-        self.healthCap += 10
+        self.healthCap += 25
         self.say(f"Jipii! Nousin tasolle {self.level}, ja sain uuden esineen!", 0.1)
         self.level += 1
         self.app.roundInfo["levelUps"] += 1

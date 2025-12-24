@@ -158,6 +158,9 @@ class valInit:
 
         self.SCALE = 1
 
+        self.gameEndTimer = 0
+        self.VACPAWN = None
+
         self.teams = 2
         self.allTeams: list[Team] = []
         for i in range(self.teams):
@@ -184,7 +187,7 @@ class valInit:
         self.CAMERA = self.CAMERAS[0]
         self.amountOfScreens = 1
 
-        
+        self.trails = []
 
         self.turretLeg = pygame.image.load("texture/turret_leg.png").convert_alpha()
         self.turretHead = pygame.image.load("texture/turret.png").convert_alpha()
@@ -195,6 +198,8 @@ class valInit:
 
         self.consoleFont = pygame.font.Font("texture/terminal.ttf", 20)
 
+        self.screenSwitchI = 1
+
         self.font = pygame.font.Font(self.fontName, 30)
         self.fontLarge = pygame.font.Font(self.fontName, 60)  # Load a default font
         self.notificationFont = pygame.font.Font(self.fontName, int(140*self.RENDER_SCALE))
@@ -202,7 +207,7 @@ class valInit:
         # image_path, damage, range, magSize, fireRate, fireFunction, reloadTime
         pygame.mixer.init()
         self.weapons = []
-        self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
+        self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 20, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
         self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1, Weapon.Energyshoot, 2, "energy")
         self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
         self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
@@ -217,7 +222,7 @@ class valInit:
         self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
 
 
-        self.BIGASSAK = Weapon(self, "BABLON AK-47", [150, 0], "texture/goldenAk.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal", sizeMult=2.2)
+        self.BIGASSAK = Weapon(self, "BABLON AK-47", [150, 0], "texture/goldenAk.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal", sizeMult=3.5)
         
 
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
@@ -273,7 +278,7 @@ class valInit:
 
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []
-        self.tileSize = 75
+        self.tileSize = 80
         tile_w = 70
         w, h = self.concrete.get_width(), self.concrete.get_height()
 

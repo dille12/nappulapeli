@@ -144,8 +144,9 @@ def make_handler(app: "Game"):
                             app.bust(pawn, time.time() - pawn.lastDrinks[-1][0])
 
                     pawn.lastDrinks.append([time.time(), drinkType])
+                    print(pawn.lastDrinks)
                     
-                    pawn.drinkTimer += am
+                    pawn.drinkTimer = 60
                     
                     """Send drink registration response to client"""
                     packet = {
@@ -220,6 +221,7 @@ def make_handler(app: "Game"):
                             "message": "Weapon purchased successfully!"
                             }
                         pawn.shopSuccessPackets.append(p)
+                        pawn.updateEquipment()
                     
                     await ws.send(json.dumps(p))
 

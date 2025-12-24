@@ -40,6 +40,12 @@ class Objective:
     def kill(self):
         self.app.visualEntities.remove(self)
         self.app.skull = None
+
+    def getCurrentCell(self):
+        if self.app.objectiveCarriedBy:
+            return self.app.objectiveCarriedBy.getOwnCell()
+        else:
+            return self.cell
         
 
     def render(self):
