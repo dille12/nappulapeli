@@ -335,8 +335,8 @@ class Game(valInit):
 
     def highLightCell(self, cell):
         #print("HIGHLIGHTING", cell)
-        r = pygame.Rect(v2(cell) * self.tileSize, [self.tileSize, self.tileSize])
-        r.topleft -= self.cameraPosDelta
+        pos = self.convertPos(v2(cell) * self.tileSize)
+        r = pygame.Rect(pos, [self.tileSize*self.RENDER_SCALE, self.tileSize*self.RENDER_SCALE])
         pygame.draw.rect(self.DRAWTO, [255,0,0], r, width=3)
     
     def drawSubs(self):
@@ -1260,6 +1260,9 @@ class Game(valInit):
         players = []
         npcs = []
 
+        for team in self.allTeams:
+            team.pawns.clear()
+
         for pawn in self.getActualPawns():
             if pawn.BOSS:
                 self.alwaysHostileTeam.add(pawn)
@@ -1267,6 +1270,8 @@ class Game(valInit):
                 npcs.append(pawn)
             else:
                 players.append(pawn)
+
+            pawn.team = None
 
         # --- 1. assign players to player teams ---
         for i, pawn in enumerate(players):
@@ -1281,10 +1286,16 @@ class Game(valInit):
                 npc_i += 1
 
         # --- 3. remaining NPCs go to npc teams ---
-        npc_team_i = 0
-        for i in range(npc_i, len(npcs)):
-            self.allTeams[self.playerTeams + npc_team_i % self.npcTeams].add(npcs[i])
-            npc_team_i += 1
+        if self.npcTeams:
+            npc_team_i = 0
+            for i in range(npc_i, len(npcs)):
+                self.allTeams[self.playerTeams + npc_team_i % self.npcTeams].add(npcs[i])
+                npc_team_i += 1
+        else:
+            npc_team_i = 0
+            for i in range(npc_i, len(npcs)):
+                self.allTeams[npc_team_i % self.playerTeams].add(npcs[i])
+                npc_team_i += 1
 
 
 
@@ -1322,6 +1333,9 @@ class Game(valInit):
         self.winningTeam = sorted_teams[0]  # clear lead
         self.maxWins = max(self.winningTeam.wins, self.maxWins)
 
+    def killAllPawns(self):
+        for x in self.getActualPawns():
+            x.die()
 
     def announceVictory(self: "Game", victoryTeam):
         #print(f"Team {i+1} WON")
@@ -1329,7 +1343,7 @@ class Game(valInit):
         self.VICTORY = True 
         self.points = []
 
-        
+
 
         if self.GAMEMODE == "DETONATION":
 
@@ -2778,6 +2792,30 @@ class Game(valInit):
         
             self.debugI = 0
 
+            if self.pawnHelpList:
+                self.randomTalkInterval -= self.deltaTimeR
+                if self.randomTalkInterval <= 0:
+                    self.randomTalkInterval = random.uniform(5, 15)
+                    p = random.choice(self.getActualPawns())
+                    p.say(random.choice(
+                        [
+                        "Nyt palo munat!",
+                        "Mä oon paras!",
+                        "Makke on maailman paskin jätkä",
+                        "Piaru.",
+                        "Eihän tämä tunnu missään",
+                        "Jyri vie roskat roskiin",
+                        str(p),
+                        p.name + " on Epstein kansioissa",
+                        "Mä haluun kotiin",
+                        "Onpa paska peli",
+                        "Voisiko joku tuoda mulle oluen?",
+                        "Vaihetaas peliä",
+                        "Älkää kertoko kenellekään, mutta mä huijaan",
+                        "Oon varma että Makella on satiaisia",
+                        "Tää peli on ihan paska",
+                        "Voittaja! Voittaja!",
+                    ]))
 
 
             if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":

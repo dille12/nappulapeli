@@ -224,7 +224,7 @@ class valInit:
 
         self.BIGASSAK = Weapon(self, "BABLON AK-47", [150, 0], "texture/goldenAk.png", 12, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal", sizeMult=3.5)
         
-
+        self.STARTGAME = False
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
 
         self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
@@ -264,6 +264,7 @@ class valInit:
         self.cameraIdleTime = 0
 
         self.DUALVIEWACTIVE = False
+        self.randomTalkInterval = 10
 
         self.shit = pygame.image.load("texture/shit.png").convert_alpha()
         self.shit = pygame.transform.scale_by(self.shit, self.RENDER_SCALE)

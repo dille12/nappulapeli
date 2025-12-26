@@ -41,6 +41,8 @@ def settingsTick(self: "Game"):
 
     t = self.fontLarge.render(f"{self.local_ip}", True, [255]*3)
     self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 100])
+
+    self.screen.blit(self.QRtoAPP, (100*self.RENDER_SCALE,700*self.RENDER_SCALE))
     
     self.npcType.tick()
     self.teamAmount.tick()
@@ -136,8 +138,10 @@ def settingsTick(self: "Game"):
     if serverOn:
         self.screen.blit(self.QR, (200,700))
 
-    if self.toggleServer.draw(self.screen, "Käynnistä serveri" if not serverOn else "Lopeta serveri", font = self.font):
-        pass
+    #if self.toggleServer.draw(self.screen, "Käynnistä serveri" if not serverOn else "Lopeta serveri", font = self.font):
+    #    pass
+
+    
         
 
 
@@ -148,8 +152,8 @@ def settingsTick(self: "Game"):
             w = random.choice(self.weapons)
             w.give(pawn)
 
-    if not (self.playerFilesToGen or self.pawnGenI) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY  or "space" in self.keypress):
-        self.GAMESTATE = "pawnGeneration"
+    if not (self.playerFilesToGen or self.pawnGenI or self.STARTGAME) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY  or "space" in self.keypress):
+        self.STARTGAME = True
 
         #self.MANUALPAWN = self.pawnHelpList[0]
 
@@ -176,6 +180,12 @@ def settingsTick(self: "Game"):
         self.refreshShops()
         self.reTeamPawns()
         self.SimpleServerController.stop_server()
+
+    if self.STARTGAME and not (self.playerFilesToGen or self.pawnGenI):
+        self.STARTGAME = False
+        self.GAMESTATE = "pawnGeneration"
+        self.reTeamPawns()
+        
         
     self.debugText("SUBS: " + str(bool(self.subs)))
     self.genPawns()

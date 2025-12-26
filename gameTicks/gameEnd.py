@@ -18,7 +18,7 @@ def gameEndTick(self: "Game"):
 
     winnerTeamPawns = [pawn for pawn in self.getActualPawns() if pawn.team.i == winnerTeam.i]
     entities_temp = sorted(winnerTeamPawns, key=lambda x: x.pos.y)
-
+    self.TOTAL_TIME_ADJUSTMENT = 1.0
     for x in entities_temp:
         x.tick()
         x.render()

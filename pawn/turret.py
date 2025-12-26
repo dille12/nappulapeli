@@ -108,6 +108,9 @@ class Turret(getStat):
         self.turretFire()
         self.loseTargetI = 1
 
+    def getPosInTime(self, time: float):
+        return self.getOwnCell()
+
     def pointingAtTarget(self):
         if self.target:
             r = math.degrees(self.app.getAngleFrom(self.pos, self.target.pos))

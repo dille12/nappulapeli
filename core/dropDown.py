@@ -6,12 +6,12 @@ class Dropdown:
     def __init__(self, app: "Game", title, choices, pos=(100, 100), width=200, height=45, initialValue=0):
         self.app = app
         self.choices = choices
-        self.pos = pos
-        self.width = width
-        self.height = height
+        self.pos = (pos[0] * self.app.RENDER_SCALE, pos[1] * self.app.RENDER_SCALE)
+        self.width = width * self.app.RENDER_SCALE
+        self.height = height * self.app.RENDER_SCALE    
         self.selected_index = initialValue
         self.expanded = False
-        self.font = self.app.font
+        self.font = self.app.fontSmaller
         self.bg_color = (60, 60, 60)
         self.hover_color = (80, 80, 80)
         self.text_color = (255, 255, 255)
@@ -25,6 +25,7 @@ class Dropdown:
     def draw(self):
         screen = self.app.screen
         x, y = self.pos
+
         
         # Draw main box
         pygame.draw.rect(screen, self.bg_color, (x, y, self.width, self.height))

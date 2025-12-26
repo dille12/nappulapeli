@@ -250,18 +250,18 @@ class Team:
         get_vis = self.app.map.get_visible_cells
 
         for x in pawns:
-            #c = x.getOwnCell()
-            if x.canSeeCell(landingCell):
+            c = x.getPosInTime(1.5)
+            if x.canSeeCell(landingCell, c1=c):
 
 
                 v = self.app.cell2Pos(landingCell) - x.pos
 
-                grenade_angle = math.atan2(-v.y, v.x)
-                dtheta = angle_diff(x.aimAt, grenade_angle)
-                if abs(dtheta) > math.pi / 3: continue  # outside 90° FOV
+                #grenade_angle = math.atan2(-v.y, v.x)
+                #dtheta = angle_diff(x.aimAt, grenade_angle)
+                #if abs(dtheta) > math.pi / 3: continue  # outside 90° FOV
 
                 if not vis:
-                    vis = set(get_vis(landingCell[0], landingCell[1]))
+                    vis = set(get_vis(landingCell[0], landingCell[1], 15))
                 vis2 = set(x.getVisibility(4))
                 safe_cells = list(vis2 - vis)
 

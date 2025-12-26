@@ -215,6 +215,12 @@ def _battle_victory_logic(self: "Game"):
 
             if len(alive_teams) == 1:
                 self.announceVictory(alive_teams[0])
+            elif len(alive_teams) == 0:
+                kills = [0 for _ in range(self.teams)]
+                for p in self.getActualPawns():
+                    kills[p.team.i] += p.kills
+                teamWithMostKills = max(range(len(kills)), key=lambda i: kills[i])
+                self.announceVictory(teamWithMostKills)
 
     self.roundTime = max(0, self.roundTime)
 
@@ -511,8 +517,8 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
 
             self.particle_system.render_all(self.DRAWTO)
 
-            #for x in self.debugCells:
-            #    self.highLightCell(x)
+            for x in self.debugCells:
+                self.highLightCell(x)
 
             if DUAL and i == 1:
                 self.cameraPosDelta = SAVECAMPOS.copy()

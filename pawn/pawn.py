@@ -503,6 +503,40 @@ class Pawn(PawnBehaviour, getStat):
         
         self.dumpAndSend(packet)
 
+    def getPosInTime(self, timeSeconds):
+        cell = self.getOwnCell()
+        speed = self.getSpeed(self.currWeapon) / self.app.tileSize
+
+        if self.walkTo is not None:
+            w = self.walkTo / self.app.tileSize
+            r = ([w] if not self.route or self.route[0] != w else []) + (self.route or [])
+        else:
+            r = self.route or []
+
+        if not r:
+            return self.intCell(cell)
+
+        distanceAmount = speed * timeSeconds
+        lastCell = cell
+
+        for c in r:
+            dist = self.app.getDistFrom(lastCell, c)
+            if dist <= 0:
+                continue
+
+            if dist > distanceAmount:
+                direction = (v2(c) - v2(lastCell)) / dist
+                pos = lastCell + direction * distanceAmount
+                return self.intCell(pos)
+
+            distanceAmount -= dist
+            lastCell = c
+
+        return self.intCell(lastCell)
+
+    def intCell(self, pos):
+        return (int(pos[0]), int(pos[1]))
+
     def fullSync(self):
         if not self.client:
             return       
@@ -824,7 +858,7 @@ class Pawn(PawnBehaviour, getStat):
         self.loseTargetI = 1
         self.buildingTarget = None
 
-        self.team.addNadePos(self.target.getOwnCell(), "aggr") #
+        self.team.addNadePos(self.target.getPosInTime(2.0), "aggr") #
         
         if not self.itemEffects["berserker"] and not self.carryingSkull():
             self.walkTo = v2(self.getOwnCell()) * self.app.tileSize
@@ -1753,6 +1787,9 @@ class Pawn(PawnBehaviour, getStat):
 
         self.handlePawnAngle()
 
+        pos = self.getPosInTime(1.0)
+        self.app.debugCells.append(pos)
+
         #x,y = self.getOwnCellFloat()
         #dist = 10
         #if not self.app.PEACEFUL and self is self.app.cameraLock:
@@ -2119,8 +2156,9 @@ class Pawn(PawnBehaviour, getStat):
         c2 = target.getOwnCell()
         return self.app.map.can_see(c1[0], c1[1], c2[0], c2[1])
     
-    def canSeeCell(self, c2):
-        c1 = self.getOwnCell()
+    def canSeeCell(self, c2, c1=None):
+        if not c1:
+            c1 = self.getOwnCell()
         return self.app.map.can_see(c1[0], c1[1], c2[0], c2[1])
 
 

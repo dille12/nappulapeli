@@ -508,7 +508,7 @@ class PawnBehaviour:
             if self.loseTargetI <= 0:
                 if self.target:
                     self.say("Karkas saatana", 0.1)
-                    self.team.addNadePos(self.target.getOwnCell(), "aggr")  #.marchCells(-self.target.aimAt + math.pi, 5)
+                    self.team.addNadePos(self.target.getPosInTime(2.0), "aggr")  #.marchCells(-self.target.aimAt + math.pi, 5)
 
                 self.target = None
                 self.loseTargetI = 1
