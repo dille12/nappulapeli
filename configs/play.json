@@ -4,19 +4,15 @@
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
-  "midRoundTime": 10,
+  "midRoundTime": 30,
   "gameModeLineUp": [
-    "TEAM DEATHMATCH",
-    "ODDBALL",
-    "TURF WARS",
-    "DETONATION",
-    "FINAL SHOWDOWN"
+    "TEAM DEATHMATCH"
   ],
   "maxWins": 3,
   "DOREALGAMEMODES": true,
   "XPBASE": 5,
   "MAKEDEBUGPAWNS": false,
-  "DISABLEDEBUGTEXT": true,
+  "DISABLEDEBUGTEXT": false,
   "NPC_WEAPONS_PURCHASE": true,
   "REGISTER_WEAPON_KILLS": false,
   "SET_SEED": null,
@@ -24,5 +20,5 @@
   "ENABLEGRENADES": true,
   "RENDER_SCALE": 0.7,
   "QUALITY_PRESET": 1,
-  "ANTICHEAT": true
+  "ANTICHEAT": false
 }

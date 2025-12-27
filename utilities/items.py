@@ -1,5 +1,5 @@
 from utilities.item import Item
-from pawn.getStat import effect_labels_fi
+from renderObjects.pawn.getStat import effect_labels_fi
 
 def getItems():
    
@@ -62,16 +62,16 @@ def getItems():
         create_item("Verenhimoprosessori", healOnKill=["add", 40], berserker=["set", True]),
         create_item("Ammuskompaktori", weaponAmmoCap=["mult", 3.0], weaponReload=["mult", 0.7]),
         create_item("Satelliittivalvonta", weaponRange=["add", 0.2], defenceNormal=["mult", 1.1]),
-        create_item("Kelan työttömyysturva", xpMult=["mult", 5], weaponHandling=["mult", 0.5], speedMod=["mult", 0.85]),
+        create_item("Kelan työttömyysturva", xpMult=["mult", 2], weaponHandling=["mult", 0.5], speedMod=["mult", 0.85]),
         create_item("Lasikanuuna", weaponDamage=["mult", 2], healthCapMult=["mult", 0.5]),
         create_item("Tuplatusautus", multiShot=["add", 1]),
         create_item("Sleight of hand", weaponReload=["mult", 2]),
-        create_item("Tulkutus", talking=["set", True]),
+        create_item("Tulkutus", talking=["set", True], weaponReload=["mult", 1.25]),
         #create_item("Petturi", turnCoat=["set", True]),
         create_item("Sahattu Piippu", weaponDamage=["mult", 2], accuracy=["add", -0.25]),
         create_item("Silmälasit", accuracy=["add", 0.25], weaponHandling=["mult", 0.75]),
         create_item("Paholaisien munat", saveChance=["add", -0.1], healthCapMult=["mult", 0.8], speedMod=["add", 0.1], weaponDamage=["add", 0.25]),
-        create_item("Virkalakki", hat=["set", True], defenceEnergy=["mult", 1.5], defenceNormal=["mult", 1.5], defenceExplosion=["mult", 1.5]),
+        #create_item("Virkalakki", hat=["set", True], defenceEnergy=["mult", 1.5], defenceNormal=["mult", 1.5], defenceExplosion=["mult", 1.5]),
         create_item("360", noscoping=["set", True], weaponDamage=["mult", 1.5], weaponHandling=["mult", 1.2]),
         create_item("Latexpuku", defenceEnergy=["mult", 1.4], speedMod=["mult", 0.9]),
         create_item("Pistin", meleeDamage=["add", 0.25], weaponHandling=["mult", 0.9]),

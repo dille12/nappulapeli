@@ -2,11 +2,11 @@ print("Starting")
 import pygame
 import os, sys
 import pygame.gfxdraw
-from pawn.pawn import Pawn
-from pawn.weapon import Weapon
+from renderObjects.pawn.pawn import Pawn
+from renderObjects.pawn.weapon import Weapon
 import random
 import threading
-from utilities.bullet import Bullet
+from renderObjects.bullet import Bullet
 from utilities.enemy import Enemy
 import math
 from pygame.math import Vector2 as v2
@@ -16,11 +16,11 @@ import numpy as np
 from levelGen.arenaWithPathfinding import ArenaWithPathfinding
 from utilities.item import Item
 from core.keypress import key_press_manager
-from utilities.skull import Skull, Bomb
+from renderObjects.skull import Skull, Bomb
 import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
-from particles.particle import ParticleSystem, Particle
+from renderObjects.particles.particle import ParticleSystem, Particle
 from core.console import runConsole, handleConsoleEvent
 from gameTicks.gameEnd import gameEndTick
 from gameTicks.settingsTick import settingsTick, createSettings
@@ -34,17 +34,17 @@ from core.getCommonRoom import find_farthest_room
 from gameTicks.showcaseTick import showcaseTick
 import asyncio
 from core.qrcodeMaker import make_qr_surface
-from pawn.turret import Turret
-from pawn.teamLogic import Team
+from renderObjects.pawn.turret import Turret
+from renderObjects.pawn.teamLogic import Team
 import subprocess, glob
 from utilities.extractLyrics import get_subs_for_track
 from utilities.camera import Camera
 import inspect
-from utilities.dialog import babloBreak, onCameraLock
+from renderObjects.pawn.dialog import babloBreak, onCameraLock
 import tkinter
 from statistics import stdev
 from collections import deque
-from pawn.site import Site
+from renderObjects.pawn.site import Site
 from collections import Counter
 from utilities.register import register_gun_kill
 
@@ -920,6 +920,16 @@ class Game(valInit):
     def cell2Pos(self, cell):
         return v2(cell) * self.tileSize + [self.tileSize/2, self.tileSize/2]
     
+    def resetDemo(self):
+        self.RECORDDEMO = False
+        self.DEMO = {"ticks": {}}
+                     
+        self.demoTick = 0
+        self.demoTickIncrement = 0
+        self.demoObjects = []
+        self.DEMOFPS = 60
+        
+    
 
     def initiationWrapper(self):
         self.loadInfo = infoBar(self, "Starting game")
@@ -1095,7 +1105,7 @@ class Game(valInit):
 
         
 
-        
+        self.resetDemo()
 
         for x in self.allTeams:
             x.refreshColor()
@@ -1312,7 +1322,7 @@ class Game(valInit):
         #    pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
         #pawn.teamColor = self.getTeamColor(pawn.team.i)
         self.ENTITIES.append(pawn)
-        self.reTeamPawns()
+        #self.reTeamPawns()
 
         self.pawnGenI -= 1
 
@@ -1417,6 +1427,49 @@ class Game(valInit):
 
     def getActualPawns(self) -> list:
         return [x for x in self.pawnHelpList if x.isPawn]
+    
+    def logParticleEffect(self, fn, args, kwargs):
+        if not self.RECORDDEMO or self.PLAYBACKDEMO:
+            return
+
+        tick = self.demoTick
+        ticks = self.DEMO.setdefault("ticks", {})
+
+        tick_data = ticks.setdefault(tick, {})
+        creates = tick_data.setdefault("create", [])
+
+        creates.append((fn, args, kwargs))
+
+    def logDeletion(self, id):
+        if not self.RECORDDEMO or self.PLAYBACKDEMO:
+            return
+
+        tick = self.demoTick
+        ticks = self.DEMO.setdefault("ticks", {})
+
+        tick_data = ticks.setdefault(tick, {})
+        kills = tick_data.setdefault("kill", [])
+
+        kills.append(id)
+
+    def exportDemo(self):
+        with open("DEMO.txt", "w") as f:
+            f.write(str(self.DEMO))
+
+    def createParticleDemo(self):
+        tick_data = self.DEMO.get("ticks", {}).get(self.demoTick)
+        if not tick_data:
+            return
+
+        for fn, args, kwargs in tick_data.get("create", []):
+            #print("Creating:", type(fn))
+            fn(*args, **kwargs)
+
+        killIds = tick_data.get("kill", [])
+        self.demoObjects = [x for x in self.demoObjects if x.id not in killIds]
+
+
+        
 
     def handleMusic(self):
 
@@ -2197,7 +2250,7 @@ class Game(valInit):
 
         t1, t2 = sorted(self.allTeams, key=lambda x: x.wins, reverse=True)[:2]
 
-        if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1:
+        if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1 and self.DOREALGAMEMODES:
             self.GAMESTATE = "end"
             print("ending game.")
             self.buildAwards()
@@ -2208,7 +2261,9 @@ class Game(valInit):
             print(t2.i, t2.wins)
             print(self.round >= len(self.gameModeLineUp))
 
+
         
+
         self.GAMEMODE = None
         self.PEACEFUL = True
         self.objectiveCarriedBy = None
@@ -2284,6 +2339,14 @@ class Game(valInit):
         for x in self.shops:
             x.hideI = 0.5
 
+    def switchToDemo(self):
+
+        state = self.PLAYBACKDEMO
+
+        self.PLAYBACKDEMO = not state
+        self.RECORDDEMO = state
+        self.demoTick = 0
+        self.demoTickIncrement = 0
 
 
     def handleHud(self, CAMERA: Camera, index = 0):

@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from main import Game
-    from pawn.pawn import Pawn
+    from renderObjects.pawn.pawn import Pawn
 
 from pygame.math import Vector2 as v2
 import pygame
 import time
 import math
-
-from utilities.bullet import raycast_grid
+import pickle
+from renderObjects.bullet import raycast_grid
 from core.drawRectPerimeter import draw_rect_perimeter
 
 
@@ -19,6 +19,8 @@ from core.drawRectPerimeter import draw_rect_perimeter
 def battleTick(self: "Game"):
     _battle_pretick(self)
 
+    
+
     victoryCondition = _battle_victory_logic(self)
 
     
@@ -26,6 +28,9 @@ def battleTick(self: "Game"):
     entities_temp = _battle_prepare_entities(self)
 
     FF, TIMESCALE = _battle_timescale(self)
+
+    if self.DO_DEMO:
+        _demo_logic(self)
 
     _battle_roundtime_and_timeout(self, victoryCondition)
 
@@ -36,7 +41,7 @@ def battleTick(self: "Game"):
             for i, x in enumerate(victoryCondition):
                 self.victoryProgress[i].append(x)
 
-    if self.GAMEMODE == "FINAL SHOWDOWN":
+    if self.GAMEMODE == "FINAL SHOWDOWN" or self.PLAYBACKDEMO:
         self.amountOfScreens = 1
     elif self.CAMERAS[0].cameraLock and self.CAMERAS[1].cameraLock and (
         self.CAMERAS[0].cameraLock.target == self.CAMERAS[1].cameraLock or
@@ -146,9 +151,19 @@ def _battle_prepare_entities(self: "Game"):
 # VICTORY LOGIC
 # --------------------------
 
+def _demo_logic(self: "Game"):
+    self.RECORDDEMO = not self.VICTORY
+
+    self.demoTickIncrement += self.deltaTime
+    if self.demoTickIncrement >= 1/self.DEMOFPS:
+        self.demoTick += 1
+        self.demoTickIncrement -= 1/self.DEMOFPS
+
 def _battle_victory_logic(self: "Game"):
     # ensures victoryCondition exists for later timeout handling
     victoryCondition = None
+
+    
 
     if not self.VICTORY:
 
@@ -248,7 +263,7 @@ def _battle_timescale(self: "Game"):
         for p in self.pawnHelpList
     ) or self.bombPlanted()
 
-    if not combat and self.GAMEMODE != "FINAL SHOWDOWN" and not self.VICTORY:
+    if not self.PLAYBACKDEMO and not combat and self.GAMEMODE != "FINAL SHOWDOWN" and not self.VICTORY:
         self.fastForwardI += self.deltaTimeR
         self.fastForwardI = min(3, self.fastForwardI)
     else:
@@ -370,13 +385,38 @@ def _battle_mode_specific_world_updates(self: "Game"):
 # ENTITY TICK
 # --------------------------
 
+
+    
+
 def _battle_tick_entities(self: "Game", entities_temp):
-    for x in entities_temp:
-        if hasattr(x, "itemEffects"):
-            self.deltaTime *= x.itemEffects["timeScale"]
-        x.tick()
-        if hasattr(x, "itemEffects"):
-            self.deltaTime /= x.itemEffects["timeScale"]
+
+
+    if self.PLAYBACKDEMO:
+        self.createParticleDemo()
+
+        tick_data = self.DEMO.get("ticks", {}).get(self.demoTick)
+        if tick_data:
+            ids = tick_data.keys()
+            for id in ids:
+                if not isinstance(id, int): continue
+                obj = self.demoObjectLookUp[id]
+                if obj not in self.demoObjects:
+                    self.demoObjects.append(obj)
+
+        for x in self.demoObjects:
+            x.handleSprite()
+            x._playBackTick()
+
+    else:
+
+        for x in entities_temp:
+            if hasattr(x, "itemEffects"):
+                self.deltaTime *= x.itemEffects["timeScale"]
+
+            x.tick()
+
+            if hasattr(x, "itemEffects"):
+                self.deltaTime /= x.itemEffects["timeScale"]
 
     for x in self.visualEntities:
         x.tick()
@@ -695,7 +735,9 @@ def _battle_debug_and_metrics(self: "Game"):
             self.debugText(f"TEAM {x.i}: {x.enslavedTo}")
 
     self.debugText(f"ENT: {len(self.pawnHelpList)}, {len([x for x in self.pawnHelpList if not x.isPawn])}")
-    self.debugText(f"SOUND ORIGIN: {self.AUDIOORIGIN}")
+    self.debugText(f"DEMO: {len(self.DEMO["ticks"])}")
+    self.debugText(f"DEMO OBJS: {len(self.demoObjects)}")
+    self.debugText(f"DEMO TOTOBJS: {len(self.demoObjectLookUp)}")
 
 
 

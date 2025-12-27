@@ -1,29 +1,29 @@
 import time, pygame, os, threading
 import numpy as np
-from particles.particle import ParticleSystem
-from pawn.teamLogic import Team
+from renderObjects.particles.particle import ParticleSystem
+from renderObjects.pawn.teamLogic import Team
 from pygame.math import Vector2 as v2
 from utilities.camera import Camera
-from pawn.weapon import Weapon
+from renderObjects.pawn.weapon import Weapon
 from core.loadAnimation import load_animation
 from utilities.items import getItems
 from gameTicks.millionaire import initMillionaire
 from gameTicks.settingsTick import createSettings
 from gameTicks.qrCodesTick import createQRS
 from gameTicks.gameModeTick import GlitchGamemodeDisplay
-from particles.laser import ThickLaser
+from renderObjects.particles.laser import ThickLaser
 from audioPlayer.audioMixer import AudioMixer, AudioSource
 import random
 from utilities.babloBG import SpeedLines
 from utilities.bosslyrics import getLyricTimes
 from typing import TYPE_CHECKING
-from utilities.fireSystem import FireSystem
+from renderObjects.fireSystem import FireSystem
 from collections import deque
-from pawn.turret import Turret
+from renderObjects.pawn.turret import Turret
 from imageprocessing.imageProcessing import trim_surface
 if TYPE_CHECKING:
     from main import Game
-from pawn.pawn import Pawn
+from renderObjects.pawn.pawn import Pawn
 from gameTicks.pawnExplosion import getFade
 def generate_noise_surface(size):
     width, height = size
@@ -60,6 +60,8 @@ DEBUG_VARS = [
     "RENDER_SCALE",
     "QUALITY_PRESET",
     "ANTICHEAT",
+    "DO_DEMO",
+    "SILENT_DAMAGE_ADJUST"
     
 ]
 
@@ -91,6 +93,8 @@ class valInit:
         self.TRAIN_TIME = 100
         self.RENDER_SCALE = 0.5
         self.QUALITY_PRESET = 1
+        self.DO_DEMO = False
+        self.SILENT_DAMAGE_ADJUST = True
 
         self.ENABLEGRENADES = True
         self.ANTICHEAT = True
@@ -104,8 +108,18 @@ class valInit:
         print("Done")
 
         self.LEVELSEED = 1
+        self.RECORDDEMO = False
+        self.DEMO = {"ticks": {}}
+        self.demoTickIncrement = 0
+        self.PLAYBACKDEMO = False
+        self.demoObjects = []
+        self.demoObjectLookUp = {}
 
         self.local_ip = get_local_ip()
+
+        surf = pygame.image.load("texture/icon.png")
+
+        pygame.display.set_icon(surf)
 
         if self.STRESSTEST:
             self.res = v2(854, 480)
@@ -119,7 +133,11 @@ class valInit:
                 self.res = v2(1366, 768)
             else:
                 self.res = v2(854, 480)
-            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
+
+        
+        pygame.display.set_caption("Nappulapeli")
+
         self.originalRes = self.res.copy()
         self.camRes = self.res.copy()
         self.camRes.x /= 2
@@ -130,6 +148,8 @@ class valInit:
             d2.fill((0,0,0))
             d2.set_alpha((x+1)*10)
             self.darken.append(d2)
+
+        self.demoTick = 0
 
         self.mask = pygame.Surface(self.res, pygame.SRCALPHA).convert_alpha()
         self.infobars = []
@@ -217,7 +237,7 @@ class valInit:
         self.famas = Weapon(self, "FAMAS", [200, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal", burstTime=0.1, burstBullets=3)
         self.shotgun = Weapon(self, "Shotgun", [175, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
         self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
+        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 500, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
         self.e4 = Weapon(self, "E-BR", [150, 0], "texture/energy4.png", 15, 2700, 35, 10, Weapon.burstShoot, 1, "energy", burstBullets=2, burstTime=0.03)
         self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
 
@@ -492,8 +512,13 @@ class valInit:
         self.levelUpBlink = 1
 
         self.speeches = 0
+
+        with open("backUpImages/Aapo69.png", "rb") as f:
+            imageRaw = f.read()
+
         
-        self.GAMESTATE = "qrs"
+
+        self.GAMESTATE = "settings"
         initMillionaire(self)
 
         self.onFireCells = []
@@ -658,6 +683,8 @@ class valInit:
         self.lastCommands = []
         self.consoleIndicatorI = 0
         self.consoleIndicator = False
+
+        #Pawn(self, "Testi", imageRaw, None, False)
 
         self.initAudioEngine()
 

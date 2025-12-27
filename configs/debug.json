@@ -1,5 +1,5 @@
 {
-  "AUTOPLAY": false,
+  "AUTOPLAY": true,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
@@ -8,8 +8,8 @@
   "gameModeLineUp": [
     "TEAM DEATHMATCH"
   ],
-  "maxWins": 1,
-  "DOREALGAMEMODES": true,
+  "maxWins": 10,
+  "DOREALGAMEMODES": false,
   "XPBASE": 5,
   "MAKEDEBUGPAWNS": false,
   "DISABLEDEBUGTEXT": false,
@@ -20,5 +20,7 @@
   "ENABLEGRENADES": true,
   "RENDER_SCALE": 0.7,
   "QUALITY_PRESET": 1,
-  "ANTICHEAT": false
+  "ANTICHEAT": false,
+  "DO_DEMO": false,
+  "SILENT_DAMAGE_ADJUST": true
 }
