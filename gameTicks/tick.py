@@ -19,11 +19,7 @@ from core.drawRectPerimeter import draw_rect_perimeter
 def battleTick(self: "Game"):
     _battle_pretick(self)
 
-    
-
     victoryCondition = _battle_victory_logic(self)
-
-    
 
     entities_temp = _battle_prepare_entities(self)
 
@@ -163,8 +159,6 @@ def _battle_victory_logic(self: "Game"):
     # ensures victoryCondition exists for later timeout handling
     victoryCondition = None
 
-    
-
     if not self.VICTORY:
 
         if self.GAMEMODE == "ODDBALL":
@@ -218,6 +212,13 @@ def _battle_victory_logic(self: "Game"):
             else:
                 victoryCondition[0] = 1
                 self.announceVictory(0)
+
+        elif self.GAMEMODE == "KING OF THE HILL":
+            victoryCondition = [x.kothTime for x in self.allTeams]
+            for i, x in enumerate(victoryCondition):
+                if x >= 100:
+                    self.announceVictory(i)
+                    break
 
         elif self.GAMEMODE == "SUDDEN DEATH":
             alive = [0] * self.teams
@@ -364,6 +365,22 @@ def _battle_particle_and_world_updates(self: "Game"):
             color = [255, 0, 0] if site == self.allTeams[0].getCurrentSite() else [255, 255, 255]
             draw_rect_perimeter(self.MINIMAPTEMP, rect, time.time() - self.now, 20, 2, color, width=1)
 
+
+    if self.GAMEMODE == "KING OF THE HILL":
+        self.currHill.pawnsPresent = []
+        rect = pygame.Rect(
+            self.currHill.x * self.MINIMAPCELLSIZE,
+            self.currHill.y * self.MINIMAPCELLSIZE,
+            self.currHill.width * self.MINIMAPCELLSIZE,
+            self.currHill.height * self.MINIMAPCELLSIZE
+        )
+        if self.currHill.turfWarTeam is not None:
+            color = self.getTeamColor(self.currHill.turfWarTeam)
+        else:
+            color = [255,255,255]
+        draw_rect_perimeter(self.MINIMAPTEMP, rect, time.time() - self.now, 20, 4, color, width=2)
+
+
     # constructTeamVisibility(self)
 
 
@@ -425,6 +442,7 @@ def _battle_tick_entities(self: "Game", entities_temp):
         x.tick()
 
     self.handleTurfWar()
+    self.handleKOTH()
     self.tickTrails()
 
 
@@ -532,6 +550,7 @@ def _battle_render_world(self: "Game", entities_temp, DUAL: bool, SPLITSCREENI =
             # self.renderParallax2()
             # self.DRAWTO.blit(self.wall_mask, -self.cameraPosDelta)
             self.drawTurfs()
+            self.drawKOTH()
             self.drawDetonation()
 
             # if self.cameraLock:
@@ -738,6 +757,8 @@ def _battle_debug_and_metrics(self: "Game"):
     self.debugText(f"DEMO: {len(self.DEMO["ticks"])}")
     self.debugText(f"DEMO OBJS: {len(self.demoObjects)}")
     self.debugText(f"DEMO TOTOBJS: {len(self.demoObjectLookUp)}")
+    if self.GAMEMODE == "KING OF THE HILL":
+        self.debugText(f"KOTH: {self.currHill.pawnsPresent}")
 
 
 

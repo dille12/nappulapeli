@@ -99,6 +99,7 @@ def getItems():
         create_item("Dualwield", dualWield=["set", True]),
         create_item("Säästöpossu", currencyGain=["mult", 2.0]),
         create_item("Kelan eväät", currencyGain=["mult", 1.5]),
+        create_item("Laaseri", lazer=["set", True], recoilMult=["mult", 1.25], accuracy=["add", 0.25]),
         #create_item("Mag dump", magDump=["set", True]),
     ]
 

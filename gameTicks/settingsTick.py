@@ -36,7 +36,8 @@ def createSettings(self: "Game"):
 def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
 
-    t = self.fontLarge.render("ASETUKSET", True, [255]*3)
+    #t = self.fontLarge.render("ASETUKSET", True, [255]*3)
+    t = self.ATR.render(self.fontLarge, "ASETUKSET", wave_amp=4, rainbow=True)
     self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 5])
 
     t = self.fontLarge.render(f"{self.local_ip}", True, [255]*3)
@@ -91,7 +92,7 @@ def settingsTick(self: "Game"):
         teamIndices[pawn.team.i] += 1
 
         t = self.fontSmaller.render(pawn.name, True, pawn.team.color)
-        self.screen.blit(t, (x,y))
+        self.screen.blit(t, (x * self.RENDER_SCALE,y * self.RENDER_SCALE))
 
     for team in range(len(teamIndices)):
         for playerI in range(self.fillTeamsTo):
@@ -104,7 +105,7 @@ def settingsTick(self: "Game"):
 
             t = self.fontSmaller.render("NPC", True, self.getTeamColor(team))
 
-            self.screen.blit(t, (x,y))
+            self.screen.blit(t, (x * self.RENDER_SCALE,y * self.RENDER_SCALE))
 
     if self.loadedMusic != self.musicChoice.get_selected():
 

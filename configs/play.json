@@ -6,7 +6,12 @@
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 30,
   "gameModeLineUp": [
-    "TEAM DEATHMATCH"
+    "TEAM DEATHMATCH",
+    "ODDBALL",
+    "KING OF THE HILL",
+    "TURF WARS",
+    "DETONATION",
+    "FINAL SHOWDOWN"
   ],
   "maxWins": 3,
   "DOREALGAMEMODES": true,
@@ -20,5 +25,8 @@
   "ENABLEGRENADES": true,
   "RENDER_SCALE": 0.7,
   "QUALITY_PRESET": 1,
-  "ANTICHEAT": false
+  "ANTICHEAT": false,
+  "DO_DEMO": false,
+  "SILENT_DAMAGE_ADJUST": true,
+  "DO_INTRO": false
 }

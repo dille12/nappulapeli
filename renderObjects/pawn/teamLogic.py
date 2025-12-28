@@ -36,6 +36,7 @@ class Team:
         self.enslavedTo = self.i
         self.buildingsToBuild = 5
         self.bombCarrier = None
+        self.kothTime = 0
 
         self.utilityPos = {
             "defensive": [],
@@ -323,11 +324,11 @@ class Team:
     def getI(self):
         return self.enslavedTo
 
-    def getColor(self, enslaved = False):
+    def getColor(self, enslaved = False, intensity = 1):
         if self.i == -1:
             return [255,255,255]
         if enslaved:
-            return self.app.getTeamColor(self.getI())
+            return self.app.getTeamColor(self.getI(), intensity=intensity)
         
         if hasattr(self.app, "GAMEMODE") and self.app.GAMEMODE == "DETONATION":
             if self.isCT():
@@ -335,7 +336,7 @@ class Team:
             else:
                 return [255, 210, 64] # T
         
-        return self.app.getTeamColor(self.i)
+        return self.app.getTeamColor(self.i, intensity=intensity)
         
     
     def hostile(self, P: "Pawn", other: "Pawn"):

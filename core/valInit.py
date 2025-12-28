@@ -36,6 +36,9 @@ import json
 import os
 from core.ipManager import get_local_ip
 
+from utilities.textRenderer import AnimatedTextRenderer
+
+
 CONFIG_DIR = "configs"
 MAIN_CONFIG_PATH = os.path.join(CONFIG_DIR, "main.json")
 
@@ -61,7 +64,8 @@ DEBUG_VARS = [
     "QUALITY_PRESET",
     "ANTICHEAT",
     "DO_DEMO",
-    "SILENT_DAMAGE_ADJUST"
+    "SILENT_DAMAGE_ADJUST",
+    "DO_INTRO",
     
 ]
 
@@ -95,6 +99,7 @@ class valInit:
         self.QUALITY_PRESET = 1
         self.DO_DEMO = False
         self.SILENT_DAMAGE_ADJUST = True
+        self.DO_INTRO = False
 
         self.ENABLEGRENADES = True
         self.ANTICHEAT = True
@@ -133,7 +138,7 @@ class valInit:
                 self.res = v2(1366, 768)
             else:
                 self.res = v2(854, 480)
-            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.FULLSCREEN | pygame.SCALED)  # Delay screen initialization
 
         
         pygame.display.set_caption("Nappulapeli")
@@ -250,6 +255,7 @@ class valInit:
         self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
         self.frag = Weapon(self, "Frag Grenade", [0,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
         self.turretNade = Weapon(self, "Turret Grenade", [0,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.teleNade = Weapon(self, "TeleNade", [0,0], "texture/telenade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
 
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
                         self.shotgun, self.mg, self.BFG, self.desert]
@@ -262,6 +268,8 @@ class valInit:
 
 
         self.shopTimer = self.midRoundTime
+
+        self.ATR = AnimatedTextRenderer(self)
 
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
@@ -282,6 +290,8 @@ class valInit:
         self.consoleOpen = False
 
         self.cameraIdleTime = 0
+        self.currHill = None
+        self.hillSwitchTime = 45
 
         self.DUALVIEWACTIVE = False
         self.randomTalkInterval = 10
@@ -428,6 +438,9 @@ class valInit:
 
         self.turretGrenadeKillFeed = pygame.image.load("texture/turretNade.png").convert_alpha()
         self.turretGrenadeKillFeed = pygame.transform.scale_by(self.turretGrenadeKillFeed, 20 / self.turretGrenadeKillFeed.get_width())
+
+        self.telenadeKillFeed = pygame.image.load("texture/turretNade.png").convert_alpha()
+        self.telenadeKillFeed = pygame.transform.scale_by(self.telenadeKillFeed, 20 / self.telenadeKillFeed.get_width())
         
         
         self.crackAppearTimes = []

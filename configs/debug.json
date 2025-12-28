@@ -1,12 +1,12 @@
 {
-  "AUTOPLAY": true,
+  "AUTOPLAY": false,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 0,
   "gameModeLineUp": [
-    "TEAM DEATHMATCH"
+    "KING OF THE HILL"
   ],
   "maxWins": 10,
   "DOREALGAMEMODES": false,
@@ -22,5 +22,6 @@
   "QUALITY_PRESET": 1,
   "ANTICHEAT": false,
   "DO_DEMO": false,
-  "SILENT_DAMAGE_ADJUST": true
+  "SILENT_DAMAGE_ADJUST": true,
+  "DO_INTRO": false
 }

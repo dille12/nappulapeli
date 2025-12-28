@@ -16,6 +16,7 @@ class GrenadeType(Enum):
     FLASH = 0
     FRAG = 1
     TURRET = 2
+    TELE = 3
 
 
 
@@ -47,6 +48,10 @@ class Grenade:
         elif self.type == GrenadeType.TURRET:
             self.imageKillFeed = self.app.turretGrenadeKillFeed
             self.name = "Turret Grenade"
+
+        elif self.type == GrenadeType.TELE:
+            self.imageKillFeed = self.app.telenadeKillFeed
+            self.name = "TeleNade"
         
 
         self.MAXLIFE = 1.5
@@ -89,6 +94,16 @@ class Grenade:
             self.detonate()
 
 
+    def tele(self):
+        self.owner.pos = self.pos.copy()
+        self.owner.deltaPos = self.pos.copy()
+        self.app.particle_system.create_healing_particles(self.pos.x, self.pos.y)
+        self.owner.walkTo = None
+        self.owner.route = None
+        self.owner.target = None
+        self.owner.immune = 2 * self.owner.itemEffects["utilityUsage"]
+
+
     def detonate(self):
 
         self.app.visualEntities.remove(self)
@@ -99,6 +114,8 @@ class Grenade:
             self.explode()
         elif self.type == GrenadeType.TURRET:
             self.createTurret()
+        elif self.type == GrenadeType.TELE:
+            self.tele()
 
         if self.isNadeFilmed():
             camera = self.app.isCameraLocked(self.owner)
@@ -209,6 +226,7 @@ class Grenade:
                     [255,255,255],
                     [255,100,100],
                     [100,100,255],
+                    [100,255,100],
                 )[self.type.value]
 
                 lPos1 = self.pos - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * 10

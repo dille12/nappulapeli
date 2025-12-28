@@ -211,6 +211,9 @@ class PawnBehaviour:
 
         return self.getOwnCell()[0] == self.getAttackPosition()[0] and self.getOwnCell()[1] == self.getAttackPosition()[1]
     
+    def KOTHtarget(self):
+        self.getRouteTo(endPosGrid=self.app.currHill.randomCell())
+    
 
     def gameEndWalkPos(self):
         spacing = 250
@@ -277,6 +280,10 @@ class PawnBehaviour:
                     #    print("TERRORIST ROUTE")
                     #    print(self.route)
                     #    print(self.walkTo)
+
+                elif self.app.GAMEMODE == "KING OF THE HILL":
+                    self.KOTHtarget()
+
                 elif self.app.GAMEMODE == "1v1":
                     i = self.app.duelPawns.index(self)
                     endPos = self.app.duelPawns[(i+1)%2].getOwnCell()

@@ -370,6 +370,34 @@ class Game(valInit):
                 self.subI += 1
                 self.lastSubTime = 0
 
+    def handleKOTH(self):
+        if self.GAMEMODE == "KING OF THE HILL":
+            r = self.currHill
+            
+            team_counts = {}
+            for pawn in r.pawnsPresent:
+                team_counts[pawn] = team_counts.get(pawn, 0) + 1
+
+            # uncontested: exactly one team present
+
+            if len(team_counts) == 1:
+                sole_team = next(iter(team_counts))
+                if r.turfWarTeam is None:
+                    self.notify("HILL CAPTURED", self.getTeamColor(sole_team))
+                r.turfWarTeam = sole_team
+            else:
+                if r.turfWarTeam is not None:
+                    self.notify("HILL CONTESTED")
+                r.turfWarTeam = None  # contested
+
+            if r.turfWarTeam is not None:
+                self.allTeams[r.turfWarTeam].kothTime += self.deltaTime
+
+            self.hillSwitchTime -= self.deltaTime
+            if self.hillSwitchTime <= 0:
+                self.switchHill()
+                self.notify("HILL MOVED")
+
 
     def handleTurfWar(self):
         if self.GAMEMODE == "TURF WARS":
@@ -412,7 +440,7 @@ class Game(valInit):
                 team.emancipate()
         
         r.turfWarTeam = majority_team
-        r.occupyI = 0
+        r.occupyI = 5
 
 
     def findCorners(self, grid):
@@ -655,12 +683,14 @@ class Game(valInit):
         )
 
 
-
+    def switchHill(self):
+        rooms = [x for x in self.map.rooms if x not in self.teamSpawnRooms and x is not self.currHill]
+        self.currHill = random.choice(rooms)
+        print("Hill moved")
+        self.hillSwitchTime = 45
+        self.currHill.turfWarTeam = None
 
     def genLevel(self):
-
-        
-        
         if self.GAMEMODE == "1v1":
             self.map = ArenaGenerator(self, 50, 40)
             self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=4)
@@ -1020,7 +1050,6 @@ class Game(valInit):
 
                 x.defaultPlan()
 
-
         seed = random.randrange(2**32 - 1)
         if self.SET_SEED == None:
             self.LEVELSEED = seed
@@ -1059,6 +1088,10 @@ class Game(valInit):
         else:
             self.roundTime = self.MAXROUNDLENGTH
 
+        if self.GAMEMODE == "KING OF THE HILL":
+            self.switchHill()
+
+        
 
         self.cameraLinger = 0
         for i in range(1):
@@ -1109,6 +1142,7 @@ class Game(valInit):
 
         for x in self.allTeams:
             x.refreshColor()
+            x.kothTime = 0
 
         if self.giveWeapons:
             self.giveAllWeapons()
@@ -2480,13 +2514,29 @@ class Game(valInit):
                 rect.topleft = self.convertPos(rect.topleft)
                 draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, self.getTeamColor(r.turfWarTeam), width=5)
 
+    def drawKOTH(self):
+        if self.GAMEMODE != "KING OF THE HILL":
+            return
+        r = self.currHill
+        
+        rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
+                            r.width*self.tileSize * self.RENDER_SCALE, r.height*self.tileSize * self.RENDER_SCALE)
+        rect.topleft = self.convertPos(rect.topleft)
+
+        if r.turfWarTeam is not None:
+            color = self.getTeamColor(r.turfWarTeam)
+        else:
+            color = [255,255,255]
+
+        draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, color, width=5)
+
     def giveAllWeapons(self):
         for x in self.pawnHelpList:
             if x.BOSS or not x.isPawn:
                 continue
             w = random.choice(self.weapons)
             w.give(x)
-            x.gType = random.randint(0,2)
+            x.gType = 3
 
     def tickScoreBoard(self):
         y = 20
@@ -2557,6 +2607,16 @@ class Game(valInit):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} damage dealt", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
+
+        elif self.GAMEMODE == "KING OF THE HILL":
+            timeOnTheHill = [x.kothTime for x in self.allTeams]
+
+            for i, x in sorted(enumerate(timeOnTheHill), key=lambda pair: pair[1], reverse=True):
+
+                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
+                self.screen.blit(t, [10, y])
+                y += 22
+
         else:
             return
 
@@ -2829,6 +2889,57 @@ class Game(valInit):
                 pygame.draw.line(self.screen, [0,255,0], (self.res.x - i-1, 850 - lastTime), (self.res.x - i, 850 - t), 1)
             lastTime = t
 
+        
+    def raycast_grid(self, pos, direction, max_dist):
+        x0, y0 = pos.x / self.tileSize, pos.y / self.tileSize
+        dx, dy = direction.x, direction.y
+
+        map_x = int(x0)
+        map_y = int(y0)
+
+        step_x = 1 if dx > 0 else -1
+        step_y = 1 if dy > 0 else -1
+
+        t_delta_x = abs(1 / dx) if dx != 0 else float("inf")
+        t_delta_y = abs(1 / dy) if dy != 0 else float("inf")
+
+        next_x = map_x + (1 if dx > 0 else 0)
+        next_y = map_y + (1 if dy > 0 else 0)
+
+        t_max_x = (next_x - x0) / dx if dx != 0 else float("inf")
+        t_max_y = (next_y - y0) / dy if dy != 0 else float("inf")
+
+        t = 0.0
+        hit_axis = None
+
+        while t <= max_dist:
+            if 0 <= map_x < self.map.grid.shape[1] and 0 <= map_y < self.map.grid.shape[0]:
+                if self.map.grid[map_y, map_x] == CellType.WALL.value:
+                    hit_pos = pos + direction * (t * self.tileSize)
+                    hit_pos -= direction * 1.0
+
+                    if hit_axis == 'x':
+                        normal = pygame.Vector2(-step_x, 0)
+                    else:
+                        normal = pygame.Vector2(0, -step_y)
+
+                    return hit_pos, normal
+            else:
+                return None, None
+
+            if t_max_x < t_max_y:
+                map_x += step_x
+                t = t_max_x
+                t_max_x += t_delta_x
+                hit_axis = 'x'
+            else:
+                map_y += step_y
+                t = t_max_y
+                t_max_y += t_delta_y
+                hit_axis = 'y'
+
+        return None, None
+
     def run(self):
         self.frameTimeCache = []
         timeSum = 0
@@ -2970,6 +3081,8 @@ class Game(valInit):
                     self.currNotification = None
 
             self.manualTransition = False
+
+            self.ATR.tick()
 
             if self.TRANSITION:
                 self.drawExplosion()

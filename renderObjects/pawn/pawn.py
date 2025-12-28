@@ -281,6 +281,8 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.vel = v2(0,0)
 
+        self.immune = 0
+
         self.stepI = 0 
         self.stats = {
             "kills": 0,
@@ -350,9 +352,10 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.flash = self.app.flash.duplicate(self)
         self.frag = self.app.frag.duplicate(self)
         self.turr = self.app.turretNade.duplicate(self)
+        self.tele = self.app.teleNade.duplicate(self)
 
 
-        self.grenades = [self.flash, self.frag, self.turr]
+        self.grenades = [self.flash, self.frag, self.turr, self.tele]
 
         #weapon = self.app.desert
 
@@ -624,7 +627,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
 
         elif i == 1: # GRENADE
-            gtype = self.app.randomWeighted(0.4, 0.4, 0.2)
+            gtype = self.app.randomWeighted(0.4, 0.4, 0.2, 0.1)
             grenade = self.grenades[gtype]
             ITEM = {"name": grenade.name,
                                "price": 200,
@@ -922,6 +925,10 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         elif self.app.GAMEMODE == "TEAM DEATHMATCH":
             self.respawnI = 2
+
+        elif self.app.GAMEMODE == "KING OF THE HILL":
+            self.respawnI = 2
+
         elif self.app.GAMEMODE == "FINAL SHOWDOWN":
             self.respawnI = 1
             self.xp = self.app.levelUps[self.level-1]
@@ -1016,6 +1023,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
     def takeDamage(self, damage, fromActor = None, thornDamage = False, typeD = "normal", bloodAngle = None):
 
+        if self.immune > 0:
+            damage = 0
+
         if fromActor:
             if thornDamage:
                 weapon = "melee"
@@ -1044,7 +1054,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         elif typeD == "explosion":
             damage /= self.defenceExplosion()
 
-        if self.app.SILENT_DAMAGE_ADJUST and self.app.winningTeam and fromActor.team.i == self.app.winningTeam.i: # Silent damage reduction from the winning team
+        if self.app.SILENT_DAMAGE_ADJUST and self.app.winningTeam and fromActor and fromActor.team.i == self.app.winningTeam.i: # Silent damage reduction from the winning team
             damage *= 0.5
 
         if fromActor and fromActor.itemEffects["bossKiller"]:
@@ -1489,7 +1499,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         if self.target:
             return
         
-        if self.gType in [GrenadeType.FLASH.value, GrenadeType.FRAG.value]:
+        if self.gType in [GrenadeType.FLASH.value, GrenadeType.FRAG.value, GrenadeType.TELE.value]:
             nadeType = "aggr"
         else:
             nadeType = "defensive"
@@ -1497,6 +1507,10 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         if not self.team.utilityPos[nadeType]:
             if self.app.GAMEMODE in ["SUDDEN DEATH", "TEAM DEATHMATCH", "ODDBALL", "TURF WARS"]:
                 c = self.app.commonRoom.randomCell()
+                self.team.addNadePos(c, nadeType)
+                return
+            elif self.app.GAMEMODE == "KING OF THE HILL":
+                c = self.app.currHill.randomCell()
                 self.team.addNadePos(c, nadeType)
                 return
         
@@ -1544,6 +1558,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         if self.drinkTimer > 0:
             self.drinkTimer -= self.app.deltaTimeR
+
+        if self.immune > 0:
+            self.immune -= self.app.deltaTime
 
         #self.teamColor = self.team.color
 
@@ -1754,6 +1771,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         #self.app.screen.blit(t, (self.pos.x - t.get_width() / 2, self.pos.y - t.get_height() - 70) - self.app.cameraPosDelta)
 
         self.handleTurfWar()
+        self.handleKOTH()
 
         cx, cy = self.getOwnCell()
 
@@ -1903,7 +1921,14 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         elif self.NPC:
             self.npcPlate = self.app.fontSmaller.render("NPC", True, self.teamColor)
 
-        self.namePlate = combinedText(self.name, self.teamColor, " +" + str(int(self.health)).zfill(3), heat_color(1 - self.health/self.getHealthCap()), f" LVL {self.level}",[255,255,255], font=self.app.font)
+        if self.immune > 0:
+            healthText = "INF"
+            healthColor = self.app.ATR.getRainBowColor(speed=500)
+        else:
+            healthText = str(int(self.health)).zfill(3)
+            healthColor = heat_color(1 - self.health/self.getHealthCap())
+
+        self.namePlate = combinedText(self.name, self.teamColor, " +" + healthText, healthColor, f" LVL {self.level}",[255,255,255], font=self.app.font)
 
         
         return newPos
@@ -1914,6 +1939,16 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
     def carryingSkull(self):
         return self.app.objectiveCarriedBy == self
+    
+    def handleKOTH(self):
+        if self.app.GAMEMODE != "KING OF THE HILL":
+            return
+        if not hasattr(self.app, "map"):
+            return
+        x, y = self.getOwnCell()
+        if self.app.currHill.contains(x, y):
+            self.app.currHill.pawnsPresent.append(self.team.i)
+            
     
     def handleTurfWar(self):
         if self.app.GAMEMODE != "TURF WARS":

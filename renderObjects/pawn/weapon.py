@@ -13,6 +13,31 @@ from renderObjects.explosion import Explosion
 import io, base64
 from renderObjects.grenade import Grenade, GrenadeType
 from renderObjects.demoObject import DemoObject
+
+def rightmost_column_center_pixel(surface: pygame.Surface):
+    w, h = surface.get_size()
+    center_y = h // 2
+    px = pygame.surfarray.pixels_alpha(surface)
+
+    # find rightmost column with any nontransparent pixel
+    x_found = -1
+    for x in range(w - 1, -1, -1):
+        if (px[x] > 0).any():
+            x_found = x
+            break
+
+    if x_found == -1:
+        return None  # fully transparent surface
+
+    # find pixel in that column closest to vertical center
+    column = px[x_found]
+    ys = (column > 0).nonzero()[0]
+
+    # choose y closest to center
+    y_found = ys[((ys - center_y) ** 2).argmin()]
+
+    return x_found, int(y_found)
+
 def surface_to_base64(surface: pygame.Surface) -> str:
     buf = io.BytesIO()
     pygame.image.save(surface, buf, "PNG")
@@ -239,7 +264,7 @@ class Weapon(DemoObject):
         self.FINALROTATION = 0
         self.ROTATION = 0
         self.ROTATIONVEL = 0
-        self.barrelOffset = v2(self.image.get_width()/2, 0)
+        self.barrelOffset = v2(rightmost_column_center_pixel(self.image)) - v2(self.image.get_size())/2
 
 
         self.grenadeThrowI = 0
@@ -257,7 +282,7 @@ class Weapon(DemoObject):
         p = {"name": self.name,
              "price": self.price[0],
              "image": self.encodedImage, 
-             "description": "Bitch.",
+             "description": "Primary weapon",
              "backgroundColor": self.get_rarity_color()
         }
         return p
@@ -271,17 +296,16 @@ class Weapon(DemoObject):
         Calculate the world position where bullets should spawn from.
         Returns a Vector2 representing the bullet spawn point in world coordinates.
         """
-        # Get the weapon's world position (same calculation as in tick method)
-        ownerBreathe2 = math.sin(self.owner.breatheI * math.pi)
-        
-        weaponWorldPos = (self.defaultPos + 
-                         v2(0.5*self.owner.xComponent, -0.25*self.owner.yComponent + ownerBreathe2*5) + 
-                         v2(0, 40) + 
-                         self.getSwiwel())
+        if hasattr(self, "BLITPOS"):
+            weaponWorldPos = self.BLITPOS
+        else:
+            weaponWorldPos = self.pos
                 
         # Rotate the barrel offset by the current weapon rotation
-        rotatedOffset = self.barrelOffset.rotate(-self.FINALROTATION)
-        
+        BO = self.barrelOffset.copy()
+        if self.weaponRotated():
+            BO.y *= -1
+        rotatedOffset = BO.rotate(-self.FINALROTATION)
         # Add the rotated offset to the weapon's world position
         bulletSpawnPoint = weaponWorldPos + rotatedOffset
         
@@ -541,7 +565,7 @@ class Weapon(DemoObject):
         if self.currBurstRounds > 0:
             
             if self.currBurstI <= 0:
-                self.currBurstI += self.burstI #* self.owner.getFireRateMod()
+                self.currBurstI += self.burstI * self.owner.getFireRateMod() #
                 self.currBurstRounds -= 1
                 self.currBurstRounds = max(0, self.currBurstRounds)
 
@@ -597,6 +621,8 @@ class Weapon(DemoObject):
                 gType = GrenadeType.FRAG
             elif self.name == "Turret Grenade":
                 gType = GrenadeType.TURRET
+            elif self.name == "TeleNade":
+                gType = GrenadeType.TELE
             if self.owner.grenadePos:
                 Grenade(self.app, self.owner.getOwnCell(), self.owner.grenadePos, self.image, self.owner, grenadeType=gType)
                 self.owner.grenadeAmount -= 1
@@ -957,12 +983,36 @@ class Weapon(DemoObject):
             temp = apply_light_bounce(self.rotatedMask, rot_norm)
             self.rotatedImage.blit(temp, (0,0))
 
+    def weaponRotated(self):
+        return 90 <= self.ROTATION <= 270
         
     def render(self):
         if not hasattr(self, "rotatedImage"):
             return
+        
+        if self.owner.itemEffects["lazer"]:
+            
+            hit = None
+            startPos = self.getBulletSpawnPoint()
+            direction = v2(math.cos(math.radians(-self.FINALROTATION)), math.sin(math.radians(-self.FINALROTATION))).normalize()
+            if hasattr(self.app, "map"):
+                hit, normal = self.app.raycast_grid(startPos, direction, 1000 / self.app.tileSize)
+            if hit is None:
+                endPos = startPos + direction * 1000
+            else:
+                endPos = v2(hit)
+
+            colorShift = random.uniform(0.7,1)
+            color = self.owner.team.getColor(intensity=colorShift)
+
+            pygame.draw.line(self.app.DRAWTO, color, self.app.convertPos(startPos), self.app.convertPos(endPos), width=2)
+
         self.app.DRAWTO.blit(self.rotatedImage, self.app.convertPos(self.BLITPOS) - v2(self.rotatedImage.get_size()) / 2)
 
 
         #p = self.getBulletSpawnPoint()
         #pygame.draw.circle(self.app.screen, [255,0,0], p, 10)
+
+
+
+

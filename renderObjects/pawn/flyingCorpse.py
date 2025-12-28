@@ -11,6 +11,7 @@ class FlyingCorpse:
         self.app = pawn.app
         self.pawn = pawn
         self.xvel = random.choice((-1,1)) * random.uniform(90, 270)
+        self.yvel = random.choice((-1,1)) * random.uniform(40, 140)
         self.yPos = 0
         self.maxLife = random.uniform(0.5,1)
         self.lifeTime = self.maxLife
@@ -33,6 +34,7 @@ class FlyingCorpse:
     def tick(self):
         self.lifeTime -= self.app.deltaTime
         self.pos.x += self.xvel * self.app.deltaTime
+        self.pos.y += self.yvel * self.app.deltaTime
 
         life = (1-(self.lifeTime/self.maxLife))
 
