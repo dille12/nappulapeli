@@ -299,7 +299,7 @@ class Weapon(DemoObject):
         if hasattr(self, "BLITPOS"):
             weaponWorldPos = self.BLITPOS
         else:
-            weaponWorldPos = self.pos
+            weaponWorldPos = self.owner.pos
                 
         # Rotate the barrel offset by the current weapon rotation
         BO = self.barrelOffset.copy()

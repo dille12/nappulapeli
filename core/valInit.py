@@ -252,10 +252,10 @@ class valInit:
         self.STARTGAME = False
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
 
-        self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
-        self.frag = Weapon(self, "Frag Grenade", [0,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
-        self.turretNade = Weapon(self, "Turret Grenade", [0,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
-        self.teleNade = Weapon(self, "TeleNade", [0,0], "texture/telenade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.flash = Weapon(self, "Flashbang", [125,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.frag = Weapon(self, "Frag Grenade", [150,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.turretNade = Weapon(self, "Turret Grenade", [150,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.teleNade = Weapon(self, "TeleNade", [200,0], "texture/telenade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
 
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
                         self.shotgun, self.mg, self.BFG, self.desert]
@@ -306,6 +306,9 @@ class valInit:
         self.babloLyricCurrent = ""
 
         self.BLOCKMUSIC = False
+
+        self.loadingSplash = pygame.image.load("texture/loadingsplash.png").convert()
+        self.loadingSplash = pygame.transform.scale_by(self.loadingSplash, self.originalRes.y / self.loadingSplash.get_height())
 
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []

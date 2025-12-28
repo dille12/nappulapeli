@@ -111,6 +111,14 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         # extract the name from the path
         self.name = pawnName
         self.client = client
+
+        self.NPC = not bool(self.client)
+        if self.client == "DEBUG":
+            self.client = None
+
+        self.app.clientPawns[self.client] = self
+        print(self.app.clientPawns)
+
         self.GENERATING = True
         self.itemsInStock = []
         self.shopItems = []
@@ -154,9 +162,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.defaultPos()
 
 
-        self.NPC = not bool(self.client)
-        if self.client == "DEBUG":
-            self.client = None
+        
 
         self.left_eye_center = v2(0,0)
         self.right_eye_center = v2(0,0)
@@ -412,7 +418,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         info.text = f"{self.name}: sending"
         # self.client is the WebSocket
 
-        self.app.clientPawns[self.client] = self
+        
         if not self.BOSS and False:
             PawnParticle(self)
             
@@ -629,11 +635,12 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         elif i == 1: # GRENADE
             gtype = self.app.randomWeighted(0.4, 0.4, 0.2, 0.1)
             grenade = self.grenades[gtype]
+            color = grenade.get_rarity_color(200)
             ITEM = {"name": grenade.name,
-                               "price": 200,
+                               "price": grenade.price[0],
                                "image": grenade.encodedImage,
                                "description": "Kranaatti.",
-                               "backgroundColor": [20,120,20],
+                               "backgroundColor": color,
                                "owned": False}
             
 

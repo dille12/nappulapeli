@@ -2626,7 +2626,7 @@ class Game(valInit):
         for x in sorted([x for x in self.pawnHelpList if x.isPawn], key = lambda p: p.kills, reverse=True):
 
             npcAppendix = "(NPC)" if x.NPC else ""
-            t = combinedText(f"{x.name} {npcAppendix}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
+            t = combinedText(f"{x.name} {npcAppendix}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmallest)
             r = t.get_rect()
             r.topleft = [10,y]
             
@@ -2646,7 +2646,7 @@ class Game(valInit):
 
 
             self.screen.blit(t, [10,y])
-            y += 22
+            y += 14
 
 
     def toggleRendering(self):

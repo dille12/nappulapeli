@@ -64,7 +64,8 @@ class Grenade:
         self.verticalPos = 0
         self.rotation = random.randint(0,360)
         self.rotationVel = 720
-
+        self.trail = []
+        self.recTrail = 0
         self.landingCell = toCell
 
         self.arc = 0
@@ -81,6 +82,7 @@ class Grenade:
 
     def tick(self):
         self.pos += (self.vel * self.app.deltaTime)
+        
         self.lifetime -= self.app.deltaTime
         self.rotation += self.rotationVel * self.app.deltaTime
 
@@ -90,8 +92,32 @@ class Grenade:
         self.arc = math.sin(math.pi * (self.lifetime / self.MAXLIFE))
         self.verticalPos = self.arc * 300
 
-        if self.lifetime <= 0 and not self.app.PEACEFUL:
-            self.detonate()
+        self.recTrail = (self.recTrail + 1)%4
+
+        if self.recTrail == 1:
+            self.trail.append(self.pos - [0, self.verticalPos])
+            if len(self.trail) > 5:
+                self.trail.pop(0)
+
+            if self.lifetime <= 0 and not self.app.PEACEFUL:
+                self.detonate()
+
+
+        color = (
+                [255,255,255],
+                [255,100,100],
+                [100,100,255],
+                [100,255,100],
+            )[self.type.value]
+
+        lPos = None
+        for tPos in self.trail:
+            if lPos == None:
+                lPos = tPos
+                continue
+
+            pygame.draw.line(self.app.MINIMAPTEMP, color, self.app.MINIMAPCELLSIZE * lPos / self.app.tileSize , self.app.MINIMAPCELLSIZE * tPos / self.app.tileSize, width=1)
+            lPos = tPos
 
 
     def tele(self):
@@ -213,8 +239,24 @@ class Grenade:
 
     def render(self):
 
+        color = (
+                [255,255,255],
+                [255,100,100],
+                [100,100,255],
+                [100,255,100],
+            )[self.type.value]
+
         POS = self.pos - [0, self.verticalPos]
         POS = self.app.convertPos(POS) - v2(self.imageR.get_size())/2
+
+        lPos = None
+        for tPos in self.trail:
+            if lPos == None:
+                lPos = tPos
+                continue
+
+            pygame.draw.line(self.app.DRAWTO, color, self.app.convertPos(lPos), self.app.convertPos(tPos), width=int(5*self.app.RENDER_SCALE))
+            lPos = tPos
 
         self.app.DRAWTO.blit(self.imageR, POS)
         if self.isNadeFilmed() or True:
@@ -222,12 +264,7 @@ class Grenade:
             for x in range(4):
                 a = math.radians(x*90 + 45)
 
-                color = (
-                    [255,255,255],
-                    [255,100,100],
-                    [100,100,255],
-                    [100,255,100],
-                )[self.type.value]
+                
 
                 lPos1 = self.pos - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * 10
                 lPos2 = self.pos - [0, self.verticalPos] + v2((math.sin(a), math.cos(a))) * (10 + 40 * i)

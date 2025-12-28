@@ -1,4 +1,5 @@
 import pygame
+from pygame.math import Vector2 as v2
 import random
 import math
 import time
@@ -252,10 +253,10 @@ class GlitchGamemodeDisplay:
         current_time = time.time() - self.start_time
         
         # Fill background
-        self.screen.fill(self.bg_color)
+        #self.screen.fill(self.bg_color)
         
         # Draw background elements
-        self.draw_grid_background()
+        #self.draw_grid_background()
         self.draw_particles()
         self.draw_scan_line()
         self.draw_corner_brackets()
@@ -295,4 +296,5 @@ gamemode_display.set_gamemode("TEAM DEATHMATCH")
 
 def loadingTick(self: "Game"):
     self.screen.fill((0,0,0))
+    self.screen.blit(self.loadingSplash, self.originalRes/2 - v2(self.loadingSplash.get_size())/2)
     self.gamemode_display.draw()
