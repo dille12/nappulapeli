@@ -177,7 +177,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.imagePawnR = pygame.transform.flip(self.imagePawn.copy(), True, False).convert_alpha()
 
-        self.topHat = self.app.topHat.copy()
+        #self.topHat = self.app.topHat.copy()
 
         
 
@@ -1804,7 +1804,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
             pygame.draw.rect(self.app.MINIMAPTEMP, self.teamColor, [cx*self.app.MINIMAPCELLSIZE, cy*self.app.MINIMAPCELLSIZE, self.app.MINIMAPCELLSIZE,self.app.MINIMAPCELLSIZE])
 
         if self.itemEffects["hat"]:
-            self.topHat = pygame.transform.rotate(self.topHat.copy(), self.rotation)
+            self.topHat = pygame.transform.rotate(self.app.topHat, self.rotation)
 
         if self.ULT:
             self.eyeGlow()

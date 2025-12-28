@@ -25,7 +25,7 @@ class GlitchGamemodeDisplay:
         
         # Colors
         self.bg_color = (10, 10, 10)
-        self.cyan = (0, 255, 255)
+        self.cyan = (255, 165, 0)
         self.magenta = (255, 0, 64)
         self.white = (255, 255, 255)
         self.gray = (136, 136, 136)

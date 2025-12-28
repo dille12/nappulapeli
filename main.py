@@ -2536,7 +2536,7 @@ class Game(valInit):
                 continue
             w = random.choice(self.weapons)
             w.give(x)
-            x.gType = 3
+            x.gType = random.randint(0,3)
 
     def tickScoreBoard(self):
         y = 20
