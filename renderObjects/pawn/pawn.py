@@ -116,8 +116,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         if self.client == "DEBUG":
             self.client = None
 
-        self.app.clientPawns[self.client] = self
-        print(self.app.clientPawns)
+        if self.client:
+            self.app.clientPawns[self.client] = self
+            print(self.app.clientPawns)
 
         self.GENERATING = True
         self.itemsInStock = []

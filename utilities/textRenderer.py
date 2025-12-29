@@ -10,9 +10,9 @@ class AnimatedTextRenderer:
     def tick(self):
         self.time += self.app.deltaTime
 
-    def getRainBowColor(self, speed = 60):
+    def getRainBowColor(self, speed = 60, i = 0):
         t = self.time
-        hue = (t * speed) % 360
+        hue = (t * speed - i * 25) % 360
         c = pygame.Color(0)
         c.hsva = (hue, 100, 100, 100)
         return c
@@ -72,7 +72,7 @@ class AnimatedTextRenderer:
             draw_surf = surf
 
             if rainbow:
-                c = self.getRainBowColor()
+                c = self.getRainBowColor(i = i)
                 draw_surf = font.render(text[i], True, c)
 
             if outline > 0:

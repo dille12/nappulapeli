@@ -37,7 +37,7 @@ import os
 from core.ipManager import get_local_ip
 
 from utilities.textRenderer import AnimatedTextRenderer
-
+from utilities.videoStream import VideoPlayer
 
 CONFIG_DIR = "configs"
 MAIN_CONFIG_PATH = os.path.join(CONFIG_DIR, "main.json")
@@ -138,7 +138,7 @@ class valInit:
                 self.res = v2(1366, 768)
             else:
                 self.res = v2(854, 480)
-            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.FULLSCREEN | pygame.SCALED)  # Delay screen initialization
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization # | pygame.FULLSCREEN | pygame.SCALED
 
         
         pygame.display.set_caption("Nappulapeli")
@@ -233,7 +233,7 @@ class valInit:
         pygame.mixer.init()
         self.weapons = []
         self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 20, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1, Weapon.Energyshoot, 2, "energy")
+        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1.5, Weapon.Energyshoot, 2, "energy")
         self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
         self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
         self.pistol = Weapon(self, "USP-S", [50, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
@@ -270,6 +270,8 @@ class valInit:
         self.shopTimer = self.midRoundTime
 
         self.ATR = AnimatedTextRenderer(self)
+
+        
 
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
@@ -532,9 +534,13 @@ class valInit:
         with open("backUpImages/Aapo69.png", "rb") as f:
             imageRaw = f.read()
 
-        
+        self.introSurf = None
+        if self.DO_INTRO:
+            self.VIDEOPLAYER = VideoPlayer("utilities/1228.mp4")
+            self.GAMESTATE = "intro"
+            self.introAudio = pygame.mixer.Sound("audio/intro.wav")
+        self.introSoundPlayed = False
 
-        self.GAMESTATE = "settings"
         initMillionaire(self)
 
         self.onFireCells = []

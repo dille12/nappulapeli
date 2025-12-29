@@ -45,8 +45,6 @@ class Team:
 
         self.defaultPlan()
 
-        
-
         self.detonationTeam = False
 
         self.sightGrid = None
@@ -337,6 +335,11 @@ class Team:
                 return [255, 210, 64] # T
         
         return self.app.getTeamColor(self.i, intensity=intensity)
+    
+    def getTurfWarTeam(self):
+        if self.enslavedTo == self.i:
+            return self.i
+        return self.enslavedTo
         
     
     def hostile(self, P: "Pawn", other: "Pawn"):
@@ -354,10 +357,9 @@ class Team:
         if self.app.FFA:
             return True
         
-        if P.enslaved and self.enslavedTo == other.team.i:
-            return False
-        if other.enslaved and other.team.enslavedTo == self.i:
-            return False
+        if P.enslaved or other.enslaved:
+            if self.getTurfWarTeam() == other.team.getTurfWarTeam():
+                return False
 
         if other.team in self.allied:
             return False
@@ -373,6 +375,7 @@ class Team:
         self.enslavedTo = self.i
         for x in self.getPawns():
             x.enslaved = False
+            x.teamColor = self.getColor()
 
 
     def updateCurrency(self):

@@ -47,47 +47,10 @@ from collections import deque
 from renderObjects.pawn.site import Site
 from collections import Counter
 from utilities.register import register_gun_kill
+from gameTicks.intro import intro
+from utilities.playMultipleSounds import play_sounds_sequential
 
 print("Imports complete")
-# KILL STREAKS
-# Flash bang: Ampuu sinne tänne nänni pohjassa
-# Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
-# Dessu
-# Lisää aseita (tf2 medic gun, vasara jolla voi rakentaa suojia ja turretteja), eri classit (medic engineer soldier scout) jotka valitaan classiin sopivilla itemeillä
-# Class specific itemit, logot määrittävät kelle itemi sopii sekä värjätty itemin classin perusteella
-# Levelupit ja itemi valinta tehdään apissa
-# Hattu tulee kun vaikka 3 itemiä enemmän kuin muita classin itemeitä
-
-# USAS 12 Frag rounds
-# Pickup guns
-# Block corridors
-# Highroller: 10% Megaitem, 90 Eternal orja
-# Piilorasismi: Muuttuu mustaksi, mutta näkymätön välillä, 10x damage johonkin joukkueeseen.
-# Pislarundi, zeus (klitoriskiihdytin t:teemu) jotenkin sisään, se antaa shottiallokaation jollekin pelaajalle.
-# Pyörätuoli: +50% nopeus (animaatio)
-
-# Näkyvä rasismi, 
-
-
-
-# Riisifarmari: Pienenee, silmät ohistuu, mutta nopeus kasvaa
-# Paskapajeeti: Paskoo alleen, paskoihin liukastuu
-# DIY Liekinheitin: Tuplalämä paheeteihin, 
-# Juutalainen: Muuttaa kaikki tuhkakasaksi
-# Pelin alussa: Valitse etninen ryhmä: (Juutalainen, Riisiviljelijä, Kaaleet, Punanahka, Turaani, Yön timo)
-# Juutalainen: Kaikki aseet on kalliimpia mut parempia
-# Intiaani värtjätään punaseksi, alkuaseena jousipyssy, buffi jos omia ympärillä, kasino
-# Kaaleilla tupla damage melee aseilla
-# Tomahawk
-# Rättipäät: Tupladamage räjähdyksillä, Masokismi innate
-# Turaaneilla alku ase musta makkara
-# Riisifarmareilla syömäpuikot alkuaseina
-# 
-# Musta mies, varastaa parhaan aseen laittaa kissanaamion pelaajaspritelle.
-
-# Teemun oikeet ideat
-# Joka roundi uudet ostot
-# 
 
 
 def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
@@ -1024,6 +987,9 @@ class Game(valInit):
 
         for x in self.allTeams:
             x.allied.clear()
+
+
+        play_sounds_sequential("audio/örkki", ["kierros", str(self.round+1), self.GAMEMODE, "fight"])
         
 
         if self.GAMEMODE == "1v1":
@@ -1162,7 +1128,8 @@ class Game(valInit):
         for x in self.CAMERAS:
             if x.cameraIndex >= len(self.teamSpawnRooms): continue
 
-            x.pos = self.teamSpawnRooms[x.cameraIndex].center()
+            x.pos = v2(self.teamSpawnRooms[x.cameraIndex].center()) * self.tileSize - self.res/2
+            x.cameraPos = x.pos.copy() 
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -1191,6 +1158,9 @@ class Game(valInit):
 
     def exitLoadingScreen(self):
         self.GAMESTATE = "ODDBALL"
+
+    def exitIntro(self):
+        self.GAMESTATE = "settings"
 
     def doBabloCracks(self):
         if not (self.GAMEMODE == "FINAL SHOWDOWN" and self.GAMESTATE == "ODDBALL" and self.currMusic == 0):
@@ -1579,8 +1549,8 @@ class Game(valInit):
         r = random.choice(self.teamSpawnRooms)
         t = self.teamSpawnRooms.index(r)
         team = self.allTeams[t]
-        #for x in team.pawns:
-        #    x.die()
+        for x in team.pawns:
+            x.die()
         self.log(f"Killed all pawns of team {t+1}")
         self.switchRoomOwnership(r, random.randint(0, self.teams-1))
     
@@ -2008,6 +1978,7 @@ class Game(valInit):
     def skip(self):
         self.shopTimer = 0
         self.roundTime = 0
+        self.endGameI = 0
     
     def drawAwards(self, endGameI):
         awards = [
@@ -3020,6 +2991,9 @@ class Game(valInit):
             elif self.GAMESTATE == "qrs":
                 qrCodesTick(self)
 
+            elif self.GAMESTATE == "intro":
+                intro(self)
+
             else:
                 battleTick(self)
 
@@ -3069,8 +3043,8 @@ class Game(valInit):
                 #self.handleMainMusic()
                 #self.drawSubs()
                 self.BPM()
-            r = pygame.Rect((0,0), self.res)
-            pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
+            #r = pygame.Rect((0,0), self.res)
+            #pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
 
             #self.screen.fill((0, 0, 0))
             elapsed = time.time() - self.now

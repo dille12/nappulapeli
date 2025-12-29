@@ -41,7 +41,7 @@ class Bullet(DemoObject):
         self.app = self.owner.app
         self.pos = pos
         self.angle = angle + random.uniform(-spread, spread)
-        self.speed = 6000
+        self.speed = 4000
         self.damage = damage
         self.vel = v2(math.cos(self.angle), math.sin(self.angle))
         self.pastPos = []
@@ -189,7 +189,7 @@ class Bullet(DemoObject):
 
         self.pos += self.vel * move_dist
         self.trail.append(self.pos.copy())
-        if len(self.trail) > 3:
+        if len(self.trail) > 5:
             self.trail.pop(0)
         
         for x in self.app.pawnHelpList:
