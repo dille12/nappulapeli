@@ -232,14 +232,12 @@ class GlitchGamemodeDisplay:
         
         # Update subtitle based on gamemode
         subtitles = {
-            'ODDBALL': 'Pidä kalloa 100 sekuntia ja voita :D',
-            'TEAM DEATHMATCH': 'Tapa sata vihua ja voita :D',
-            'TURF WARS': 'Valtaa 2/3 huoneista ja voita :D',
-            '1v1': 'Tapa vihu ja voita :D',
-            'RACING': 'Calibrating Track Systems',
-            'PUZZLE': 'Loading Brain Teasers',
-            'FINAL SHOWDOWN': "Voi paska :D",
-            "DETONATION": "Kyrnäri :D"
+            'ODDBALL': 'Pidä kalloa 100 sekuntia ja voita',
+            'TEAM DEATHMATCH': 'Tapa sata vihua ja voita',
+            'TURF WARS': 'Valtaa huoneet ja voita',
+            'FINAL SHOWDOWN': "Tapa ilkeä bossi ja voita",
+            "KING OF THE HILL": "Valtaa huone ja voita",
+            "DETONATION": "Pelaa ceeässää ja voita"
         }
         
         self.subtitle = subtitles.get(self.current_gamemode, 'Initializing Game')
