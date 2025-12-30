@@ -6,6 +6,11 @@
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 30,
   "gameModeLineUp": [
+    "TEAM DEATHMATCH",
+    "ODDBALL",
+    "KING OF THE HILL",
+    "TURF WARS",
+    "DETONATION",
     "FINAL SHOWDOWN"
   ],
   "maxWins": 3,
