@@ -24,7 +24,7 @@
   "TRAIN_TIME": 100,
   "ENABLEGRENADES": true,
   "RENDER_SCALE": 0.7,
-  "QUALITY_PRESET": 2,
+  "QUALITY_PRESET": 1,
   "ANTICHEAT": false,
   "DO_DEMO": false,
   "SILENT_DAMAGE_ADJUST": true,

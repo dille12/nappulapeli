@@ -112,11 +112,28 @@ def make_handler(app: "Game"):
                     name = data.get("name")
                     if client_ip not in app.clientPawns:
                         image_bytes = base64.b64decode(data.get("image"))
-                        app.add_player(name, image_bytes, ws)  # <-- call your app method
+                        print("Adding new player:", name)
+                        app.add_player(name, image_bytes, ws)  # <-- call your app 
+                        print("Sending info")
+
+                        packet = {
+                        "type": "avatarSuccess",
+                        "state": True,
+                        }
+                        await ws.send(json.dumps(packet))
+
                     else:
                         print("Pawn is already created! ")
                         pawn = app.clientPawns[client_ip]
                         pawn.fullSync()
+
+                        packet = {
+                        "type": "avatarSuccess",
+                        "state": False,
+                        }
+                        await ws.send(json.dumps(packet))
+
+                    continue
 
                 if data.get("type") == "levelUpChoice":
                     pawn_name = data.get("pawn")
