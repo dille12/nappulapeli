@@ -1,29 +1,29 @@
 import time, pygame, os, threading
 import numpy as np
-from particles.particle import ParticleSystem
-from pawn.teamLogic import Team
+from renderObjects.particles.particle import ParticleSystem
+from renderObjects.pawn.teamLogic import Team
 from pygame.math import Vector2 as v2
 from utilities.camera import Camera
-from pawn.weapon import Weapon
+from renderObjects.pawn.weapon import Weapon
 from core.loadAnimation import load_animation
 from utilities.items import getItems
 from gameTicks.millionaire import initMillionaire
 from gameTicks.settingsTick import createSettings
 from gameTicks.qrCodesTick import createQRS
 from gameTicks.gameModeTick import GlitchGamemodeDisplay
-from particles.laser import ThickLaser
+from renderObjects.particles.laser import ThickLaser
 from audioPlayer.audioMixer import AudioMixer, AudioSource
 import random
 from utilities.babloBG import SpeedLines
 from utilities.bosslyrics import getLyricTimes
 from typing import TYPE_CHECKING
-from utilities.fireSystem import FireSystem
+from renderObjects.fireSystem import FireSystem
 from collections import deque
-from pawn.turret import Turret
+from renderObjects.pawn.turret import Turret
 from imageprocessing.imageProcessing import trim_surface
 if TYPE_CHECKING:
     from main import Game
-from pawn.pawn import Pawn
+from renderObjects.pawn.pawn import Pawn
 from gameTicks.pawnExplosion import getFade
 def generate_noise_surface(size):
     width, height = size
@@ -35,6 +35,9 @@ def generate_noise_surface(size):
 import json
 import os
 from core.ipManager import get_local_ip
+
+from utilities.textRenderer import AnimatedTextRenderer
+from utilities.videoStream import VideoPlayer
 
 CONFIG_DIR = "configs"
 MAIN_CONFIG_PATH = os.path.join(CONFIG_DIR, "main.json")
@@ -60,6 +63,9 @@ DEBUG_VARS = [
     "RENDER_SCALE",
     "QUALITY_PRESET",
     "ANTICHEAT",
+    "DO_DEMO",
+    "SILENT_DAMAGE_ADJUST",
+    "DO_INTRO",
     
 ]
 
@@ -91,6 +97,9 @@ class valInit:
         self.TRAIN_TIME = 100
         self.RENDER_SCALE = 0.5
         self.QUALITY_PRESET = 1
+        self.DO_DEMO = False
+        self.SILENT_DAMAGE_ADJUST = True
+        self.DO_INTRO = False
 
         self.ENABLEGRENADES = True
         self.ANTICHEAT = True
@@ -104,8 +113,18 @@ class valInit:
         print("Done")
 
         self.LEVELSEED = 1
+        self.RECORDDEMO = False
+        self.DEMO = {"ticks": {}}
+        self.demoTickIncrement = 0
+        self.PLAYBACKDEMO = False
+        self.demoObjects = []
+        self.demoObjectLookUp = {}
 
         self.local_ip = get_local_ip()
+
+        surf = pygame.image.load("texture/icon.png")
+
+        pygame.display.set_icon(surf)
 
         if self.STRESSTEST:
             self.res = v2(854, 480)
@@ -119,7 +138,11 @@ class valInit:
                 self.res = v2(1366, 768)
             else:
                 self.res = v2(854, 480)
-            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.SCALED | pygame.FULLSCREEN)  # Delay screen initialization
+            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization # | pygame.FULLSCREEN | pygame.SCALED
+
+        
+        pygame.display.set_caption("Nappulapeli")
+
         self.originalRes = self.res.copy()
         self.camRes = self.res.copy()
         self.camRes.x /= 2
@@ -130,6 +153,8 @@ class valInit:
             d2.fill((0,0,0))
             d2.set_alpha((x+1)*10)
             self.darken.append(d2)
+
+        self.demoTick = 0
 
         self.mask = pygame.Surface(self.res, pygame.SRCALPHA).convert_alpha()
         self.infobars = []
@@ -208,7 +233,7 @@ class valInit:
         pygame.mixer.init()
         self.weapons = []
         self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 20, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1, Weapon.Energyshoot, 2, "energy")
+        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1.5, Weapon.Energyshoot, 2, "energy")
         self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
         self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
         self.pistol = Weapon(self, "USP-S", [50, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)
@@ -217,7 +242,7 @@ class valInit:
         self.famas = Weapon(self, "FAMAS", [200, 0], "texture/famas.png", 23, 2300, 25, 6, Weapon.burstShoot, 1.4, "normal", burstTime=0.1, burstBullets=3)
         self.shotgun = Weapon(self, "Shotgun", [175, 0], "texture/shotgun.png", 7, 1300, 6, 1.5, Weapon.shotgunShoot, 0.8, "normal")
         self.mg = Weapon(self, "Machine Gun", [300, 1], "texture/mg.png", 15, 2500, 50, 16, Weapon.AKshoot, 4, "normal")
-        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 200, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
+        self.BFG = Weapon(self, "BFG", [500, 1], "texture/bfg.png", 500, 2300, 50, 25, Weapon.BFGshoot, 2.5, "energy", sizeMult=1.2)
         self.e4 = Weapon(self, "E-BR", [150, 0], "texture/energy4.png", 15, 2700, 35, 10, Weapon.burstShoot, 1, "energy", burstBullets=2, burstTime=0.03)
         self.desert = Weapon(self, "Desert Eagle", [100, 0], "texture/desert.png", 45, 3000, 7, 2, Weapon.desertShoot, 0.75, "normal", sizeMult=0.85)
 
@@ -227,9 +252,10 @@ class valInit:
         self.STARTGAME = False
         self.hammer = Weapon(self, "Hammer", [0,0], "texture/hammer.png", 1, 1000, 1, 1, Weapon.skull, 1, "normal", sizeMult=0.5)
 
-        self.flash = Weapon(self, "Flashbang", [0,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
-        self.frag = Weapon(self, "Frag Grenade", [0,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
-        self.turretNade = Weapon(self, "Turret Grenade", [0,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.flash = Weapon(self, "Flashbang", [125,0], "texture/flash.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.frag = Weapon(self, "Frag Grenade", [150,0], "texture/frag.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.turretNade = Weapon(self, "Turret Grenade", [150,0], "texture/turretNade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
+        self.teleNade = Weapon(self, "TeleNade", [200,0], "texture/telenade.png", 1, 1000, 1, 1, Weapon.grenade, 1, "normal", sizeMult=1)
 
         self.weapons = [self.AK, self.e1, self.e2, self.e3, self.e4, self.pistol, self.pistol2, self.smg, self.famas, 
                         self.shotgun, self.mg, self.BFG, self.desert]
@@ -242,6 +268,10 @@ class valInit:
 
 
         self.shopTimer = self.midRoundTime
+
+        self.ATR = AnimatedTextRenderer(self)
+
+        
 
 
         #self.timbs = Item("Timbsit", speedMod=["add", 300])
@@ -262,6 +292,8 @@ class valInit:
         self.consoleOpen = False
 
         self.cameraIdleTime = 0
+        self.currHill = None
+        self.hillSwitchTime = 45
 
         self.DUALVIEWACTIVE = False
         self.randomTalkInterval = 10
@@ -276,6 +308,9 @@ class valInit:
         self.babloLyricCurrent = ""
 
         self.BLOCKMUSIC = False
+
+        self.loadingSplash = pygame.image.load("texture/loadingsplash.png").convert()
+        self.loadingSplash = pygame.transform.scale_by(self.loadingSplash, self.originalRes.y / self.loadingSplash.get_height())
 
         self.concrete = pygame.image.load("texture/concrete.png").convert()
         self.concretes = []
@@ -408,6 +443,9 @@ class valInit:
 
         self.turretGrenadeKillFeed = pygame.image.load("texture/turretNade.png").convert_alpha()
         self.turretGrenadeKillFeed = pygame.transform.scale_by(self.turretGrenadeKillFeed, 20 / self.turretGrenadeKillFeed.get_width())
+
+        self.telenadeKillFeed = pygame.image.load("texture/turretNade.png").convert_alpha()
+        self.telenadeKillFeed = pygame.transform.scale_by(self.telenadeKillFeed, 20 / self.telenadeKillFeed.get_width())
         
         
         self.crackAppearTimes = []
@@ -492,8 +530,17 @@ class valInit:
         self.levelUpBlink = 1
 
         self.speeches = 0
-        
-        self.GAMESTATE = "qrs"
+
+        with open("backUpImages/Aapo69.png", "rb") as f:
+            imageRaw = f.read()
+
+        self.introSurf = None
+        if self.DO_INTRO:
+            self.VIDEOPLAYER = VideoPlayer("utilities/1228.mp4")
+            self.GAMESTATE = "intro"
+            self.introAudio = pygame.mixer.Sound("audio/intro.wav")
+        self.introSoundPlayed = False
+
         initMillionaire(self)
 
         self.onFireCells = []
@@ -658,6 +705,8 @@ class valInit:
         self.lastCommands = []
         self.consoleIndicatorI = 0
         self.consoleIndicator = False
+
+        #Pawn(self, "Testi", imageRaw, None, False)
 
         self.initAudioEngine()
 

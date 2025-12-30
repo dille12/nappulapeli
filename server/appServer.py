@@ -77,11 +77,13 @@ def make_handler(app: "Game"):
 
     async def handler(ws):
         client_ip, client_port = ws.remote_address
-        print("Client IP:", client_ip, "Port:", client_port)
+        print("Client IP:", client_ip, client_port)
         reconnection = False
         if client_ip in app.clients:
             print("Client reconnected!")
             reconnection = True
+        else:
+            print(f"Client connected")
         
         if not reconnection:
             app.clients[client_ip] = ClientHandler(ws)
@@ -89,13 +91,12 @@ def make_handler(app: "Game"):
             asyncio.run_coroutine_threadsafe(app.clients[client_ip].on_reconnect(ws), app.loop)
             
 
-        print(f"Client connected")
+        
 
         try:
 
             if reconnection and client_ip in app.clientPawns:
                 pawn = app.clientPawns[client_ip]
-
                 pawn.fullSync()
 
                 #asyncio.run_coroutine_threadsafe(pawn.completeToApp(), app.loop)
@@ -105,13 +106,17 @@ def make_handler(app: "Game"):
 
             async for message in ws:
                 data = json.loads(message)
-                print("Received:", data.get("type"))
+                #print("Received:", data.get("type"))
                 # Example: tell the app about the avatar
                 if data.get("type") == "avatar":
                     name = data.get("name")
-                    image_bytes = base64.b64decode(data.get("image"))
-                    team = data.get("team")
-                    app.add_player(name, image_bytes, ws)  # <-- call your app method
+                    if client_ip not in app.clientPawns:
+                        image_bytes = base64.b64decode(data.get("image"))
+                        app.add_player(name, image_bytes, ws)  # <-- call your app method
+                    else:
+                        print("Pawn is already created! ")
+                        pawn = app.clientPawns[client_ip]
+                        pawn.fullSync()
 
                 if data.get("type") == "levelUpChoice":
                     pawn_name = data.get("pawn")

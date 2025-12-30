@@ -11,6 +11,7 @@ def gameEndTick(self: "Game"):
     
     self.DRAWTO = self.screen
     self.DRAWTO.fill((0,0,0))
+    #self.DRAWTO.blit(self.loadingSplash, self.originalRes/2 - v2(self.loadingSplash.get_size())/2)
     self.cameraPosDelta = v2([0,0])
     self.gameEndTimer += self.deltaTime
 

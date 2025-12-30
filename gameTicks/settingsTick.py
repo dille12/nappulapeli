@@ -7,7 +7,7 @@ from core.ipManager import get_local_ip
 import random
 import os
 from core.qrcodeMaker import make_qr_surface
-from pawn.teamLogic import Team
+from renderObjects.pawn.teamLogic import Team
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
     self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600), initialValue=1)
@@ -36,7 +36,8 @@ def createSettings(self: "Game"):
 def settingsTick(self: "Game"):
     self.screen.fill((0,0,0))
 
-    t = self.fontLarge.render("ASETUKSET", True, [255]*3)
+    #t = self.fontLarge.render("ASETUKSET", True, [255]*3)
+    t = self.ATR.render(self.fontLarge, "ASETUKSET", wave_amp=4, rainbow=True)
     self.screen.blit(t, [self.res[0]/2-t.get_width()/2, 5])
 
     t = self.fontLarge.render(f"{self.local_ip}", True, [255]*3)
@@ -78,7 +79,7 @@ def settingsTick(self: "Game"):
     self.teamsSave = self.teams
     self.TTS_ON = self.ttsToggle.get_selected() == "On"
     self.ITEM_AUTO = self.itemToggle.get_selected() == "Auto"
-    self.reTeamPawns()
+    #self.reTeamPawns()
     teamIndices = []
     for i in range(self.teams):
         teamIndices.append(0)
@@ -91,7 +92,7 @@ def settingsTick(self: "Game"):
         teamIndices[pawn.team.i] += 1
 
         t = self.fontSmaller.render(pawn.name, True, pawn.team.color)
-        self.screen.blit(t, (x,y))
+        self.screen.blit(t, (x * self.RENDER_SCALE,y * self.RENDER_SCALE))
 
     for team in range(len(teamIndices)):
         for playerI in range(self.fillTeamsTo):
@@ -104,7 +105,7 @@ def settingsTick(self: "Game"):
 
             t = self.fontSmaller.render("NPC", True, self.getTeamColor(team))
 
-            self.screen.blit(t, (x,y))
+            self.screen.blit(t, (x * self.RENDER_SCALE,y * self.RENDER_SCALE))
 
     if self.loadedMusic != self.musicChoice.get_selected():
 
@@ -152,7 +153,7 @@ def settingsTick(self: "Game"):
             w = random.choice(self.weapons)
             w.give(pawn)
 
-    if not (self.playerFilesToGen or self.pawnGenI or self.STARTGAME) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY  or "space" in self.keypress):
+    if not (self.playerFilesToGen or self.pawnGenI or self.STARTGAME) and (self.playButton.draw(self.screen, "Peliä", font = self.fontLarge) or self.AUTOPLAY):
         self.STARTGAME = True
 
         #self.MANUALPAWN = self.pawnHelpList[0]
@@ -178,7 +179,7 @@ def settingsTick(self: "Game"):
                     break
 
         self.refreshShops()
-        self.reTeamPawns()
+        #self.reTeamPawns()
         self.SimpleServerController.stop_server()
 
     if self.STARTGAME and not (self.playerFilesToGen or self.pawnGenI):

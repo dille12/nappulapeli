@@ -2,11 +2,11 @@ print("Starting")
 import pygame
 import os, sys
 import pygame.gfxdraw
-from pawn.pawn import Pawn
-from pawn.weapon import Weapon
+from renderObjects.pawn.pawn import Pawn
+from renderObjects.pawn.weapon import Weapon
 import random
 import threading
-from utilities.bullet import Bullet
+from renderObjects.bullet import Bullet
 from utilities.enemy import Enemy
 import math
 from pygame.math import Vector2 as v2
@@ -16,11 +16,11 @@ import numpy as np
 from levelGen.arenaWithPathfinding import ArenaWithPathfinding
 from utilities.item import Item
 from core.keypress import key_press_manager
-from utilities.skull import Skull, Bomb
+from renderObjects.skull import Skull, Bomb
 import colorsys
 from utilities.infoBar import infoBar
 from utilities.shop import Shop
-from particles.particle import ParticleSystem, Particle
+from renderObjects.particles.particle import ParticleSystem, Particle
 from core.console import runConsole, handleConsoleEvent
 from gameTicks.gameEnd import gameEndTick
 from gameTicks.settingsTick import settingsTick, createSettings
@@ -34,60 +34,23 @@ from core.getCommonRoom import find_farthest_room
 from gameTicks.showcaseTick import showcaseTick
 import asyncio
 from core.qrcodeMaker import make_qr_surface
-from pawn.turret import Turret
-from pawn.teamLogic import Team
+from renderObjects.pawn.turret import Turret
+from renderObjects.pawn.teamLogic import Team
 import subprocess, glob
 from utilities.extractLyrics import get_subs_for_track
 from utilities.camera import Camera
 import inspect
-from utilities.dialog import babloBreak, onCameraLock
+from renderObjects.pawn.dialog import babloBreak, onCameraLock
 import tkinter
 from statistics import stdev
 from collections import deque
-from pawn.site import Site
+from renderObjects.pawn.site import Site
 from collections import Counter
 from utilities.register import register_gun_kill
+from gameTicks.intro import intro
+from utilities.playMultipleSounds import play_sounds_sequential
 
 print("Imports complete")
-# KILL STREAKS
-# Flash bang: Ampuu sinne tänne nänni pohjassa
-# Payload (Gamemode) Viedään kärry toisen baseen joka mossauttaa sen
-# Dessu
-# Lisää aseita (tf2 medic gun, vasara jolla voi rakentaa suojia ja turretteja), eri classit (medic engineer soldier scout) jotka valitaan classiin sopivilla itemeillä
-# Class specific itemit, logot määrittävät kelle itemi sopii sekä värjätty itemin classin perusteella
-# Levelupit ja itemi valinta tehdään apissa
-# Hattu tulee kun vaikka 3 itemiä enemmän kuin muita classin itemeitä
-
-# USAS 12 Frag rounds
-# Pickup guns
-# Block corridors
-# Highroller: 10% Megaitem, 90 Eternal orja
-# Piilorasismi: Muuttuu mustaksi, mutta näkymätön välillä, 10x damage johonkin joukkueeseen.
-# Pislarundi, zeus (klitoriskiihdytin t:teemu) jotenkin sisään, se antaa shottiallokaation jollekin pelaajalle.
-# Pyörätuoli: +50% nopeus (animaatio)
-
-# Näkyvä rasismi, 
-
-
-
-# Riisifarmari: Pienenee, silmät ohistuu, mutta nopeus kasvaa
-# Paskapajeeti: Paskoo alleen, paskoihin liukastuu
-# DIY Liekinheitin: Tuplalämä paheeteihin, 
-# Juutalainen: Muuttaa kaikki tuhkakasaksi
-# Pelin alussa: Valitse etninen ryhmä: (Juutalainen, Riisiviljelijä, Kaaleet, Punanahka, Turaani, Yön timo)
-# Juutalainen: Kaikki aseet on kalliimpia mut parempia
-# Intiaani värtjätään punaseksi, alkuaseena jousipyssy, buffi jos omia ympärillä, kasino
-# Kaaleilla tupla damage melee aseilla
-# Tomahawk
-# Rättipäät: Tupladamage räjähdyksillä, Masokismi innate
-# Turaaneilla alku ase musta makkara
-# Riisifarmareilla syömäpuikot alkuaseina
-# 
-# Musta mies, varastaa parhaan aseen laittaa kissanaamion pelaajaspritelle.
-
-# Teemun oikeet ideat
-# Joka roundi uudet ostot
-# 
 
 
 def wait_for_file_ready(filepath, timeout=5, poll_interval=0.1):
@@ -370,6 +333,34 @@ class Game(valInit):
                 self.subI += 1
                 self.lastSubTime = 0
 
+    def handleKOTH(self):
+        if self.GAMEMODE == "KING OF THE HILL":
+            r = self.currHill
+            
+            team_counts = {}
+            for pawn in r.pawnsPresent:
+                team_counts[pawn] = team_counts.get(pawn, 0) + 1
+
+            # uncontested: exactly one team present
+
+            if len(team_counts) == 1:
+                sole_team = next(iter(team_counts))
+                if r.turfWarTeam is None:
+                    self.notify("HILL CAPTURED", self.getTeamColor(sole_team))
+                r.turfWarTeam = sole_team
+            else:
+                if r.turfWarTeam is not None:
+                    self.notify("HILL CONTESTED")
+                r.turfWarTeam = None  # contested
+
+            if r.turfWarTeam is not None:
+                self.allTeams[r.turfWarTeam].kothTime += self.deltaTime
+
+            self.hillSwitchTime -= self.deltaTime
+            if self.hillSwitchTime <= 0:
+                self.switchHill()
+                self.notify("HILL MOVED")
+
 
     def handleTurfWar(self):
         if self.GAMEMODE == "TURF WARS":
@@ -412,7 +403,7 @@ class Game(valInit):
                 team.emancipate()
         
         r.turfWarTeam = majority_team
-        r.occupyI = 0
+        r.occupyI = 5
 
 
     def findCorners(self, grid):
@@ -655,12 +646,14 @@ class Game(valInit):
         )
 
 
-
+    def switchHill(self):
+        rooms = [x for x in self.map.rooms if x not in self.teamSpawnRooms and x is not self.currHill]
+        self.currHill = random.choice(rooms)
+        print("Hill moved")
+        self.hillSwitchTime = 45
+        self.currHill.turfWarTeam = None
 
     def genLevel(self):
-
-        
-        
         if self.GAMEMODE == "1v1":
             self.map = ArenaGenerator(self, 50, 40)
             self.map.generate_arena(room_count=self.teams+2, min_room_size=8, max_room_size=20, corridor_width=4)
@@ -920,6 +913,16 @@ class Game(valInit):
     def cell2Pos(self, cell):
         return v2(cell) * self.tileSize + [self.tileSize/2, self.tileSize/2]
     
+    def resetDemo(self):
+        self.RECORDDEMO = False
+        self.DEMO = {"ticks": {}}
+                     
+        self.demoTick = 0
+        self.demoTickIncrement = 0
+        self.demoObjects = []
+        self.DEMOFPS = 60
+        
+    
 
     def initiationWrapper(self):
         self.loadInfo = infoBar(self, "Starting game")
@@ -984,6 +987,9 @@ class Game(valInit):
 
         for x in self.allTeams:
             x.allied.clear()
+
+
+        play_sounds_sequential("audio/örkki", ["kierros", str(self.round+1), self.GAMEMODE, "fight"])
         
 
         if self.GAMEMODE == "1v1":
@@ -1009,7 +1015,6 @@ class Game(valInit):
                         print(x.i, "allied with", y.i)
 
                 x.defaultPlan()
-
 
         seed = random.randrange(2**32 - 1)
         if self.SET_SEED == None:
@@ -1049,6 +1054,10 @@ class Game(valInit):
         else:
             self.roundTime = self.MAXROUNDLENGTH
 
+        if self.GAMEMODE == "KING OF THE HILL":
+            self.switchHill()
+
+        
 
         self.cameraLinger = 0
         for i in range(1):
@@ -1095,10 +1104,11 @@ class Game(valInit):
 
         
 
-        
+        self.resetDemo()
 
         for x in self.allTeams:
             x.refreshColor()
+            x.kothTime = 0
 
         if self.giveWeapons:
             self.giveAllWeapons()
@@ -1118,7 +1128,8 @@ class Game(valInit):
         for x in self.CAMERAS:
             if x.cameraIndex >= len(self.teamSpawnRooms): continue
 
-            x.pos = self.teamSpawnRooms[x.cameraIndex].center()
+            x.pos = v2(self.teamSpawnRooms[x.cameraIndex].center()) * self.tileSize - self.res/2
+            x.cameraPos = x.pos.copy() 
 
         self.transition(lambda: self.exitLoadingScreen())
 
@@ -1147,6 +1158,9 @@ class Game(valInit):
 
     def exitLoadingScreen(self):
         self.GAMESTATE = "ODDBALL"
+
+    def exitIntro(self):
+        self.GAMESTATE = "settings"
 
     def doBabloCracks(self):
         if not (self.GAMEMODE == "FINAL SHOWDOWN" and self.GAMESTATE == "ODDBALL" and self.currMusic == 0):
@@ -1312,7 +1326,7 @@ class Game(valInit):
         #    pawn.team = self.playerTeams + self.pawnHelpList.index(pawn)%(self.teams - self.playerTeams)
         #pawn.teamColor = self.getTeamColor(pawn.team.i)
         self.ENTITIES.append(pawn)
-        self.reTeamPawns()
+        #self.reTeamPawns()
 
         self.pawnGenI -= 1
 
@@ -1417,6 +1431,49 @@ class Game(valInit):
 
     def getActualPawns(self) -> list:
         return [x for x in self.pawnHelpList if x.isPawn]
+    
+    def logParticleEffect(self, fn, args, kwargs):
+        if not self.RECORDDEMO or self.PLAYBACKDEMO:
+            return
+
+        tick = self.demoTick
+        ticks = self.DEMO.setdefault("ticks", {})
+
+        tick_data = ticks.setdefault(tick, {})
+        creates = tick_data.setdefault("create", [])
+
+        creates.append((fn, args, kwargs))
+
+    def logDeletion(self, id):
+        if not self.RECORDDEMO or self.PLAYBACKDEMO:
+            return
+
+        tick = self.demoTick
+        ticks = self.DEMO.setdefault("ticks", {})
+
+        tick_data = ticks.setdefault(tick, {})
+        kills = tick_data.setdefault("kill", [])
+
+        kills.append(id)
+
+    def exportDemo(self):
+        with open("DEMO.txt", "w") as f:
+            f.write(str(self.DEMO))
+
+    def createParticleDemo(self):
+        tick_data = self.DEMO.get("ticks", {}).get(self.demoTick)
+        if not tick_data:
+            return
+
+        for fn, args, kwargs in tick_data.get("create", []):
+            #print("Creating:", type(fn))
+            fn(*args, **kwargs)
+
+        killIds = tick_data.get("kill", [])
+        self.demoObjects = [x for x in self.demoObjects if x.id not in killIds]
+
+
+        
 
     def handleMusic(self):
 
@@ -1492,8 +1549,8 @@ class Game(valInit):
         r = random.choice(self.teamSpawnRooms)
         t = self.teamSpawnRooms.index(r)
         team = self.allTeams[t]
-        #for x in team.pawns:
-        #    x.die()
+        for x in team.pawns:
+            x.die()
         self.log(f"Killed all pawns of team {t+1}")
         self.switchRoomOwnership(r, random.randint(0, self.teams-1))
     
@@ -1921,6 +1978,7 @@ class Game(valInit):
     def skip(self):
         self.shopTimer = 0
         self.roundTime = 0
+        self.endGameI = 0
     
     def drawAwards(self, endGameI):
         awards = [
@@ -2197,7 +2255,7 @@ class Game(valInit):
 
         t1, t2 = sorted(self.allTeams, key=lambda x: x.wins, reverse=True)[:2]
 
-        if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1:
+        if t1.wins > t2.wins and t1.wins >= self.maxWins and self.round >= len(self.gameModeLineUp) - 1 and self.DOREALGAMEMODES:
             self.GAMESTATE = "end"
             print("ending game.")
             self.buildAwards()
@@ -2208,7 +2266,9 @@ class Game(valInit):
             print(t2.i, t2.wins)
             print(self.round >= len(self.gameModeLineUp))
 
+
         
+
         self.GAMEMODE = None
         self.PEACEFUL = True
         self.objectiveCarriedBy = None
@@ -2284,6 +2344,14 @@ class Game(valInit):
         for x in self.shops:
             x.hideI = 0.5
 
+    def switchToDemo(self):
+
+        state = self.PLAYBACKDEMO
+
+        self.PLAYBACKDEMO = not state
+        self.RECORDDEMO = state
+        self.demoTick = 0
+        self.demoTickIncrement = 0
 
 
     def handleHud(self, CAMERA: Camera, index = 0):
@@ -2417,13 +2485,29 @@ class Game(valInit):
                 rect.topleft = self.convertPos(rect.topleft)
                 draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, self.getTeamColor(r.turfWarTeam), width=5)
 
+    def drawKOTH(self):
+        if self.GAMEMODE != "KING OF THE HILL":
+            return
+        r = self.currHill
+        
+        rect = pygame.Rect(r.x*self.tileSize, r.y*self.tileSize, 
+                            r.width*self.tileSize * self.RENDER_SCALE, r.height*self.tileSize * self.RENDER_SCALE)
+        rect.topleft = self.convertPos(rect.topleft)
+
+        if r.turfWarTeam is not None:
+            color = self.getTeamColor(r.turfWarTeam)
+        else:
+            color = [255,255,255]
+
+        draw_rect_perimeter(self.DRAWTO, rect, time.time()-self.now, 200, 10, color, width=5)
+
     def giveAllWeapons(self):
         for x in self.pawnHelpList:
             if x.BOSS or not x.isPawn:
                 continue
             w = random.choice(self.weapons)
             w.give(x)
-            x.gType = random.randint(0,2)
+            x.gType = random.randint(0,3)
 
     def tickScoreBoard(self):
         y = 20
@@ -2494,6 +2578,16 @@ class Game(valInit):
                 t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} damage dealt", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
+
+        elif self.GAMEMODE == "KING OF THE HILL":
+            timeOnTheHill = [x.kothTime for x in self.allTeams]
+
+            for i, x in sorted(enumerate(timeOnTheHill), key=lambda pair: pair[1], reverse=True):
+
+                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
+                self.screen.blit(t, [10, y])
+                y += 22
+
         else:
             return
 
@@ -2503,7 +2597,7 @@ class Game(valInit):
         for x in sorted([x for x in self.pawnHelpList if x.isPawn], key = lambda p: p.kills, reverse=True):
 
             npcAppendix = "(NPC)" if x.NPC else ""
-            t = combinedText(f"{x.name} {npcAppendix}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmaller)
+            t = combinedText(f"{x.name} {npcAppendix}: ", x.teamColor, f"LVL {x.level}  {x.kills}/{x.deaths}", [255,255,255], font=self.fontSmallest)
             r = t.get_rect()
             r.topleft = [10,y]
             
@@ -2523,7 +2617,7 @@ class Game(valInit):
 
 
             self.screen.blit(t, [10,y])
-            y += 22
+            y += 14
 
 
     def toggleRendering(self):
@@ -2766,6 +2860,57 @@ class Game(valInit):
                 pygame.draw.line(self.screen, [0,255,0], (self.res.x - i-1, 850 - lastTime), (self.res.x - i, 850 - t), 1)
             lastTime = t
 
+        
+    def raycast_grid(self, pos, direction, max_dist):
+        x0, y0 = pos.x / self.tileSize, pos.y / self.tileSize
+        dx, dy = direction.x, direction.y
+
+        map_x = int(x0)
+        map_y = int(y0)
+
+        step_x = 1 if dx > 0 else -1
+        step_y = 1 if dy > 0 else -1
+
+        t_delta_x = abs(1 / dx) if dx != 0 else float("inf")
+        t_delta_y = abs(1 / dy) if dy != 0 else float("inf")
+
+        next_x = map_x + (1 if dx > 0 else 0)
+        next_y = map_y + (1 if dy > 0 else 0)
+
+        t_max_x = (next_x - x0) / dx if dx != 0 else float("inf")
+        t_max_y = (next_y - y0) / dy if dy != 0 else float("inf")
+
+        t = 0.0
+        hit_axis = None
+
+        while t <= max_dist:
+            if 0 <= map_x < self.map.grid.shape[1] and 0 <= map_y < self.map.grid.shape[0]:
+                if self.map.grid[map_y, map_x] == CellType.WALL.value:
+                    hit_pos = pos + direction * (t * self.tileSize)
+                    hit_pos -= direction * 1.0
+
+                    if hit_axis == 'x':
+                        normal = pygame.Vector2(-step_x, 0)
+                    else:
+                        normal = pygame.Vector2(0, -step_y)
+
+                    return hit_pos, normal
+            else:
+                return None, None
+
+            if t_max_x < t_max_y:
+                map_x += step_x
+                t = t_max_x
+                t_max_x += t_delta_x
+                hit_axis = 'x'
+            else:
+                map_y += step_y
+                t = t_max_y
+                t_max_y += t_delta_y
+                hit_axis = 'y'
+
+        return None, None
+
     def run(self):
         self.frameTimeCache = []
         timeSum = 0
@@ -2844,6 +2989,9 @@ class Game(valInit):
             elif self.GAMESTATE == "qrs":
                 qrCodesTick(self)
 
+            elif self.GAMESTATE == "intro":
+                intro(self)
+
             else:
                 battleTick(self)
 
@@ -2893,8 +3041,8 @@ class Game(valInit):
                 #self.handleMainMusic()
                 #self.drawSubs()
                 self.BPM()
-            r = pygame.Rect((0,0), self.res)
-            pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
+            #r = pygame.Rect((0,0), self.res)
+            #pygame.draw.rect(self.screen, [255,0,0], r, width=1+int(15*(self.beatI**2)))
 
             #self.screen.fill((0, 0, 0))
             elapsed = time.time() - self.now
@@ -2905,6 +3053,8 @@ class Game(valInit):
                     self.currNotification = None
 
             self.manualTransition = False
+
+            self.ATR.tick()
 
             if self.TRANSITION:
                 self.drawExplosion()

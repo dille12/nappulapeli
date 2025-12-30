@@ -7,7 +7,7 @@ from core.ipManager import get_local_ip
 import random
 import os
 from core.qrcodeMaker import make_qr_surface
-from pawn.teamLogic import Team
+from renderObjects.pawn.teamLogic import Team
 import tkinter as tk
 from tkinter import simpledialog
 

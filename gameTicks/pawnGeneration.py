@@ -121,7 +121,7 @@ def preGameTick(self: "Game"):
     self.cameraPosDelta = v2([0,0])
     entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
     self.DRAWTO = self.screen
-    self.DRAWTO.fill((0,0,0))
+    self.DRAWTO.fill([self.beatI**2 * 30,0,0])
 
             
     for x in entities_temp:
