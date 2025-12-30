@@ -5,6 +5,8 @@ import pygame
 
 def intro(self: "Game"):
     self.screen.fill((0,0,0))
+        
+    if not self.hasFocus: return
 
     if not self.introSoundPlayed:
         self.introAudio.play()

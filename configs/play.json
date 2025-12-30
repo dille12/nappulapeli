@@ -28,5 +28,6 @@
   "ANTICHEAT": false,
   "DO_DEMO": false,
   "SILENT_DAMAGE_ADJUST": true,
-  "DO_INTRO": false
+  "DO_INTRO": true,
+  "FULLSCREEN": true
 }

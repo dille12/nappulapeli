@@ -9,6 +9,8 @@ def key_press_manager(obj):
     obj.mouse_pos = pygame.mouse.get_pos()
     obj.events = pygame.event.get()
     for event in obj.events:
+        if event.type == pygame.WINDOWFOCUSGAINED:
+            obj.hasFocus = True
         handleConsoleEvent(obj, event)
         if event.type == pygame.QUIT:
             pygame.quit()

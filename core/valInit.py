@@ -66,7 +66,7 @@ DEBUG_VARS = [
     "DO_DEMO",
     "SILENT_DAMAGE_ADJUST",
     "DO_INTRO",
-    
+    "FULLSCREEN"
 ]
 
 
@@ -100,6 +100,7 @@ class valInit:
         self.DO_DEMO = False
         self.SILENT_DAMAGE_ADJUST = True
         self.DO_INTRO = False
+        self.FULLSCREEN = True
 
         self.ENABLEGRENADES = True
         self.ANTICHEAT = True
@@ -138,7 +139,12 @@ class valInit:
                 self.res = v2(1366, 768)
             else:
                 self.res = v2(854, 480)
-            self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization # | pygame.FULLSCREEN | pygame.SCALED
+
+            if self.FULLSCREEN:
+                self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA | pygame.FULLSCREEN | pygame.SCALED)  # Delay screen initialization # 
+            else:
+
+                self.screen = pygame.display.set_mode(self.res, pygame.SRCALPHA)  # Delay screen initialization # | pygame.FULLSCREEN | pygame.SCALED
 
         
         pygame.display.set_caption("Nappulapeli")
@@ -287,7 +293,8 @@ class valInit:
 
         self.TRANSITION_INTO_SINGLE = False
         self.IN_SINGLE = False
-        self.FADEOUTMANUAL = 0
+        self.FADEOUTMANUAL = 100
+        self.hasFocus = False
 
         self.consoleOpen = False
 

@@ -14,16 +14,26 @@ class VideoPlayer:
         self.done = False
 
     def update(self, delta_time, size):
+        
         if self.done:
             return None
 
         self.acc += delta_time
-        if self.acc < self.dt:
+        frames_to_advance = int(self.acc / self.dt)
+
+        if frames_to_advance == 0:
             return None
 
-        self.acc -= self.dt
+        self.acc -= frames_to_advance * self.dt
 
-        ret, frame = self.cap.read()
+        frame = None
+        for _ in range(frames_to_advance):
+            ret, frame = self.cap.read()
+            if not ret:
+                self.done = True
+                self.cap.release()
+                return None
+
 
 
         if not ret:
@@ -36,7 +46,7 @@ class VideoPlayer:
         frame = cv2.resize(
             frame,
             (int(target_w), int(target_h)),
-            interpolation=cv2.INTER_AREA
+            interpolation=cv2.INTER_NEAREST
         )
 
         frame = frame.swapaxes(0, 1)
