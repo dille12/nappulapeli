@@ -172,6 +172,8 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.height = 100 if not self.BOSS else 300
 
+        self.hitBox = pygame.Rect(self.pos[0], self.pos[1], self.height, self.height)
+
         self.imagePawn = pygame.transform.scale_by(self.levelUpImage, self.height / self.levelUpImage.get_size()[1]).convert_alpha()
 
         self.imagePawn = pygame.transform.scale_by(self.imagePawn, self.app.RENDER_SCALE)
@@ -326,7 +328,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.target = None
         self.killed = False
-        self.hitBox = pygame.Rect(self.pos[0], self.pos[1], 100, 100)
+        
 
         self.yComponent = 0
         self.xComponent = 0
@@ -962,6 +964,8 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         if self.BOSS and self.app.GAMEMODE == "FINAL SHOWDOWN":
             top_team = max(self.damageTakenPerTeam, key=self.damageTakenPerTeam.get)
+            print(self.damageTakenPerTeam)
+            print(top_team)
             self.app.announceVictory(top_team)
 
             self.app.ENTITIES.remove(self)
@@ -1088,7 +1092,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         if fromActor:
             fromActor.stats["damageDealt"] += damage
 
-        if self.BOSS and fromActor:
+        if self.BOSS and fromActor and fromActor.team.i != -1:
             if fromActor.team.i not in self.damageTakenPerTeam:
                 self.damageTakenPerTeam[fromActor.team.i] = damage
             else:

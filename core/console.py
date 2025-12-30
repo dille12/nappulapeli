@@ -19,6 +19,7 @@ def execute(self: "Game", command: str):
         result = eval(command)
         if result is not None:
             self.consoleLog.append(str(result))
+            print(result)
     except Exception as e:
         errorType = type(e).__name__
         print(command)

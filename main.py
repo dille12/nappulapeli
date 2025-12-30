@@ -1398,7 +1398,7 @@ class Game(valInit):
 
 
         self.getWinningTeam()
-        print("Winning team", self.winningTeam)
+        #print("Winning team", self.winningTeam.i)
 
         self.nextMusic = -1
 
@@ -2606,7 +2606,7 @@ class Game(valInit):
             for i, d in enumerate(self.BABLO.damageTakenPerTeam.values()):
                 if i >= len(damage):
                     continue
-                damage[i] = d
+                damage[i] = self.BABLO.damageTakenPerTeam.get(i, 0)
 
             for i, x in sorted(enumerate(damage), key=lambda pair: pair[1], reverse=True):
 

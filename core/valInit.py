@@ -662,7 +662,10 @@ class valInit:
 
         self.giveWeapons = False
 
-        self.MAXFPS = 144
+        self.MAXFPS = pygame.display.get_current_refresh_rate()
+        print("Display fps:", self.MAXFPS)
+        if not self.MAXFPS:
+            self.MAXFPS = 144
         self.TIMESCALE = 1
 
         

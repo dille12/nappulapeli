@@ -130,3 +130,36 @@ Traceback (most recent call last):
     istop = _index(stop)
             ^^^^^^^^^^^^
 TypeError: 'float' object cannot be interpreted as an integer
+
+============================================================
+2025-12-30 22:34:09
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3186, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3031, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 31, in battleTick
+    _battle_roundtime_and_timeout(self, victoryCondition)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 312, in _battle_roundtime_and_timeout
+    self.announceVictory(max_index)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 1393, in announceVictory
+    self.allTeams[self.victoryTeam].wins += 1
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+IndexError: list index out of range
+
+============================================================
+2025-12-30 22:37:44
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3186, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3031, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 22, in battleTick
+    victoryCondition = _battle_victory_logic(self)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 233, in _battle_victory_logic
+    self.announceVictory(alive_teams[0])
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 1401, in announceVictory
+    print("Winning team", self.winningTeam.i)
+                          ^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'i'

@@ -201,6 +201,9 @@ def _battle_victory_logic(self: "Game"):
                     self.announceVictory(i)
                     break
 
+        elif self.GAMEMODE == "FINAL SHOWDOWN":
+            victoryCondition = [self.BABLO.damageTakenPerTeam.get(x,0) for x in range(len(self.allTeams))]
+
         elif self.GAMEMODE == "DETONATION":
             victoryCondition = [0 for _ in range(2)]
             if self.SITES:
@@ -293,7 +296,7 @@ def _battle_roundtime_and_timeout(self: "Game", victoryCondition):
     if self.GAMEMODE == "FINAL SHOWDOWN":
         if self.currMusic == 1:
             self.roundTime -= self.deltaTime
-        victoryCondition = list(self.BABLO.damageTakenPerTeam.values())
+        
 
     elif self.GAMEMODE == "DETONATION":
         if not self.skull.planted:
@@ -303,6 +306,7 @@ def _battle_roundtime_and_timeout(self: "Game", victoryCondition):
         self.roundTime -= self.deltaTime
 
     if self.roundTime <= 0:
+        print(victoryCondition)
         # Pick out from the victoryCondition the highest index
         max_index = victoryCondition.index(max(victoryCondition))
 
@@ -644,8 +648,11 @@ def _battle_render_overlays_and_ui(self: "Game", FF: float):
 
         pygame.draw.circle(self.MINIMAPTEMP, [255, 255, 255], self.MINIMAPCELLSIZE * skullpos / self.tileSize, 6, width=1)
 
-    MINIMAP_POS = v2(self.originalRes.x/2 - self.MINIMAP.get_width()/2, self.originalRes.y - self.MINIMAP.get_height() - 10)
-    if not self.VICTORY and self.GAMEMODE != "FINAL SHOWDOWN":
+    if self.GAMEMODE != "FINAL SHOWDOWN":
+        MINIMAP_POS = v2(self.originalRes.x/2 - self.MINIMAP.get_width()/2, self.originalRes.y - self.MINIMAP.get_height() - 10)
+    else:
+        MINIMAP_POS = v2(self.originalRes.x - self.MINIMAP.get_width() - 10, self.originalRes.y - self.MINIMAP.get_height() - 10)
+    if not self.VICTORY:
         self.screen.blit(self.MINIMAPTEMP, MINIMAP_POS)
 
         w = self.MINIMAP.get_width()
