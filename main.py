@@ -2809,8 +2809,6 @@ class Game(valInit):
                         p.name + " on Epstein kansioissa",
                         "Mä haluun kotiin",
                         "Onpa paska peli",
-                        "Voisiko joku tuoda mulle oluen?",
-                        "Vaihetaas peliä",
                         "Älkää kertoko kenellekään, mutta mä huijaan",
                         "Oon varma että Makella on satiaisia",
                         "Tää peli on ihan paska",

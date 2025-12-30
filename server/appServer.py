@@ -110,6 +110,7 @@ def make_handler(app: "Game"):
                 if data.get("type") == "avatar":
                     name = data.get("name")
                     image_bytes = base64.b64decode(data.get("image"))
+                    team = data.get("team")
                     app.add_player(name, image_bytes, ws)  # <-- call your app method
 
                 if data.get("type") == "levelUpChoice":
