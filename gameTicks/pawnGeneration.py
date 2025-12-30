@@ -123,7 +123,7 @@ def preGameTick(self: "Game"):
     self.DRAWTO = self.screen
     self.DRAWTO.fill([self.beatI**2 * 30,0,0])
 
-            
+    self.TOTAL_TIME_ADJUSTMENT = 1.0
     for x in entities_temp:
         x.tick()
         x.render()

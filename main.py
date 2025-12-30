@@ -396,10 +396,10 @@ class Game(valInit):
             originalTeam = self.teamSpawnRooms.index(r)
             team = self.allTeams[originalTeam]
             if originalTeam != majority_team:
-                self.notify(f"Team {originalTeam+1} was captured!", self.getTeamColor(originalTeam))
+                self.notify(f"{team.getName()} was captured!", self.getTeamColor(originalTeam))
                 team.slaveTo(self.allTeams[majority_team])
             else:
-                self.notify(f"Team {originalTeam+1} emancipated!", self.getTeamColor(originalTeam))
+                self.notify(f"{team.getName()} emancipated!", self.getTeamColor(originalTeam))
                 team.emancipate()
         
         r.turfWarTeam = majority_team
@@ -1313,13 +1313,26 @@ class Game(valInit):
 
 
 
-    def add_player(self, name, image, client):
-        self.playerFilesToGen.append((name, image, client))
+    def add_player(self, name, image, client, team = -1):
+        self.playerFilesToGen.append((name, image, client, team))
 
-    def threadedGeneration(self, name, image, client, boss = False):
+    def assignTeam(self, pawn):
+        print("Assigning team for", pawn.name)
+        length = len(self.allTeams)
+        if not pawn.NPC:
+            length -= self.npcTeams
+
+        for t in range(length):
+            team = self.allTeams[t]
+            if len(team.pawns) < self.fillTeamsTo:
+                team.add(pawn)
+                return
+        print("No team found???")
+
+    def threadedGeneration(self, name, image, client, team = -1, boss = False):
         self.pawnGenI += 1
                 
-        pawn = Pawn(self, name, image, client, boss = boss)
+        pawn = Pawn(self, name, image, client, team = team, boss = boss)
         #if client:
         
         #else:
@@ -1409,7 +1422,7 @@ class Game(valInit):
             self.getActualPawns(),
             key=lambda x: x.teamKills,
             reverse=True
-        )[1]
+        )[0]
 
         self.HEATMAP = self.makeDeathHeatmapSurface(8, 3).convert_alpha()
         self.HEATMAP = pygame.transform.scale_by(self.HEATMAP, (640*self.RENDER_SCALE)/self.HEATMAP.get_height())
@@ -2013,6 +2026,28 @@ class Game(valInit):
             self.screen.blit(txt, lrect)
 
 
+    async def killClient(self, client):
+        await client.ws.close(code=1000, reason="Server shutdown")
+
+
+    def kick(self, name: str):
+        pawn = self.getPawn(name)
+        if not pawn: return
+        if pawn in self.pawnHelpList:
+            self.pawnHelpList.remove(pawn)
+        if pawn in self.ENTITIES:
+            self.ENTITIES.remove(pawn)
+        if pawn.team and pawn in pawn.team.pawns:
+            pawn.team.pawns.remove(pawn)
+        if pawn.client:
+
+            client = self.clients[pawn.client]
+            asyncio.run_coroutine_threadsafe(self.killClient(client), self.loop)
+
+            del self.clients[pawn.client]
+            del self.clientPawns[pawn.client]
+        self.log(f"Kicked player {name}")
+
     def tickEndGame(self):
         self.endGameI -= self.deltaTimeR
         I = max(self.endGameI-13, 0)*0.5
@@ -2040,7 +2075,7 @@ class Game(valInit):
             text = self.notificationFont.render(f"{s}", True,c)
 
         else:
-            text = self.notificationFont.render(f"TEAM {self.victoryTeam+1} WON", True, self.allTeams[self.victoryTeam].getColor())
+            text = self.notificationFont.render(f"{self.allTeams[self.victoryTeam].getName()} WON", True, self.allTeams[self.victoryTeam].getColor())
         text.set_alpha(int(255 * (1-I)))
         self.screen.blit(text, v2([self.res.x/2, 100]) - v2(text.get_size())/2)
 
@@ -2514,7 +2549,7 @@ class Game(valInit):
 
         if self.GAMEMODE == "ODDBALL":
             for i, x in sorted(enumerate(self.skullTimes), key=lambda pair: pair[1], reverse=True):
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
         elif self.GAMEMODE in ["TEAM DEATHMATCH", "DETONATION"]:
@@ -2523,7 +2558,7 @@ class Game(valInit):
                 kills[p.team.i] += p.kills
 
             for i, x in sorted(enumerate(kills), key=lambda pair: pair[1], reverse=True):
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} kills", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x} kills", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
@@ -2533,7 +2568,7 @@ class Game(valInit):
                 alive[p.team.i] += 1
 
             for i, x in sorted(enumerate(alive), key=lambda pair: pair[1], reverse=True):
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} alive", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x} alive", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
@@ -2561,7 +2596,7 @@ class Game(valInit):
 
                 all_enslaved = all(x.enslaved for x in self.getActualPawns() if x.originalTeam == i)
 
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x} rooms" if not all_enslaved else "ORJUUTETTU", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x} rooms" if not all_enslaved else "ORJUUTETTU", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
@@ -2575,7 +2610,7 @@ class Game(valInit):
 
             for i, x in sorted(enumerate(damage), key=lambda pair: pair[1], reverse=True):
 
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} damage dealt", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x:.1f} damage dealt", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
@@ -2584,7 +2619,7 @@ class Game(valInit):
 
             for i, x in sorted(enumerate(timeOnTheHill), key=lambda pair: pair[1], reverse=True):
 
-                t = combinedText(f"TEAM {i + 1}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
+                t = combinedText(f"{self.allTeams[i].getName()}: ", self.getTeamColor(i), f"{x:.1f} seconds", self.getTeamColor(i), font=self.fontSmaller)
                 self.screen.blit(t, [10, y])
                 y += 22
 
@@ -2749,9 +2784,9 @@ class Game(valInit):
     def genPawns(self):
         if self.pawnGenI < 3 and self.playerFilesToGen:
 
-            name, image, client = random.choice(self.playerFilesToGen)
+            name, image, client, team = random.choice(self.playerFilesToGen)
             self.playerFiles.append(name)
-            self.playerFilesToGen.remove((name, image, client))
+            self.playerFilesToGen.remove((name, image, client, team))
 
             #p = "players/" if non_npc else "npcs/"
             if client:
@@ -2762,7 +2797,7 @@ class Game(valInit):
             else:
                 client_ip = None
 
-            t = threading.Thread(target=self.threadedGeneration, args=(name, image, client_ip))
+            t = threading.Thread(target=self.threadedGeneration, args=(name, image, client_ip, team))
             t.daemon = True
             t.start()
         

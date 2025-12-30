@@ -106,7 +106,7 @@ def surface_to_base64(surface: pygame.Surface) -> str:
 
 
 class Pawn(PawnBehaviour, getStat, DemoObject):
-    def __init__(self, app: "Game", pawnName, pawnAvatarEncoded, client, boss = False):
+    def __init__(self, app: "Game", pawnName, pawnAvatarEncoded, client, team = -1, boss = False):
         self.app: "Game" = app
         # extract the name from the path
         self.name = pawnName
@@ -126,6 +126,8 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.BOSS = boss
         self.isPawn = True
+
+        self.xp = 0
 
         super().__init__(demo_keys=("pos", "deltaPos", "aimAt", "killed", "flashed", "hurtI", "tripI", "respawnI", "health", "facingRight"))
 
@@ -177,6 +179,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         #self.imagePawn = debug_draw_alpha(self.imagePawn).convert_alpha()
 
         self.imagePawnR = pygame.transform.flip(self.imagePawn.copy(), True, False).convert_alpha()
+
+        self.cheater = False
+        self.cheatPlate = None
 
         #self.topHat = self.app.topHat.copy()
 
@@ -230,7 +235,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         
 
-        self.millionaireImage = pygame.transform.scale_by(self.levelUpImage.copy(), 300 / image.get_size()[1])
+        self.millionaireImage = pygame.transform.scale_by(self.levelUpImage.copy(), 300 / self.levelUpImage.get_size()[1])
         self.millionaireImage = pygame.transform.flip(self.millionaireImage, True, False)
 
         self.currentRoom = None
@@ -259,8 +264,11 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.app.pawnHelpList.append(self)
         self.team: Team = None
         if not self.BOSS:
-            I = self.app.pawnHelpList.index(self)%self.app.playerTeams
-            self.app.allTeams[I].add(self)
+            if team == -1:
+                self.app.assignTeam(self)
+            else:
+                print("Preassigned team for", self.name)
+                self.app.allTeams[team].add(self)
         else:
             self.app.alwaysHostileTeam.add(self)
 
@@ -324,6 +332,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.xComponent = 0
         self.rotation = 0
 
+        self.walkingSpeedMult = 0
         
 
         self.healthRegen = 10
@@ -332,7 +341,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.pastItems = []
         
 
-        self.xp = 0
+        
         self.xpI = 15
         self.enslaved = False
 
@@ -1654,6 +1663,11 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         else:
             self.flashedBy = None
 
+        if self.walkTo:
+            self.walkingSpeedMult += self.app.deltaTime
+        else:
+            self.walkingSpeedMult -= self.app.deltaTime
+        self.walkingSpeedMult = max(0.0, min(1.0, self.walkingSpeedMult))
 
         if not self.app.PEACEFUL:
             if self.xpI > 0:
@@ -1719,7 +1733,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
                 self.app.objectiveCarriedBy = self
                 self.say("Meikäläisen kallopallo!", 1)
                 if self.app.GAMEMODE == "ODDBALL":
-                    self.app.notify(f"TEAM {self.team.i + 1} PICKED UP SKULL", self.team.getColor())
+                    self.app.notify(f"{self.team.getName()} PICKED UP SKULL", self.team.getColor())
                     #self.app.cameraLinger = 0
                     #self.app.cameraLock = self
                 else:
@@ -1938,6 +1952,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.namePlate = combinedText(self.name, self.teamColor, " +" + healthText, healthColor, f" LVL {self.level}",[255,255,255], font=self.app.font)
 
+        if self.cheater:
+            self.cheatPlate = self.app.ATR.render(self.app.font, "CHEATER", [255,255,255], wave_amp=3, rainbow=True, rainbow_speed=300)
+
         
         return newPos
     
@@ -2114,6 +2131,9 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
             self.app.DRAWTO.blit(self.npcPlate, (BASEPOS.x - self.npcPlate.get_width() / 2, BASEPOS.y - self.npcPlate.get_height() - self.height + 55))
 
         self.app.DRAWTO.blit(self.namePlate, (BASEPOS.x - self.namePlate.get_width() / 2, BASEPOS.y - self.namePlate.get_height() - self.height + 30))
+        if self.cheater and self.cheatPlate:
+            self.app.DRAWTO.blit(self.cheatPlate, (BASEPOS.x - self.cheatPlate.get_width() / 2, BASEPOS.y - self.cheatPlate.get_height() - self.height - 5))
+
 
         if self.BOSS:
             t2 = self.app.fontLarge.render(self.app.babloLyricCurrent, True, [255,255,255])

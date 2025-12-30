@@ -28,7 +28,7 @@ def gameEndTick(self: "Game"):
     # Winner banner
     
     t = self.notificationFont.render(
-        f"TEAM {winnerTeam.i + 1} WON!!",
+        f"{winnerTeam.getName()} WON!!",
         True,
         winnerTeam.getColor()
     )

@@ -8,6 +8,7 @@ import random
 import os
 from core.qrcodeMaker import make_qr_surface
 from renderObjects.pawn.teamLogic import Team
+from pygame.math import Vector2 as v2
 def createSettings(self: "Game"):
     self.npcType = Dropdown(self, "Mode:", ["PVE", "PVP", "PVPE"], (300,400))
     self.teamAmount = Dropdown(self, "Player Teams:", ["1", "2", "3", "4", "5", "6", "7", "8"], (100,600), initialValue=1)
@@ -34,7 +35,14 @@ def createSettings(self: "Game"):
 
 
 def settingsTick(self: "Game"):
-    self.screen.fill((0,0,0))
+    self.PEACEFUL = True
+    self.cameraPosDelta = v2([0,0])
+    entities_temp = sorted(self.ENTITIES, key=lambda x: x.pos.y)
+    self.DRAWTO = self.screen
+    self.DRAWTO.fill([self.beatI**2 * 30,0,0])
+    for x in entities_temp:
+        x.tick()
+        x.render()
 
     #t = self.fontLarge.render("ASETUKSET", True, [255]*3)
     t = self.ATR.render(self.fontLarge, "ASETUKSET", wave_amp=4, rainbow=True)
@@ -86,7 +94,8 @@ def settingsTick(self: "Game"):
 
 
     for i, pawn in enumerate(self.pawnHelpList):
-        x = 900 + pawn.team * 100
+        if pawn.GENERATING: continue
+        x = 900 + pawn.team.i * 100
 
         y = 550 + 30*teamIndices[pawn.team.i]
         teamIndices[pawn.team.i] += 1
@@ -175,7 +184,7 @@ def settingsTick(self: "Game"):
                         imageRaw = f.read()
 
                     print(npc_name, "Adding npc")
-                    self.playerFilesToGen.append((npc_name, imageRaw, None))
+                    self.playerFilesToGen.append((npc_name, imageRaw, None, -1))
                     break
 
         self.refreshShops()
@@ -185,7 +194,7 @@ def settingsTick(self: "Game"):
     if self.STARTGAME and not (self.playerFilesToGen or self.pawnGenI):
         self.STARTGAME = False
         self.GAMESTATE = "pawnGeneration"
-        self.reTeamPawns()
+        #self.reTeamPawns()
         
         
     self.debugText("SUBS: " + str(bool(self.subs)))

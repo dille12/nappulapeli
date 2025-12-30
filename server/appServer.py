@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from main import Game
 import time
 import threading
+from utilities.infoBar import infoBar
+
 class ClientHandler:
     def __init__(self, websocket):
         self.ws = websocket
@@ -97,7 +99,10 @@ def make_handler(app: "Game"):
 
             if reconnection and client_ip in app.clientPawns:
                 pawn = app.clientPawns[client_ip]
-                pawn.fullSync()
+                try:
+                    pawn.fullSync()
+                except:
+                    print("Failed to fullSync on reconnect")
 
                 #asyncio.run_coroutine_threadsafe(pawn.completeToApp(), app.loop)
 
@@ -110,10 +115,16 @@ def make_handler(app: "Game"):
                 # Example: tell the app about the avatar
                 if data.get("type") == "avatar":
                     name = data.get("name")
-                    if client_ip not in app.clientPawns:
+                    team = data.get("team")
+                    print("Team chosen:", team)
+
+                    teamIsValid = team == -1 or (team < app.playerTeams and len(app.allTeams[team].pawns) < app.fillTeamsTo)
+
+                    success = client_ip not in app.clientPawns and teamIsValid
+                    if success:
                         image_bytes = base64.b64decode(data.get("image"))
                         print("Adding new player:", name)
-                        app.add_player(name, image_bytes, ws)  # <-- call your app 
+                        app.add_player(name, image_bytes, ws, team)  # <-- call your app 
                         print("Sending info")
 
                         packet = {
@@ -123,13 +134,18 @@ def make_handler(app: "Game"):
                         await ws.send(json.dumps(packet))
 
                     else:
-                        print("Pawn is already created! ")
-                        pawn = app.clientPawns[client_ip]
-                        pawn.fullSync()
+                        
+                        if team >= app.playerTeams:
+                            info = "Valitse ei-NPC joukkue!"
+                        elif len(app.allTeams[team].pawns) >= app.fillTeamsTo:
+                            info = "Valitsemasi joukkue on täynnä!"
+                        else:
+                            info = "Joku kusee!"
 
                         packet = {
                         "type": "avatarSuccess",
                         "state": False,
+                        "info": info
                         }
                         await ws.send(json.dumps(packet))
 
@@ -163,6 +179,7 @@ def make_handler(app: "Game"):
                     
 
                     if pawn.drinkTimer > 0:
+                        pawn.cheater = True
                         if app.ANTICHEAT:
                             app.bust(pawn, time.time() - pawn.lastDrinks[-1][0])
 
@@ -181,12 +198,20 @@ def make_handler(app: "Game"):
                     }
                     await ws.send(json.dumps(packet))
                     pawn.team.updateCurrency()
+                    
 
 
                 if data.get("type") == "musicRequest":
                     trackLink = data.get("youtubeLink")
                     print("Music request:", trackLink)
                     threading.Thread(target=app.addToPlaylist, args=(trackLink,), daemon=True).start()
+
+                if data.get("type") == "teamNameSwitch":
+                    pawn = app.clientPawns[client_ip]
+                    newname = data.get("teamName").upper()
+                    team = pawn.team
+                    team.teamName = newname
+                    app.notify(f"Joukkueen nimi vaihdettu: {newname}", team.getColor())
 
 
                 if data.get("type") == "rerollRequest":
@@ -258,6 +283,11 @@ def make_handler(app: "Game"):
 
         except websockets.exceptions.ConnectionClosed:
             print("Client disconnected")
+
+        except Exception as e:
+            infoBar(app, f"{client_ip} errored! {e}")
+            traceback.print_exc()
+            
         finally:
             print("Client removed")
             #app.clients[client_ip] = None

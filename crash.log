@@ -36,3 +36,97 @@ cv2.error: OpenCV(4.12.0) :-1: error: (-5:Bad argument) in function 'resize'
 >  - Can't parse 'dsize'. Sequence item with index 0 has a wrong type
 >  - Can't parse 'dsize'. Sequence item with index 0 has a wrong type
 
+
+============================================================
+2025-12-30 14:13:00
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3162, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2975, in run
+    if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":
+       ^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'GAMESTATE'
+
+============================================================
+2025-12-30 14:13:18
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3162, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2975, in run
+    if self.GAMESTATE != "pawnGeneration" or self.pregametick == "judgement":
+       ^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'GAMESTATE'
+
+============================================================
+2025-12-30 14:14:07
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3162, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2983, in run
+    settingsTick(self)
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\gameTicks\settingsTick.py", line 89, in settingsTick
+    x = 900 + pawn.team * 100
+              ~~~~~~~~~~^~~~~
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'int'
+
+============================================================
+2025-12-30 14:16:33
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3163, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2984, in run
+    settingsTick(self)
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\gameTicks\settingsTick.py", line 192, in settingsTick
+    self.genPawns()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2764, in genPawns
+    name, image, client, team = random.choice(self.playerFilesToGen)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+ValueError: not enough values to unpack (expected 4, got 3)
+
+============================================================
+2025-12-30 14:17:53
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3163, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2984, in run
+    settingsTick(self)
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\gameTicks\settingsTick.py", line 89, in settingsTick
+    x = 900 + pawn.team.i * 100
+              ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'i'
+
+============================================================
+2025-12-30 15:43:58
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3164, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 2985, in run
+    settingsTick(self)
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\gameTicks\settingsTick.py", line 89, in settingsTick
+    x = 900 + pawn.team.i * 100
+              ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'i'
+
+============================================================
+2025-12-30 18:47:04
+Traceback (most recent call last):
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3186, in run
+    game.run()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\main.py", line 3007, in run
+    settingsTick(self)
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\gameTicks\settingsTick.py", line 44, in settingsTick
+    x.tick()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\renderObjects\pawn\pawn.py", line 1701, in tick
+    self.think()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\renderObjects\pawn\behaviour.py", line 39, in think
+    self.pickWalkingTarget()
+  File "c:\Users\Reset\Documents\GitHub\nappulapeli\renderObjects\pawn\behaviour.py", line 244, in pickWalkingTarget
+    self.walkTo = self.app.inverseConvertPos(v2(random.randint(0, self.app.originalRes.x), random.randint(0, self.app.originalRes.y)))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Reset\miniconda3\envs\nappula\Lib\random.py", line 336, in randint
+    return self.randrange(a, b+1)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Reset\miniconda3\envs\nappula\Lib\random.py", line 312, in randrange
+    istop = _index(stop)
+            ^^^^^^^^^^^^
+TypeError: 'float' object cannot be interpreted as an integer

@@ -37,6 +37,8 @@ class EspeakTTS:
             return
         if self.owner.textBubble or self.sound:
             return
+        if self.owner.BOSS: 
+            return
         
         self.generating = True
         

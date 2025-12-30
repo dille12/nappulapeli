@@ -241,19 +241,19 @@ class PawnBehaviour:
             elif self.app.pregametick == "judgement":
                 self.judgeWalkPos()
             else:
-                self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
+                self.walkTo = self.app.inverseConvertPos(v2(random.randint(0, int(self.app.originalRes.x)), random.randint(0, int(self.app.originalRes.y))))
             return
         
-        if self.app.USE_AI:
-            tile = runAI(self)
-            print(tile)
-            
-            if self.app.map.grid[tile[0], tile[1]] == 1:
-                self.getRouteTo(endPosGrid=(int(tile[1]), int(tile[0])))
+        #if self.app.USE_AI:
+        #    tile = runAI(self)
+        #    print(tile)
+        #    
+        #    if self.app.map.grid[tile[0], tile[1]] == 1:
+        #        self.getRouteTo(endPosGrid=(int(tile[1]), int(tile[0])))
 
             
 
-        elif not self.target:
+        if not self.target:
         #self.walkTo = v2(random.randint(0, 1920), random.randint(0, 1080))
             if self.ULT:
                 p = [x for x in self.app.pawnHelpList if self.team.hostile(x, self) and not x.killed]

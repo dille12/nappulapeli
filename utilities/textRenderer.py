@@ -32,6 +32,7 @@ class AnimatedTextRenderer:
         fade_out=0.0,
         typewriter_speed=0.0,
         rainbow=False,
+        rainbow_speed=60,
         outline=0,
         outline_color=(0, 0, 0),
         glow=0,
@@ -72,7 +73,7 @@ class AnimatedTextRenderer:
             draw_surf = surf
 
             if rainbow:
-                c = self.getRainBowColor(i = i)
+                c = self.getRainBowColor(i = i, speed=rainbow_speed)
                 draw_surf = font.render(text[i], True, c)
 
             if outline > 0:

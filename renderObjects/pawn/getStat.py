@@ -83,6 +83,7 @@ effect_labels_fi = {
             "bossKiller" : "Koodarikilleri",
             "dualWield" : "Dual wield",
             "currencyGain": "Pisteiden ansaitseminen",
+            "lazer" : "Lasertähtäin",
         }
 
 class getStat:
@@ -153,7 +154,7 @@ class getStat:
 
     @ult_multiplier
     def getSpeed(self, WEAPON: "Weapon"):
-        s = self.speed * self.itemEffects["speedMod"] * (1 + 1.0 * WEAPON.runOffset * self.itemEffects["tacticalSprintSpeed"])  # 
+        s = self.speed * self.itemEffects["speedMod"] * (1 + 1.0 * WEAPON.runOffset * self.itemEffects["tacticalSprintSpeed"]) * self.walkingSpeedMult  # 
         if self.revengeHunt():
             s *= 2
         return s

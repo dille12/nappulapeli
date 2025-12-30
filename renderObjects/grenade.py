@@ -121,6 +121,7 @@ class Grenade:
 
 
     def tele(self):
+        if self.owner.killed: return
         self.app.particle_system.create_healing_particles(self.owner.pos.x, self.owner.pos.y)
         self.owner.pos = self.pos.copy()
         self.owner.deltaPos = self.pos.copy()

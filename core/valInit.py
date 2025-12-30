@@ -373,7 +373,7 @@ class valInit:
         self.roundTime = 0
         self.MAXROUNDLENGTH = 60
         self.AUDIOORIGIN = v2(0, 0)
-        self.AUDIOVOLUME = 0.3
+        self.AUDIOVOLUME = 0.2
 
 
         
@@ -539,6 +539,8 @@ class valInit:
             self.VIDEOPLAYER = VideoPlayer("utilities/1228.mp4")
             self.GAMESTATE = "intro"
             self.introAudio = pygame.mixer.Sound("audio/intro.wav")
+        else:
+            self.GAMESTATE = "settings"
         self.introSoundPlayed = False
 
         initMillionaire(self)
@@ -548,6 +550,13 @@ class valInit:
 
         self.TRUCE = False
         self.FFA = False
+
+        self.playerTeams = 2
+        self.fillTeamsTo = 3
+        self.npcTeams = 2
+
+        self.clients = {}
+        self.clientPawns = {}
 
         self.objectiveCarriedBy = None
 

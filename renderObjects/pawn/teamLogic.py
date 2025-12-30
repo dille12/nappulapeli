@@ -37,6 +37,7 @@ class Team:
         self.buildingsToBuild = 5
         self.bombCarrier = None
         self.kothTime = 0
+        self.teamName = None
 
         self.utilityPos = {
             "defensive": [],
@@ -49,6 +50,10 @@ class Team:
 
         self.sightGrid = None
 
+    def getName(self):
+        if self.teamName:
+            return self.teamName
+        return f"TEAM {self.i+1}"
 
     def getTerroristTeam(self):
         """
