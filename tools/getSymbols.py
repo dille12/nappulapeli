@@ -6,7 +6,7 @@ def count_symbols(folder):
     total = 0
     for root, dirs, files in os.walk(folder):
         for name in files:
-            if name.lower().endswith(".py"):
+            if name.lower().endswith(".kt"):
                 path = os.path.join(root, name)
                 with open(path, "r", encoding="utf-8", errors="ignore") as f:
                     total += len(f.read())
@@ -16,5 +16,5 @@ def count_symbols(folder):
 
 
 if __name__ == "__main__":
-    symbols = count_symbols("C:/Users/vilia/Documents/GitHub/nappulapeli")
+    symbols = count_symbols("C:\\Users\\Reset\\AndroidStudioProjects\\Nappula3")
     print("SYMBOLS:", symbols)
