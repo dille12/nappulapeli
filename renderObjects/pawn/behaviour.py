@@ -358,7 +358,7 @@ class PawnBehaviour:
                     self.vel *= 0
 
             # Path smoothing
-            if self.route and len(self.route) > 5:
+            if self.route:
                 c = self.getOwnCell()
                 r1x, r1y = self.route[0]
                 r2x, r2y = self.route[1]

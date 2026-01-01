@@ -19,6 +19,10 @@ def intro(self: "Game"):
     if self.introSurf:
         self.screen.blit(self.introSurf, (0, 0))
 
+    if "space" in self.keypress:
+        self.VIDEOPLAYER.done = True
+        self.introAudio.stop()
+
     if self.VIDEOPLAYER.done and not self.TRANSITION:
         self.transition(lambda: self.exitIntro())
 

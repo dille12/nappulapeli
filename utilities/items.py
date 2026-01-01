@@ -102,6 +102,8 @@ def getItems():
         create_item("Säästöpossu", currencyGain=["mult", 2.0]),
         create_item("Kelan eväät", currencyGain=["mult", 1.5]),
         create_item("Laaseri", lazer=["set", True], recoilMult=["mult", 1.25], accuracy=["add", 0.25]),
+        create_item("Energiaimmuniteetti", defenceEnergy=["mult", 4], defenceNormal=["mult", 0.5]),
+        create_item("Luoti-immuniteetti", defenceNormal=["mult", 4], defenceEnergy=["mult", 0.5]),
         #create_item("Mag dump", magDump=["set", True]),
     ]
 

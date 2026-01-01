@@ -249,16 +249,43 @@ class Game(valInit):
         self.initiatePawnExplostion()
         self.TARGETGAMESTATE = target
 
+    def clearEntities(self):
+        print(f"Removing {len(self.visualEntities)} visual entities and {len(self.particle_list)} particles.")
+        self.visualEntities.clear()
+        self.particle_list.clear()
+        print(f"{len(self.FireSystem.cells)} fire cells cleared.")
+        self.FireSystem.clearCells()
+        print("Total entities before cleanup:", len(self.ENTITIES))
+        to_remove = []
+        for x in self.ENTITIES:
+            if not isinstance(x, Pawn):
+                print("Removing entity of type:", str(type(x)))
+                to_remove.append(x)
+        for x in to_remove:
+            self.ENTITIES.remove(x)
+
+        to_remove = []
+        print("Total pawnlist before cleanup:", len(self.pawnHelpList))
+        for x in self.pawnHelpList:
+            if not isinstance(x, Pawn):
+                print("Removing entity of type:", str(type(x)))
+                to_remove.append(x)
+        for x in to_remove:
+            self.pawnHelpList.remove(x)
+                
+
     def drawExplosion(self):
 
-        FRAME = int(self.transIndex*144)
+
+        TRANSTIME = 60
+        FRAME = int(self.transIndex*TRANSTIME)
 
         for particle in self.PAWNPARTICLES:
             if FRAME < len(particle.images):
                 particle.update(self.screen, FRAME)
 
-        if FRAME > 144 - len(self.FADEOUT):
-            f_i = - 144 + len(self.FADEOUT) + FRAME
+        if FRAME > TRANSTIME - len(self.FADEOUT):
+            f_i = - TRANSTIME + len(self.FADEOUT) + FRAME
             f = self.FADEOUT[f_i]
             self.screen.blit(f, (0,0))
         self.transIndex += self.deltaTimeR
@@ -1022,6 +1049,10 @@ class Game(valInit):
         else:
             self.LEVELSEED = self.SET_SEED
 
+        
+        if self.GAMEMODE == "DETONATION":
+            self.LEVELSEED = 696969
+
         state = random.getstate()
         np_state = np.random.get_state()
 
@@ -1076,8 +1107,9 @@ class Game(valInit):
         if self.GAMEMODE == "FINAL SHOWDOWN":
             self.loadInfo.text = "Making Bablo"
             self.BLOCKMUSIC = True
+            
 
-            babloPath = "boss/bablo.png"
+            babloPath = "boss/bablo2.png"
             with open(babloPath, "rb") as f:
                 imageRaw = f.read()
 
@@ -1093,6 +1125,7 @@ class Game(valInit):
             self.nextMusic = 0
             for x in self.music:
                 x.stop()
+
             self.handleMusic()
             self.nextMusic = 1
             self.BABLO.respawnI = 1
@@ -1113,7 +1146,7 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST:
+        if self.STRESSTEST and False:
             for x in self.getActualPawns():
                 if x.BOSS: continue
                 x.reLevelPawn(10)
@@ -1124,6 +1157,8 @@ class Game(valInit):
             time.sleep(max(0, 5 - (time.time() - self.now)))
 
         self.resetRoundInfo()
+
+        
 
         for x in self.CAMERAS:
             if x.cameraIndex >= len(self.teamSpawnRooms): continue
@@ -1486,8 +1521,6 @@ class Game(valInit):
         self.demoObjects = [x for x in self.demoObjects if x.id not in killIds]
 
 
-        
-
     def handleMusic(self):
 
         if not self.music:
@@ -1512,6 +1545,9 @@ class Game(valInit):
             totalMidTracks = len(self.music) - 2
             nextTrack = 1 + self.midMusicIndex
             self.midMusicIndex = (self.midMusicIndex + 1) % totalMidTracks
+            if self.midMusicIndex == 0 and self.loadedMusic == "Bablo >:)" and self.currMusic == 1:
+                self.midMusicIndex = 1
+                self.babloLyricIndex = 0
 
         self.music[nextTrack].play()
         self.currMusic = self.nextMusic
@@ -1519,7 +1555,7 @@ class Game(valInit):
         self.musicStart = time.time()
         self.musicLength = self.music[self.nextMusic].get_length()
 
-        self.babloLyricIndex = 0
+        
 
         return True
     
@@ -1527,7 +1563,7 @@ class Game(valInit):
         if not self.babloLyrics:
             return 
         
-        current_time = time.time() - self.musicStart
+        current_time = time.time() - self.musicStart + self.musicLength * ((self.midMusicIndex-1)%4)
         lyrics = self.babloLyrics
         n = len(lyrics)
         i = self.babloLyricIndex % n
@@ -1552,11 +1588,10 @@ class Game(valInit):
         norm = (current_time - t_curr) / span
         norm = max(0.0, min(1.0, norm))
 
+        self.babloLyricTime = current_time
         self.babloLyricNorm = norm
         #self.babloLyricCurrent = lyric
         
-        
-
     
     def debugEnslavement(self):
         r = random.choice(self.teamSpawnRooms)
@@ -2359,6 +2394,8 @@ class Game(valInit):
         if self.NPC_WEAPONS_PURCHASE:
             self.handleNPCWeaponPurchase()
 
+        self.clearEntities()
+
 
     def mapTime(self, curr, maximum, inverse = False):
         if not inverse:
@@ -3068,6 +3105,7 @@ class Game(valInit):
                 self.handleBabloLyrics()
                 self.debugText(f"{self.babloLyricCurrent}")
                 self.debugText(f"{self.babloLyricNorm:.2f}")
+                self.debugText(f"{self.babloLyricTime:.2f}")
 
             if self.GAMESTATE in ["millionaire"]:
                 pygame.mixer.music.unload()

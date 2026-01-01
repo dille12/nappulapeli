@@ -169,7 +169,7 @@ class Team:
 
         for x in self.plan["viableSites"]:
             cell = x.room.randomCell()
-            route = self.app.arena.pathfinder.find_path(startPos, x.room.randomCell())
+            route = self.app.arena.pathfinder.find_path(startPos, cell)
 
             if not route:
                 print("JOKU BUGI!")

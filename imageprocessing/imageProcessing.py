@@ -115,6 +115,39 @@ def brighten_surface(surface, gain=2.5, offset=40):
     return result
 
 
+
+def outline_surface(src: pygame.Surface, width: int) -> pygame.Surface:
+    w, h = src.get_size()
+    src = src.convert_alpha()
+
+    mask = pygame.mask.from_surface(src)
+
+    out_w = w + 2 * width
+    out_h = h + 2 * width
+    result = pygame.Surface((out_w, out_h), pygame.SRCALPHA)
+
+    # Draw expanded mask (outline)
+    outline_mask = mask.copy()
+    for dx in range(-width, width + 1):
+        for dy in range(-width, width + 1):
+            if dx*dx + dy*dy > width*width:
+                continue
+            result.blit(
+                outline_mask.to_surface(setcolor=(0, 0, 0, 255), unsetcolor=(0, 0, 0, 0)),
+                (dx + width, dy + width),
+                special_flags=pygame.BLEND_PREMULTIPLIED
+            )
+
+    # Subtract original alpha region so outline stays outside
+    result.blit(src, (width, width), special_flags=pygame.BLEND_RGBA_SUB)
+
+    # Draw original on top
+    result.blit(src, (width, width))
+
+    return result
+
+
+
 def colorize_to_blood(surface):
     arr = pygame.surfarray.pixels3d(surface).copy()
     alpha = pygame.surfarray.pixels_alpha(surface).copy()

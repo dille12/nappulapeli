@@ -7,7 +7,7 @@ import random
 import os
 import math
 import numpy as np
-from imageprocessing.imageProcessing import gaussian_blur, trim_surface, remove_background, remove_background_bytes, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood, get_or_remove_background, brighten_surface
+from imageprocessing.imageProcessing import gaussian_blur, trim_surface, remove_background, remove_background_bytes, generate_corpse_sprite, set_image_hue_rgba, colorize_to_blood, get_or_remove_background, brighten_surface, outline_surface
 from renderObjects.particles.blood import BloodParticle
 from renderObjects.killfeed import KillFeed
 from renderObjects.explosion import Explosion
@@ -174,7 +174,10 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.hitBox = pygame.Rect(self.pos[0], self.pos[1], self.height, self.height)
 
-        self.imagePawn = pygame.transform.scale_by(self.levelUpImage, self.height / self.levelUpImage.get_size()[1]).convert_alpha()
+        pawnImage = pygame.transform.scale_by(self.levelUpImage, self.height / self.levelUpImage.get_size()[1]).convert_alpha()
+        pawnImage = outline_surface(pawnImage, 5)
+
+        self.imagePawn = pawnImage.copy()
 
         self.imagePawn = pygame.transform.scale_by(self.imagePawn, self.app.RENDER_SCALE)
         
@@ -1668,9 +1671,18 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
             self.flashedBy = None
 
         if self.walkTo:
-            self.walkingSpeedMult += self.app.deltaTime
+            if not self.route:
+                stopMod = min(1.0, 0.25 + 0.75*(self.app.getDistFrom(self.pos, self.walkTo)/(2*self.app.tileSize)))
+            else:
+                stopMod = 2.0
+            if self.walkingSpeedMult < stopMod:
+                self.walkingSpeedMult += self.app.deltaTime * 2
+            else:
+                self.walkingSpeedMult -= self.app.deltaTime * 2
+            
         else:
-            self.walkingSpeedMult -= self.app.deltaTime
+            self.walkingSpeedMult -= self.app.deltaTime * 2
+
         self.walkingSpeedMult = max(0.0, min(1.0, self.walkingSpeedMult))
 
         if not self.app.PEACEFUL:
@@ -1892,20 +1904,18 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         Addrotation = 0
         if self.walkTo is not None:
             # The player should be swinging from side to side when walking
-            self.yComponent = abs(math.sin(self.stepI * 2 * math.pi)) * 30
+            self.yComponent = abs(math.sin(self.stepI * 2 * math.pi)) * 30 * self.walkingSpeedMult
             # The player should move left and right when walking
-            self.xComponent = math.cos(self.stepI * 2 * math.pi) * 30
-            self.rotation = math.cos(self.stepI * 2 * math.pi) * 15
+            self.xComponent = math.cos(self.stepI * 2 * math.pi) * 30 * self.walkingSpeedMult
+            self.rotation = math.cos(self.stepI * 2 * math.pi) * 15 * self.walkingSpeedMult
             Addrotation = 0
             if self.facingRight:
-                Addrotation -= self.currWeapon.runOffset * 22
+                Addrotation -= self.currWeapon.runOffset * 22 * self.walkingSpeedMult
             else:
-                Addrotation += self.currWeapon.runOffset * 22
+                Addrotation += self.currWeapon.runOffset * 22 * self.walkingSpeedMult
             
-            yAdd += self.currWeapon.runOffset * 15
+            yAdd += self.currWeapon.runOffset * 15 * self.walkingSpeedMult
 
-
-            
 
         if self.facingRight:
             self.xComponent += self.buildingBounceOffset
@@ -2071,7 +2081,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
 
         self.arcRect = pygame.Rect(BASEPOS.x, BASEPOS.y + 50*RS, 0, 0)
 
-        imwidth = 100 * self.app.RENDER_SCALE
+        imwidth = max(100 * self.app.RENDER_SCALE, self.breatheIm.get_width())
 
         self.arcRect.inflate_ip(imwidth, imwidth/2)
 

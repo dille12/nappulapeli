@@ -1,14 +1,14 @@
 {
-  "AUTOPLAY": false,
+  "AUTOPLAY": true,
   "TRAINCTSPAWNTIME": false,
   "STRESSTEST": false,
   "RENDERING": true,
   "FIXED_FRAMERATE": 20,
   "midRoundTime": 0,
   "gameModeLineUp": [
-    "KING OF THE HILL"
+    "DETONATION"
   ],
-  "maxWins": 10,
+  "maxWins": 100,
   "DOREALGAMEMODES": false,
   "XPBASE": 5,
   "MAKEDEBUGPAWNS": false,
@@ -23,5 +23,6 @@
   "ANTICHEAT": false,
   "DO_DEMO": false,
   "SILENT_DAMAGE_ADJUST": true,
-  "DO_INTRO": false
+  "DO_INTRO": false,
+  "FULLSCREEN": true
 }

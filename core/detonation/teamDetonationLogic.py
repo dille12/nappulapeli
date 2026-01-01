@@ -98,7 +98,7 @@ def tickDetonationLogic(self: "Team"):
         if terroristsHoldPlanSite:
 
             if self.plan["currentAction"] != "defend":
-                self.app.notify("TERRORIST GAIN SITE")
+                self.app.notify("TERRORISTS GAIN SITE")
                 for mainPos in plan["site"].room.defensivePositions:
                     self.addNadePos(mainPos, "defensive")
 

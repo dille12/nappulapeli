@@ -1,6 +1,5 @@
 import pygame
 from pygame.math import Vector2 as v2
-import random
 import math
 import time
 from typing import TYPE_CHECKING
@@ -60,24 +59,29 @@ class GlitchGamemodeDisplay:
         }
         
     def create_particles(self):
-        """Create floating particles"""
-        for _ in range(20):
-            particle = {
-                'x': random.randint(0, self.width),
-                'y': random.randint(self.height, self.height + 200),
-                'speed': random.uniform(1, 3),
-                'size': random.randint(1, 3),
-                'opacity': random.randint(100, 255)
-            }
-            self.particles.append(particle)
+        self.particles = []
+        cols = 5
+        rows = 4
+        spacing_x = self.width // (cols + 1)
+        spacing_y = self.height // (rows + 1)
+
+        idx = 0
+        for r in range(rows):
+            for c in range(cols):
+                self.particles.append({
+                    "base_x": (c + 1) * spacing_x,
+                    "base_y": (r + 1) * spacing_y,
+                    "phase": idx * 0.7,
+                    "size": 2
+                })
+                idx += 1
     
     def update_particles(self):
-        """Update particle positions"""
-        for particle in self.particles:
-            particle['y'] -= particle['speed']
-            if particle['y'] < -50:
-                particle['y'] = self.height + 50
-                particle['x'] = random.randint(0, self.width)
+        t = time.time() - self.start_time
+        for p in self.particles:
+            p["x"] = p["base_x"] + math.sin(t + p["phase"]) * 15
+            p["y"] = p["base_y"] - (t * 40 % (self.height + 100))
+
     
     def draw_grid_background(self):
         """Draw animated grid background"""
@@ -109,28 +113,25 @@ class GlitchGamemodeDisplay:
                 pygame.draw.line(self.screen, color, (0, y_pos), (self.width, y_pos), 1)
     
     def draw_particles(self):
-        """Draw floating particles"""
         self.update_particles()
-        for particle in self.particles:
-            # Create surface with per-pixel alpha
-            particle_surf = pygame.Surface((particle['size'] * 2, particle['size'] * 2), pygame.SRCALPHA)
-            pygame.draw.circle(particle_surf, (*self.cyan, particle['opacity']), 
-                             (particle['size'], particle['size']), particle['size'])
-            self.screen.blit(particle_surf, (particle['x'], particle['y']))
+        for p in self.particles:
+            surf = pygame.Surface((6, 6), pygame.SRCALPHA)
+            alpha = 160 + int(60 * math.sin(time.time() + p["phase"]))
+            pygame.draw.circle(surf, (*self.cyan, alpha), (3, 3), p["size"])
+            self.screen.blit(surf, (p["x"], p["y"]))
+
     
     def get_glitch_offset(self):
-        """Calculate random glitch offset"""
-        current_time = time.time()
-        self.glitch_timer += 1
-        
-        if self.glitch_timer % 60 < 5:  # Glitch for 5 frames every 60 frames
-            self.glitch_offset_x = random.randint(-3, 3)
-            self.glitch_offset_y = random.randint(-2, 2)
-        else:
-            self.glitch_offset_x = 0
-            self.glitch_offset_y = 0
-        
-        return self.glitch_offset_x, self.glitch_offset_y
+        t = time.time() - self.start_time
+        active = int((t * 10) % 12) < 2
+
+        if not active:
+            return 0, 0
+
+        x = int(3 * math.sin(t * 40))
+        y = int(2 * math.cos(t * 25))
+        return x, y
+
     
     def draw_glitch_text(self, text, x, y, font, base_color):
         """Draw text with glitch effect"""

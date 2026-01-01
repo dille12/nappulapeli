@@ -163,3 +163,31 @@ Traceback (most recent call last):
     print("Winning team", self.winningTeam.i)
                           ^^^^^^^^^^^^^^^^^^
 AttributeError: 'NoneType' object has no attribute 'i'
+
+============================================================
+2025-12-31 16:25:49
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3190, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3035, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 63, in battleTick
+    _battle_tick_entities(self, entities_temp)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 437, in _battle_tick_entities
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\pawn.py", line 1724, in tick
+    self.walk()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\behaviour.py", line 483, in walk
+    r2x, r2y = self.route[1]
+               ~~~~~~~~~~^^^
+IndexError: list index out of range
+
+============================================================
+2026-01-01 17:41:04
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3227, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3111, in run
+    self.debugText(f"{self.babloLyricTarget:.2f}")
+                      ^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'Game' object has no attribute 'babloLyricTarget'. Did you mean: 'babloLyricCurrent'?

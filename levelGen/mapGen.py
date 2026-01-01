@@ -218,7 +218,7 @@ class Room:
     def randomCell(self) -> Tuple[int, int]:
         while True:
             x,y = (random.randint(self.x, self.x + self.width - 1), random.randint(self.y, self.y + self.height - 1))
-            if self.arena.grid[y,x]:
+            if self.arena.grid[y,x] != CellType.WALL.value:
                 return (x,y)
     
     def contains(self, x: int, y: int) -> bool:

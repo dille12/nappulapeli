@@ -122,10 +122,17 @@ class Grenade:
 
     def tele(self):
         if self.owner.killed: return
+        x,y = self.landingCell
+        if not (0 <= y < self.app.map.grid.shape[0] and 0 <= x < self.app.map.grid.shape[1]): return
+        if self.app.map.grid[y, x] == CellType.WALL.value: return
+
         self.app.particle_system.create_healing_particles(self.owner.pos.x, self.owner.pos.y)
-        self.owner.pos = self.pos.copy()
-        self.owner.deltaPos = self.pos.copy()
-        self.app.particle_system.create_healing_particles(self.pos.x, self.pos.y)
+
+        POS = v2(self.landingCell) * self.app.tileSize + [self.app.tileSize/2, 0]
+
+        self.owner.pos = POS.copy()
+        self.owner.deltaPos = POS.copy()
+        self.app.particle_system.create_healing_particles(POS.x, POS.y)
         self.owner.walkTo = None
         self.owner.route = None
         self.owner.target = None
@@ -159,7 +166,7 @@ class Grenade:
     def createTurret(self):
         x,y = self.landingCell
         if 0 <= y < self.app.map.grid.shape[0] and 0 <= x < self.app.map.grid.shape[1]:
-            if self.app.map.grid[y, x] == CellType.WALL:
+            if self.app.map.grid[y, x] == CellType.WALL.value:
                 print("Turret landed in a wall?")
                 return
         else:
