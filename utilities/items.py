@@ -104,6 +104,7 @@ def getItems():
         create_item("Laaseri", lazer=["set", True], recoilMult=["mult", 1.25], accuracy=["add", 0.25]),
         create_item("Energiaimmuniteetti", defenceEnergy=["mult", 4], defenceNormal=["mult", 0.5]),
         create_item("Luoti-immuniteetti", defenceNormal=["mult", 4], defenceEnergy=["mult", 0.5]),
+        create_item("Asevalmius", readyup=["set", True], weaponHandling=["mult", 1.1]),
         #create_item("Mag dump", magDump=["set", True]),
     ]
 

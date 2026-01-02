@@ -425,6 +425,9 @@ class Game(valInit):
             if originalTeam != majority_team:
                 self.notify(f"{team.getName()} was captured!", self.getTeamColor(originalTeam))
                 team.slaveTo(self.allTeams[majority_team])
+                for i, team2 in enumerate(self.allTeams):
+                    if team2.enslavedTo == team.i:
+                        team2.emancipate()
             else:
                 self.notify(f"{team.getName()} emancipated!", self.getTeamColor(originalTeam))
                 team.emancipate()
@@ -1101,8 +1104,6 @@ class Game(valInit):
 
         self.nextMusic = 1
         self.midMusicIndex = 0
-
-        self.AUDIOVOLUME = 0.3
         
         if self.GAMEMODE == "FINAL SHOWDOWN":
             self.loadInfo.text = "Making Bablo"
@@ -1131,7 +1132,6 @@ class Game(valInit):
             self.BABLO.respawnI = 1
             P = self.commonRoom.center()
             self.BABLO.pos = v2(P) * self.tileSize + [self.tileSize/2, self.tileSize/2] 
-            self.AUDIOVOLUME = 0.2
             self.crackIndex = 0
             self.BLOCKMUSIC = False
 
@@ -1146,10 +1146,10 @@ class Game(valInit):
         if self.giveWeapons:
             self.giveAllWeapons()
 
-        if self.STRESSTEST and False:
+        if self.LEVEL_TO:
             for x in self.getActualPawns():
                 if x.BOSS: continue
-                x.reLevelPawn(10)
+                x.reLevelPawn(self.LEVEL_TO)
         
         self.TRUCE = self.GAMEMODE == "FINAL SHOWDOWN"
 
@@ -1597,10 +1597,11 @@ class Game(valInit):
         r = random.choice(self.teamSpawnRooms)
         t = self.teamSpawnRooms.index(r)
         team = self.allTeams[t]
+        self.switchRoomOwnership(r, random.randint(0, self.teams-1))
         for x in team.pawns:
             x.die()
         self.log(f"Killed all pawns of team {t+1}")
-        self.switchRoomOwnership(r, random.randint(0, self.teams-1))
+        
     
     def BPM(self):
         if not self.loadedMusic:
@@ -2579,7 +2580,7 @@ class Game(valInit):
                 continue
             w = random.choice(self.weapons)
             w.give(x)
-            x.gType = random.randint(0,3)
+            x.gType = 2 #random.randint(0,3)
 
     def tickScoreBoard(self):
         y = 20
@@ -2877,7 +2878,7 @@ class Game(valInit):
                 continue
             Bullet.renderTrail(self, trail)
 
-    def playPositionalAudio(self, audio, pos = None):
+    def playPositionalAudio(self, audio, pos = None, volume = 1.0):
 
         if self.STRESSTEST:
             return
@@ -2887,7 +2888,7 @@ class Game(valInit):
 
         center = self.AUDIOORIGIN.copy()
 
-        return self.AUDIOMIXER.playPositionalAudio(audio, pos, center)
+        return self.AUDIOMIXER.playPositionalAudio(audio, pos, center, volume=volume)
     
 
     def setValue(self, varName, value):
@@ -2934,6 +2935,10 @@ class Game(valInit):
 
         
     def raycast_grid(self, pos, direction, max_dist):
+
+        if not self.map:
+            return None, None
+
         x0, y0 = pos.x / self.tileSize, pos.y / self.tileSize
         dx, dy = direction.x, direction.y
 

@@ -1021,6 +1021,7 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         self.respawnI = 0
         self.tripped = False
         self.grenadePos = None
+        self.currentlyAliveNade = None
         self.flashed = 0
         self.grenadeAmount = 0
 
@@ -1517,6 +1518,8 @@ class Pawn(PawnBehaviour, getStat, DemoObject):
         if self.gType == None: return
 
         if self.grenadeAmount <= 0: return
+
+        if self.enslaved: return
 
         if self.grenadePos:
             return

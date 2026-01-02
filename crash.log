@@ -191,3 +191,95 @@ Traceback (most recent call last):
     self.debugText(f"{self.babloLyricTarget:.2f}")
                       ^^^^^^^^^^^^^^^^^^^^^
 AttributeError: 'Game' object has no attribute 'babloLyricTarget'. Did you mean: 'babloLyricCurrent'?
+
+============================================================
+2026-01-01 21:26:34
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3224, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3068, in run
+    battleTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 63, in battleTick
+    _battle_tick_entities(self, entities_temp)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 443, in _battle_tick_entities
+    x.tick()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\grenade.py", line 103, in tick
+    self.detonate()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\grenade.py", line 151, in detonate
+    self.createTurret()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\grenade.py", line 176, in createTurret
+    Turret(self.app, self.landingCell, self.owner.team, self.owner)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\turret.py", line 51, in __init__
+    self.health = int(self.owner.getHealthCap() / 2)
+                      ^^^^^^^^^^
+AttributeError: 'Turret' object has no attribute 'owner'
+
+============================================================
+2026-01-02 00:50:39
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3226, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3052, in run
+    preGameTick(self)
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\pawnGeneration.py", line 129, in preGameTick
+    x.render()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\pawn.py", line 2142, in render
+    self.currWeapon.render()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\weapon.py", line 1020, in render
+    hit, normal = self.app.raycast_grid(startPos, direction, 1000 / self.app.tileSize)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2961, in raycast_grid
+    if 0 <= map_x < self.map.grid.shape[1] and 0 <= map_y < self.map.grid.shape[0]:
+                    ^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'grid'
+
+============================================================
+2026-01-02 01:15:01
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3230, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3152, in run
+    self.TARGETGAMESTATE()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 619, in <lambda>
+    self.transition(lambda: self.endGame())
+                            ^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2361, in endGame
+    x.emancipate()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\teamLogic.py", line 385, in emancipate
+    self.app.teamSpawnRooms[self.i].turfWarTeam = self.i
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+IndexError: tuple index out of range
+
+============================================================
+2026-01-02 01:18:57
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3230, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3152, in run
+    self.TARGETGAMESTATE()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 619, in <lambda>
+    self.transition(lambda: self.endGame())
+                            ^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2361, in endGame
+    x.emancipate()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\teamLogic.py", line 386, in emancipate
+    self.app.teamSpawnRooms[self.i].turfWarTeam = self.i
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+IndexError: tuple index out of range
+
+============================================================
+2026-01-02 01:30:03
+Traceback (most recent call last):
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3230, in run
+    game.run()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 3152, in run
+    self.TARGETGAMESTATE()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\gameTicks\tick.py", line 619, in <lambda>
+    self.transition(lambda: self.endGame())
+                            ^^^^^^^^^^^^^^
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\main.py", line 2380, in endGame
+    self.BABLO.die()
+  File "c:\Users\vilia\Documents\GitHub\nappulapeli\renderObjects\pawn\pawn.py", line 935, in die
+    for r in self.app.map.rooms:
+             ^^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'rooms'

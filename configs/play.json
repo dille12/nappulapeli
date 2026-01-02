@@ -29,5 +29,6 @@
   "DO_DEMO": false,
   "SILENT_DAMAGE_ADJUST": true,
   "DO_INTRO": true,
-  "FULLSCREEN": true
+  "FULLSCREEN": true,
+  "LEVEL_TO": 15
 }

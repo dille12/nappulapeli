@@ -425,6 +425,21 @@ class Weapon(DemoObject):
         #if not self.owner.buildingTarget: return False
         return True
     
+    def sniperShoot(self):
+        if not self.canShoot(): return
+
+        #if self.owner.onScreen():,
+        self.app.playPositionalAudio("audio/sniper1.wav", self.owner.pos, volume=2.0)
+        self.magazine -= 1
+        self.fireTick = self.owner.getRoundsPerSecond(self)
+
+        r = math.radians(-self.ROTATION)
+        gun_x, gun_y = self.getBulletSpawnPoint()
+        self.app.particle_system.create_muzzle_flash(gun_x, gun_y, r)
+
+        for x in range(self.owner.itemEffects["multiShot"]):
+            self.createBullet(0.2)
+    
 
     def Energyshoot(self):
         if not self.canShoot(): return
@@ -860,10 +875,16 @@ class Weapon(DemoObject):
             r = math.degrees(self.app.getAngleFrom(self.defaultPos, v2(self.owner.grenadePos) * self.app.tileSize))
             self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
 
+        elif self.owner.itemEffects["readyup"] and not self.isReloading():
+            r = math.degrees(-self.owner.aimAt)
+            if self.raiseWeaponWhileRunning():
+                self.runOffset += (self.app.deltaTime * self.owner.getHandling()*2)
+            else:
+                self.runOffset -= (self.app.deltaTime * self.owner.getHandling()*2)
+
         else:
             if self.raiseWeaponWhileRunning():
                 r = -110 if self.owner.facingRight else -70
-
                 self.runOffset += (self.app.deltaTime * self.owner.getHandling()*2)
             else:
                 r = 135 if self.owner.facingRight else 45

@@ -43,27 +43,34 @@ class Turret(getStat):
 
         self.name = "TURRET"
 
+        if owner:
+            self.owner = owner
+        else:
+            self.owner = self.team.getPawns()[0]
+
         self.BOSS = False
         self.enslaved = False
         self.killed = False
         self.aimAt = 0
         self.respawnI = 0
-        self.health = 125
+        self.health = int(self.owner.getHealthCap())
+        self.healthCap = self.health
         self.currentlyAliveNade = None
         self.rotation = 0
         self.rotationVel = 0
         self.flashed = 0
         self.loseTargetI = 1
         self.spread = 0.05
-        if owner:
-            self.owner = owner
-        else:
-            self.owner = self.team.getPawns()[0]
+        self.randomRotationTick = random.uniform(0.5,2)
+        self.randomRotation = random.uniform(0,360)
+        
 
         self.imageKillFeed = self.app.turretKillIcon
         self.barrelOffset = v2(35,0)
 
-        self.BPS = 5
+        self.BPS = 5 * self.owner.itemEffects["weaponFireRate"]
+
+        self.damage = 20 * self.owner.itemEffects["weaponDamage"]
         self.fireTick = 0
 
         self.hitBox = pygame.Rect(self.pos[0], self.pos[1], 100, 100)
@@ -102,8 +109,7 @@ class Turret(getStat):
             return
         
         self.facingRight = self.target.pos[0] <= self.pos[0]
-        if dist < 250:
-            return
+
 
         self.turretFire()
         self.loseTargetI = 1
@@ -129,7 +135,7 @@ class Turret(getStat):
         r = math.radians(self.rotation)
 
 
-        Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread, damage = 20, type="normal", 
+        Bullet(self, self.getBulletSpawnPoint(), r, spread = self.spread, damage = self.damage, type="normal", 
                ) 
         self.app.playPositionalAudio(self.app.turretFireSound, self.pos)
         
@@ -140,10 +146,18 @@ class Turret(getStat):
     def tick(self):
         self.hitBox.center = self.pos.copy()
 
-        r = 0
+        r = self.randomRotation
+
+        
         if self.target:
             if self.target.killed:
                 self.target = None
+        else:
+            if self.randomRotationTick > 0:
+                self.randomRotationTick -= self.app.deltaTime
+            else:
+                self.randomRotation = random.uniform(0,360)
+                self.randomRotationTick = random.uniform(3,6)
 
         if self.target:
             r = math.degrees(self.app.getAngleFrom(self.pos, self.target.pos))
@@ -183,7 +197,10 @@ class Turret(getStat):
 
     def die(self):
         
-        Explosion(self.app, self.pos, self, 75)
+        #Explosion(self.app, self.pos, self, 75)
+        self.app.particle_system.create_turret_destruction(self.pos.x, self.pos.y)
+
+        self.app.playPositionalAudio(self.app.explosionSound, self.pos, volume = 1.0)
         self.killed = True
         self.reset()
 
@@ -194,6 +211,8 @@ class Turret(getStat):
 
         if self.health <= 0:
             return
+        
+        self.app.particle_system.create_wall_sparks(self.pos.x, self.pos.y, normal_angle=bloodAngle)
 
         self.health -= damage
         self.app.playPositionalAudio(self.app.turretDamageSound, self.pos)
@@ -206,6 +225,12 @@ class Turret(getStat):
 
         im = pygame.transform.rotate(self.head.copy(), -self.rotation)
         self.app.DRAWTO.blit(im, self.app.convertPos(self.pos) - v2(im.get_size())/2)
+
+        r = pygame.Rect((0,0), (50*self.app.RENDER_SCALE, 5*self.app.RENDER_SCALE))
+        r.width = r.width * (self.health / self.healthCap)
+        r.center = self.app.convertPos(self.pos  - [0, 40])
+        color = heat_color(1- self.health / self.healthCap)
+        pygame.draw.rect(self.app.DRAWTO, color, r)
 
 
     def v2ToTuple(self, p):
@@ -262,7 +287,7 @@ class Turret(getStat):
             return
         
         if not self.app.VICTORY and not self.app.GAMEMODE == "1v1":
-            if not self.team.hostile(self, x):
+            if not self.owner.team.hostile(self.owner, x):
                 return
         
         if x.respawnI > 0:
@@ -287,3 +312,19 @@ class Turret(getStat):
         self.team.addNadePos(self.target.getOwnCell(), "aggr") #
         
 
+
+def heat_color(v):
+    v = max(0.0, min(1.0, v))
+    if v < 0.5:
+        # Green (0,255,0) → Yellow (255,255,0)
+        t = v / 0.5
+        r = round(255 * t)
+        g = 255
+        b = 0
+    else:
+        # Yellow (255,255,0) → Red (255,0,0)
+        t = (v - 0.5) / 0.5
+        r = 255
+        g = round(255 * (1 - t))
+        b = 0
+    return (r, g, b)

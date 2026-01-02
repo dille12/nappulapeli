@@ -9,7 +9,7 @@ class Explosion:
         self.pos = v2(pos)
         if self.app.onScreen(self.pos):
             self.app.CAMERA.vibrate(damage/10)
-        self.app.playPositionalAudio(self.app.explosionSound, self.pos)
+        self.app.playPositionalAudio(self.app.explosionSound, self.pos, volume = 1.5)
         self.app.visualEntities.append(self)
         self.weapon = firer
 

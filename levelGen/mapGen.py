@@ -261,7 +261,7 @@ class ArenaGenerator:
                 lightMap[y,x] = cells / 400.0
 
         lightMap /= np.max(lightMap)
-        lightMap = lightMap * 0.5 + 0.5
+        lightMap = lightMap * 0.75 + 0.25
         lightMap = self.upscale_lightmap(lightMap, self.grid, tileSize=tilesize)
 
         return lightMap

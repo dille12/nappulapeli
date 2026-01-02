@@ -299,7 +299,7 @@ class AudioMixer:
         _ = resample_1ch_nb(dummy_1ch, 16)
         _ = resample_2ch_nb(dummy_chunk, 16)
 
-    def playPositionalAudio(self, audio, pos = None, cameraCenter = None):
+    def playPositionalAudio(self, audio, pos = None, cameraCenter = None, volume=1.0):
         audioFallOffMaxDist = 6000.0
         if isinstance(audio, str):
             if "waddle" in audio:
@@ -319,7 +319,7 @@ class AudioMixer:
             source.positional = True
             source.pos = v2(pos) if not isinstance(pos, v2) else pos
             source.falloff_max_dist = audioFallOffMaxDist
-            source.base_volume = self.app.AUDIOVOLUME # your previous scaling: volume * 0.3 (you can pass a param instead)
+            source.base_volume = volume * self.app.AUDIOVOLUME # your previous scaling: volume * 0.3 (you can pass a param instead)
             source.loop = False
             source.position = 0
             source.active = True
@@ -329,7 +329,7 @@ class AudioMixer:
             return source
         else:
             # non-positional: behave as before
-            volume = 1.0
+            # volume = 1.0
             panning = 0.0
             cutoff = None
             sound = self.load_and_play(audio, volume=volume * 0.3, pan=panning)

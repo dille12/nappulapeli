@@ -84,6 +84,7 @@ effect_labels_fi = {
             "dualWield" : "Dual wield",
             "currencyGain": "Pisteiden ansaitseminen",
             "lazer" : "Lasertähtäin",
+            "readyup": "Asevalmius",
         }
 
 class getStat:
@@ -145,6 +146,7 @@ class getStat:
             "bossKiller" : False,
             "dualWield" : False,
             "lazer" : False,
+            "readyup": False,
         }
 
         self.effect_labels_fi = effect_labels_fi

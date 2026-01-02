@@ -275,7 +275,6 @@ class Particle:
         surface.blit(
             temp,
             (int(sx - r - 1), int(sy - r - 1)),
-            special_flags=self.blend_mode.value
         )
 
     
@@ -295,7 +294,7 @@ class Particle:
         else:
             rect = temp.get_rect(topleft=(int(sx - size / 2), int(sy - size / 2)))
 
-        surface.blit(temp, rect, special_flags=self.blend_mode.value)
+        surface.blit(temp, rect)
     
     def _render_triangle(self, surface: pygame.Surface):
         if self.current_size <= 0:
@@ -326,7 +325,7 @@ class Particle:
             [(p[0] - minx, p[1] - miny) for p in pts]
         )
 
-        surface.blit(temp, (int(minx), int(miny)), special_flags=self.blend_mode.value)
+        surface.blit(temp, (int(minx), int(miny)))
 
     
     def _render_star(self, surface: pygame.Surface):
@@ -358,7 +357,7 @@ class Particle:
             [(p[0] - minx, p[1] - miny) for p in pts]
         )
 
-        surface.blit(temp, (int(minx), int(miny)), special_flags=self.blend_mode.value)
+        surface.blit(temp, (int(minx), int(miny)))
 
     
     def _render_line(self, surface: pygame.Surface):
@@ -398,11 +397,11 @@ class Particle:
 
         if self.current_color != (255, 255, 255, 255):
             tint = tex.copy()
-            tint.fill(self.current_color[:3], special_flags=pygame.BLEND_MULT)
+            tint.fill(self.current_color[:3])
             tex = tint
 
         rect = tex.get_rect(center=(int(sx), int(sy)))
-        surface.blit(tex, rect, special_flags=self.blend_mode.value)
+        surface.blit(tex, rect)
 
     
     def _render_trail(self, surface: pygame.Surface):
@@ -973,4 +972,89 @@ class ParticleSystem:
             ))
 
         return particles
+    
+
+    def create_turret_destruction(self, x: float, y: float, **kwargs):
+        particles = []
+
+        # Fast core pop (brief covering spheres so turret disappearance is hidden)
+        for _ in range(3):
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=random.uniform(-1.5, 1.5),
+                vel_y=random.uniform(-1.5, 1.5),
+                lifetime=random.randint(12, 18),
+                start_color=(255, 180, 120),
+                end_color=(80, 40, 20),
+                start_size=random.uniform(40, 70),
+                end_size=0,
+                shape=ParticleShape.CIRCLE,
+                blend_mode=BlendMode.ADD,
+                size_curve=EasingType.EASE_OUT,
+                **kwargs
+            ))
+
+        # Metallic sparks (directional, sharp, short-lived)
+        for _ in range(16):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(8, 18)
+
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=math.cos(angle) * speed,
+                vel_y=math.sin(angle) * speed,
+                lifetime=random.randint(30, 50),
+                start_color=(255, 220, 140),
+                end_color=(120, 60, 30),
+                start_size=random.uniform(1.5, 3),
+                end_size=0,
+                shape=ParticleShape.LINE,
+                rotation=angle,
+                friction=0.9,
+                gravity=0.15,
+                **kwargs
+            ))
+
+        # Heavier debris sparks (slower, chunkier glow dots)
+        for _ in range(6):
+            angle = random.uniform(0, 2 * math.pi)
+            speed = random.uniform(3, 7)
+
+            particles.append(Particle(
+                self.app, x, y,
+                vel_x=math.cos(angle) * speed,
+                vel_y=math.sin(angle) * speed,
+                lifetime=random.randint(50, 80),
+                start_color=(200, 200, 200),
+                end_color=(60, 60, 60),
+                start_size=random.uniform(4, 6),
+                end_size=0,
+                shape=ParticleShape.CIRCLE,
+                gravity=0.25,
+                friction=0.93,
+                **kwargs
+            ))
+
+        # Brief smoke puff (optional visual softness)
+        for _ in range(3):
+            particles.append(Particle(
+                self.app,
+                x + random.uniform(-4, 4),
+                y + random.uniform(-4, 4),
+                vel_x=random.uniform(-1, 1),
+                vel_y=random.uniform(-1.5, -0.5),
+                lifetime=random.randint(60, 90),
+                start_color=(90, 90, 90),
+                end_color=(40, 40, 40),
+                start_size=random.uniform(8, 12),
+                end_size=random.uniform(20, 30),
+                shape=ParticleShape.CIRCLE,
+                friction=0.97,
+                wave_amplitude_x=random.uniform(0.3, 0.6),
+                wave_frequency_x=random.uniform(0.03, 0.06),
+                **kwargs
+            ))
+
+        return particles
+
 

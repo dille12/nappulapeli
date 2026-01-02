@@ -66,7 +66,8 @@ DEBUG_VARS = [
     "DO_DEMO",
     "SILENT_DAMAGE_ADJUST",
     "DO_INTRO",
-    "FULLSCREEN"
+    "FULLSCREEN",
+    "LEVEL_TO"
 ]
 
 
@@ -104,6 +105,7 @@ class valInit:
 
         self.ENABLEGRENADES = True
         self.ANTICHEAT = True
+        self.LEVEL_TO = None
 
         self.maxWins = 5
 
@@ -239,7 +241,7 @@ class valInit:
         pygame.mixer.init()
         self.weapons = []
         self.AK = Weapon(self, "AK-47", [150, 0], "texture/ak47.png", 20, 1600, 30, 8, Weapon.AKshoot, 1.5, "normal")
-        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1.5, Weapon.Energyshoot, 2, "energy")
+        self.e1 = Weapon(self, "Sniper", [120, 0], "texture/energy1.png", 100, 5000, 5, 1.5, Weapon.sniperShoot, 2, "energy")
         self.e2 = Weapon(self, "Rocket Launcher", [200, 0], "texture/energy2.png", 125, 1600, 1, 0.5, Weapon.RocketLauncher, 3, "explosion")
         self.e3 = Weapon(self, "EMG", [100, 0], "texture/energy3.png", 14, 1000, 40, 14, Weapon.Energyshoot, 0.8, "energy")
         self.pistol = Weapon(self, "USP-S", [50, 0], "texture/pistol.png", 25, 2000, 12, 3, Weapon.suppressedShoot, 0.3, "normal", sizeMult=0.7)

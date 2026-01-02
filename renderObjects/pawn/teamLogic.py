@@ -362,9 +362,10 @@ class Team:
         if self.app.FFA:
             return True
         
-        if P.enslaved or other.enslaved:
-            if self.getTurfWarTeam() == other.team.getTurfWarTeam():
-                return False
+        if self.app.GAMEMODE == "TURF WARS":
+            self_team = P.team.getTurfWarTeam() if P.enslaved else self.i
+            other_team = other.team.getTurfWarTeam() if other.enslaved else other.team.i
+            return self_team != other_team
 
         if other.team in self.allied:
             return False
@@ -381,6 +382,8 @@ class Team:
         for x in self.getPawns():
             x.enslaved = False
             x.teamColor = self.getColor()
+        if len(self.app.teamSpawnRooms) > self.i:
+            self.app.teamSpawnRooms[self.i].turfWarTeam = self.i
 
 
     def updateCurrency(self):
